@@ -1,0 +1,7 @@
+﻿{
+	"preset": 4,
+	"initialDrop": 0,
+	"declineStartDay": 5,
+	"maxDrop": 20,
+	"declineEndDay": 50
+}

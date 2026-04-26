@@ -1,0 +1,14 @@
+﻿{
+	"dynazoom": true,
+	"scrollsound": true,
+	"aimspeed": 1,
+	"tooltip": true,
+	"clipsize": 6,
+	"unloading": true,
+	"popups": true,
+	"melonlogs": true,
+	"keyCode": "P",
+	"zoomin": "Equals",
+	"zoomout": "Minus",
+	"ResetSettings": false
+}

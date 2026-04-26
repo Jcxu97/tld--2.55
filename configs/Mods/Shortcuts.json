@@ -1,0 +1,22 @@
+﻿{
+	"prisonGate": true,
+	"prisonDoor": true,
+	"bleakDock": true,
+	"bleakRamps": true,
+	"bleakRope": true,
+	"railroadTree": true,
+	"lighthouseRock": true,
+	"branchlineSkip": true,
+	"branchlineTree": true,
+	"muskegIce": true,
+	"forsakenShort": true,
+	"hushedBridge3": true,
+	"hushedBridge1": true,
+	"hushedBridge2": true,
+	"keepersNorth": true,
+	"ravinebridgeSkip": true,
+	"sunderedPlank": true,
+	"hubToSundered": true,
+	"timberwolfRope": true,
+	"enableDamDoor": true
+}

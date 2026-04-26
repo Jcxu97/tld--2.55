@@ -1,0 +1,9 @@
+﻿{
+	"buttonPickSticks": "W",
+	"pickupChoice": 2,
+	"pickupRadius": 25,
+	"calorieCost": 0,
+	"pickUpAdditionalItems": true,
+	"skipInspect": true,
+	"skipInspectAll": false
+}

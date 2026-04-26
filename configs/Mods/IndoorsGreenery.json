@@ -1,0 +1,22 @@
+﻿{
+	"noPlantNutrients": false,
+	"noRainDrops": false,
+	"noGardeningTools": false,
+	"noGardeningMesh": false,
+	"noSeeds": false,
+	"gardener": false,
+	"realisticTime": false,
+	"rosehipSmall": 5,
+	"rosehipBig": 7,
+	"reishiBig": 4,
+	"burdockSmall": 10,
+	"burdockBig": 12,
+	"cattailSmall": 7,
+	"cattailBig": 10,
+	"ombBig": 7,
+	"carrot": 25,
+	"potato": 30,
+	"blueberry": 12,
+	"soapberry": 12,
+	"herb": 5
+}

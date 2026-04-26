@@ -1,0 +1,20 @@
+﻿{
+	"noTape": false,
+	"noBattery": false,
+	"noCeramic": false,
+	"noPaper": false,
+	"noElectronics": false,
+	"noGlass": false,
+	"noGunParts": false,
+	"noNNB": false,
+	"noPlastic": false,
+	"noString": false,
+	"noTarp": false,
+	"noRifle": false,
+	"noNNBB": false,
+	"flintChance": 5,
+	"rockChance": 20,
+	"noBones": false,
+	"noReplenish": false,
+	"noDismantle": false
+}

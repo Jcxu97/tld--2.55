@@ -1,0 +1,6 @@
+﻿{
+	"KillCountRequirement": 3,
+	"SoundDecreasePercent": 80,
+	"SightDecreasePercent": 80,
+	"SmellDecreasePercent": 80
+}

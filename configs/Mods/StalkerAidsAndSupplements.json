@@ -1,0 +1,22 @@
+﻿{
+	"VitaminCSmall": 20,
+	"VitaminCalories": 5,
+	"SleepingIncrease": -25,
+	"SleepingCalories": 5,
+	"SleepingHP": 1,
+	"SleepingBonusDuration": 3,
+	"CaffeineDecrease": 25,
+	"CaffeineCalories": 5,
+	"CaffeineTime": 1,
+	"CaffeineCarry": 1.5,
+	"CaffeineCarryTime": 1.5,
+	"JamCalories": 150,
+	"VitaminCJam": 25,
+	"FirstAidAmount": 5,
+	"FirstAidTime": 6,
+	"BandageAmount": 1.5,
+	"BandageTime": 2,
+	"SleepHP": 6,
+	"CabinFeverHours": 12,
+	"ResetSettings": false
+}

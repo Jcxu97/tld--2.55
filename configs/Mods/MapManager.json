@@ -1,0 +1,15 @@
+﻿{
+	"EnableArrow": true,
+	"CenterOnPlayer": true,
+	"RevealMap": "BackQuote",
+	"MapSurveyMult": 25,
+	"MapSurveyMultTime": 0.1,
+	"MapWithPolariods": false,
+	"RevealVista": false,
+	"UnlockSurvey": false,
+	"AddCorpseToMap": false,
+	"ShowBunkerKey": "F8",
+	"AutoRemoveHarvestedMarkers": true,
+	"EnableHighDifficultyBunkerFix": true,
+	"HighDifficultyBunkerCount": 1
+}

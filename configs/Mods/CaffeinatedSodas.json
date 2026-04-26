@@ -1,0 +1,12 @@
+﻿{
+	"Orange": true,
+	"OrangeInitial": 7,
+	"OrangeDuration": 1,
+	"Summit": true,
+	"SummitInitial": 3,
+	"SummitDuration": 1,
+	"Grape": true,
+	"GrapeInitial": 5,
+	"GrapeDuration": 1,
+	"ResetSettings": false
+}

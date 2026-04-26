@@ -1,0 +1,13 @@
+﻿{
+	"noPelt": false,
+	"noOrca": false,
+	"noCrow": false,
+	"crowChance": 10,
+	"noHive": false,
+	"noNest": false,
+	"noCone": false,
+	"coneChance": 15,
+	"noChunk": false,
+	"saltChance": 15,
+	"activeBear": true
+}

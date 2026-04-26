@@ -1,0 +1,10 @@
+﻿{
+	"ShootingStars": true,
+	"Colorize": true,
+	"ConstantShootingStars": true,
+	"ShootingStarsTimeMin": 1,
+	"ShootingStarsTimeMax": 1,
+	"ShootingStarsDurationMin": 35,
+	"ShootingStarsDurationMax": 60,
+	"ResetSettings": false
+}

@@ -1,0 +1,7 @@
+﻿{
+	"enablePrepperCacheDataCapture": true,
+	"captureKey": "F8",
+	"enablePrepperCacheHUDDisplay": true,
+	"hudDisplayDuration": 15,
+	"enablePrepperCacheWorldMapDisplay": true
+}

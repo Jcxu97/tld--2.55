@@ -1,0 +1,13 @@
+﻿{
+	"customVolume": 0.75324917,
+	"enableAuroraTweaks": false,
+	"auroraVolume": 0,
+	"customRadioMusic": true,
+	"radioWorksWithoutAurora": true,
+	"randomRadioMusic": true,
+	"customRadioVolume": 0.3,
+	"enableWindTweaks": false,
+	"windVolume": 0,
+	"disableWaterfall": false,
+	"disableFlare": false
+}

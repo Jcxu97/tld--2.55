@@ -1,0 +1,1 @@
+"{UnityEngine.AddressableAssets.Addressables.RuntimePath}\\..\\..\\..\\Mods\\SCPlus\\Icons\\scplusicons_assets_all.bundle",

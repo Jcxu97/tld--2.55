@@ -1,0 +1,19 @@
+﻿{
+	"turnOnDecay": 0,
+	"overTimeDecay": 0,
+	"placed_burn_multiplier": 0,
+	"held_burn_multiplier": 0,
+	"conditionThreshold": 0,
+	"maxPenalty": 100,
+	"lamp_range": 1.5,
+	"lampColor": "Default",
+	"lampColorR": 0,
+	"lampColorG": 0,
+	"lampColorB": 0,
+	"spelunkerColor": true,
+	"spelunkersLampColor": "Default",
+	"spelunkersLampColorR": 0,
+	"spelunkersLampColorG": 0,
+	"spelunkersLampColorB": 0,
+	"muteLamps": true
+}

@@ -1,0 +1,11 @@
+﻿{
+	"jumpHeightConst": 42,
+	"weightUpperLimit": 30,
+	"calorieCost": 14,
+	"staminaCost": 7,
+	"fatigueCost": 0.5,
+	"jumpKeyCode": "LeftAlt",
+	"cheat1": true,
+	"cheat2": true,
+	"jumpKing": true
+}

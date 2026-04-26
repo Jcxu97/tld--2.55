@@ -1,0 +1,22 @@
+﻿{
+	"conformDefault": false,
+	"snapDefault": true,
+	"resetModes": false,
+	"autoResetRotation": true,
+	"disableColor": false,
+	"fixColliders": false,
+	"showHUD": true,
+	"simpleHUD": false,
+	"hudOffsetX": 0,
+	"hudOffsetY": 0,
+	"rotateXLeft": "T",
+	"rotateXRight": "U",
+	"rotateZLeft": "G",
+	"rotateZRight": "H",
+	"moveDown": "B",
+	"moveUp": "N",
+	"resetRotation": "K",
+	"snapKey": "X",
+	"conformToggleKey": "Z",
+	"mouseRotationKey": "LeftAlt"
+}

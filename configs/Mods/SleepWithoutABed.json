@@ -1,0 +1,17 @@
+﻿{
+	"fatigueRecoveryPenalty": 0.75,
+	"cloneBedConditionGainPerHour": 0.5,
+	"freezingScale": 1.75,
+	"freezingHealthLoss": 1.2,
+	"hypothermicHealthLoss": 1.4,
+	"passTimeExposurePenalty": 0.75,
+	"lowHealthSleepInterruption": true,
+	"sleepInterruptionThreshold": 0.1,
+	"interruptionCooldown": 15,
+	"hudMessage": true,
+	"applyInterruptToBeds": true,
+	"extraOptions": false,
+	"exposureSettings": false,
+	"sensitivityScale": 0.2,
+	"adjustedSensitivity": 0.75
+}

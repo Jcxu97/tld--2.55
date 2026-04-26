@@ -1,0 +1,11 @@
+﻿{
+	"BirchChance": 10,
+	"BirchBonus": 5,
+	"BirchTemp": 8,
+	"BirchTime": 3,
+	"OakChance": 10,
+	"OakBonus": 0,
+	"OakTemp": 15,
+	"OakTime": 4,
+	"ResetSettings": false
+}

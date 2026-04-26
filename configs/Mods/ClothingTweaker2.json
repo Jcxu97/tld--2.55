@@ -1,0 +1,10 @@
+﻿{
+	"clothingDecayDaily": 0.10000001,
+	"clothingDecayIndoors": 0.25,
+	"clothingDecayOutdoors": 0.40000004,
+	"export": false,
+	"import": false,
+	"reset": false,
+	"potatoMode": 0,
+	"log": false
+}

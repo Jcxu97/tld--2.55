@@ -1,0 +1,18 @@
+﻿{
+	"backKey": "Mouse3",
+	"interactKey": "Insert",
+	"bulkKey": "LeftShift",
+	"dropKey": "Q",
+	"modifierKey": "LeftControl",
+	"fastPickMin": 0.25,
+	"fastPickMax": 0.8,
+	"voidTrashCan": false,
+	"containterTimeTweak": true,
+	"containterOpenTimeScale": 0,
+	"containterSearchTimeScalePerItem": 0,
+	"containterSearchTimeScaleMin": 0.1,
+	"containterSearchTimeScaleMax": 0.4,
+	"containterSearchTimeScaleVar": 0,
+	"containerWeightLimitScale": 1,
+	"containerSlotLimitRatio": 0
+}

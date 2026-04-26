@@ -1,0 +1,12 @@
+﻿{
+	"tinderAsFuel": false,
+	"tinderBurnMultiplier": 2,
+	"animalFatAsFuel": false,
+	"burnMinutesPerKg": 120,
+	"heatIncrease": 10,
+	"charcoalAsFuel": false,
+	"charcoalBurnMinutes": 60,
+	"charcoalHeatIncrease": 20,
+	"enableAccelerantProbability": false,
+	"accelerantConsumeChance": 1
+}

@@ -1,0 +1,12 @@
+﻿{
+	"EnableMod": true,
+	"SaveIconEnabled": true,
+	"Preset": "\u9ed8\u8ba4",
+	"SaveKey": "F5",
+	"LoadKey": "F6",
+	"AutoSaveEnabled": false,
+	"AutoSaveTime": 15,
+	"AlternativeLoad": false,
+	"DEBUG": false,
+	"TRACE": false
+}

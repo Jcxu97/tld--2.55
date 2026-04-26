@@ -1,0 +1,5 @@
+BunkerDefaults/src/bin/
+BunkerDefaults/src/obj/
+*.moddata
+*.backup_*
+*.log

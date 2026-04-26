@@ -1,0 +1,19 @@
+﻿{
+	"burnTime": 48,
+	"showBurntimeHover": true,
+	"endless": true,
+	"windSensitivity": 0,
+	"lightIntensity": 3,
+	"lightRange": 6,
+	"interactButton": "Mouse2",
+	"interactButton2": "Mouse2",
+	"colorLightRed": 0.72,
+	"colorLightGreen": 0.46,
+	"colorLightBlue": 0.25,
+	"colorFlameRed": 1,
+	"colorFlameGreen": 1,
+	"colorFlameBlue": 0.25,
+	"enableFlicker": false,
+	"flickerMaxIntensity": 3,
+	"flickerFPS": 10
+}

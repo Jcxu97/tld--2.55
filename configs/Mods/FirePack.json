@@ -1,0 +1,5 @@
+﻿{
+	"pullTorches": true,
+	"consumeTorchOnFirestart": false,
+	"noWoodMatches": false
+}

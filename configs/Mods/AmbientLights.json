@@ -1,0 +1,14 @@
+﻿{
+	"alPreset": "Default",
+	"intensityMultiplier": 1,
+	"rangeMultiplier": 1,
+	"nightBrightness": 1,
+	"trueSun": true,
+	"ambienceLevel": 0.3,
+	"fillLevel": 0.4,
+	"fillColorLevel": 0.5,
+	"auroraIntensity": 0.8,
+	"auroraSaturation": 1.4,
+	"enableDebugKey": true,
+	"verbose": false
+}

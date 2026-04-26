@@ -1,0 +1,13 @@
+﻿{
+	"intensityValue": 2,
+	"rangeMultiplier": 1.4,
+	"whiteLights": false,
+	"disableAuroraFlicker": true,
+	"enableOutside": true,
+	"cullDistance": 50,
+	"castShadows": false,
+	"LightAudio": false,
+	"InteractDistance": 2,
+	"Debug": false,
+	"Placer": false
+}

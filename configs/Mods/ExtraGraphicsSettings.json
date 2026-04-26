@@ -1,0 +1,23 @@
+﻿{
+	"Vignette": true,
+	"Chromatic": true,
+	"DebugEnabled": false,
+	"EnableStatusBarPercents": true,
+	"PercentLabelFontSize": 14,
+	"EnableFreeLook": true,
+	"FreeLook_MaxYaw": 175,
+	"FreeLook_MaxPitch": 90,
+	"EnableCrosshairModification": false,
+	"CrosshairModificationAlpha": 1,
+	"CrosshairModificationStone": false,
+	"CrosshairModificationRifle": false,
+	"CrosshairModificationBow": false,
+	"Godrays": "On",
+	"GodraysNight": false,
+	"GodraysNightAurora": false,
+	"GodraysColorPreset": "magenta",
+	"GodraysColorRed": 1,
+	"GodraysColorBlue": 1,
+	"GodraysColorGreen": 1,
+	"GodraysColorAlpha": 1
+}

@@ -1,0 +1,8 @@
+﻿{
+	"minCondition": 0.6,
+	"maxCondition": 0.9,
+	"burnTime": 1440,
+	"interactButton": "Keypad7",
+	"disableTorch": false,
+	"disableLantern": false
+}

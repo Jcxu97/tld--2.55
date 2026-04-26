@@ -1,0 +1,19 @@
+﻿{
+	"menuKey": "B",
+	"dropYields": false,
+	"nudgeAmount": 4,
+	"nudgeXpKey": "RightArrow",
+	"nudgeXnKey": "LeftArrow",
+	"nudgeZpKey": "UpArrow",
+	"nudgeZnKey": "DownArrow",
+	"nudgeYpKey": "PageUp",
+	"nudgeYnKey": "PageDown",
+	"terrainBlending": true,
+	"woodWithering": true,
+	"interiorSearchLimit": 30,
+	"interiorFinderPrecision": 2,
+	"showDebugInfo": false,
+	"buildingTimeMult": 1,
+	"noRequirements": false,
+	"campfiresOnWood": true
+}

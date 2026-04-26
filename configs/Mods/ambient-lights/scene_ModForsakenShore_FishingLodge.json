@@ -1,0 +1,40 @@
+{
+	"emitters": [
+		{
+			"description": "Window",
+			"position": "-46.78, 1.95, 36.10",
+			"orientation":"north",
+			"size": 0.2,
+			"cover": 0
+		},
+		{
+			"description": "Window",
+			"position": "-48.65, 2.01, 34.46",
+			"orientation":"west",
+			"size": 0.2,
+			"cover": 0
+		},
+		{
+			"description": "Window",
+			"position": "-46.77, 2.06, 30.75",
+			"orientation":"south",
+			"size": 0.2,
+			"cover": 0
+		},
+		{
+			"description": "Window",
+			"position": "-44.97, 2.02, 34.49",
+			"orientation":"east",
+			"size": 0.2,
+			"cover": 0
+		}
+	],
+	"periods":{
+		
+	},
+	"options":{
+		"override_shadows":"",
+		"intensity_multiplier": 1.0,
+		"range_multiplier": 1.0
+	}
+}

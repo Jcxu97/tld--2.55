@@ -1,0 +1,9 @@
+﻿{
+	"enablePhysics": false,
+	"enableCollisions": false,
+	"dangerMode": false,
+	"playerScale": 6,
+	"scaleKey": "O",
+	"scaleRandom": 1,
+	"scaleMult": 0.54469526
+}

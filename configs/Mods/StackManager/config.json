@@ -1,0 +1,32 @@
+{
+  "ConfigurationVersion": "1.0.1",
+  "STACK_MERGE": [
+    "GEAR_BirchSaplingDried",
+    "GEAR_BearHideDried",
+    "GEAR_BottleAntibiotics",
+    "GEAR_BottlePainKillers",
+    "GEAR_Carrot",
+    "GEAR_CoffeeTin",
+    "GEAR_GreenTeaPackage",
+    "GEAR_GutDried",
+    "GEAR_LeatherDried",
+    "GEAR_LeatherHideDried",
+    "GEAR_MapleSaplingDried",
+    "GEAR_MooseHideDried",
+    "GEAR_PackMatches",
+    "GEAR_Potato",
+    "GEAR_RabbitPeltDried",
+    "GEAR_StumpRemover",
+    "GEAR_WolfPeltDried",
+    "GEAR_WoodMatches"
+  ],
+  "Advanced": [
+    "GEAR_CoffeeTin",
+    "GEAR_GreenTeaPackage",
+    "GEAR_Potato"
+  ],
+  "AddStackableComponent": [
+    "GEAR_Potato",
+    "GEAR_StumpRemover"
+  ]
+}

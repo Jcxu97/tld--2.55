@@ -1,0 +1,19 @@
+﻿{
+	"EatHips": true,
+	"RoseHipCalorie": 170,
+	"RoseHipVC": 15,
+	"RH_Food": false,
+	"EatReishi": true,
+	"ReishiCalorie": 200,
+	"ReishiVC": 7,
+	"R_Food": false,
+	"EatLichen": true,
+	"LichenCalorie": 70,
+	"BL_Food": false,
+	"EatBark": true,
+	"BarkCalorie": 131,
+	"BarkVC": 5,
+	"BB_Food": false,
+	"BD_Food": false,
+	"ResetSettings": false
+}

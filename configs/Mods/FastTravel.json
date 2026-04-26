@@ -1,0 +1,23 @@
+﻿{
+	"CanTravel": true,
+	"CanTravelFromOutside": true,
+	"CanTravelFromNonSafehouseInterior": true,
+	"CanTravelToSameScene": false,
+	"OnlyBetweenDestinations": false,
+	"CanEditDestinations": true,
+	"SaveModifierKey": "Equals",
+	"DeleteModifierKey": "Minus",
+	"ShowListKey": "Slash",
+	"Destination1": "Alpha5",
+	"Destination2": "Alpha6",
+	"Destination3": "Alpha7",
+	"Destination4": "Alpha8",
+	"Destination5": "Alpha9",
+	"Destination6": "F2",
+	"Destination7": "F3",
+	"Destination8": "F4",
+	"Destination9": "F7",
+	"ReturnPointKey": "Alpha0",
+	"ShowUsageHints": true,
+	"LogDebugInfo": false
+}

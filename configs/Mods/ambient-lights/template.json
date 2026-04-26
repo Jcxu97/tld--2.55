@@ -1,0 +1,13 @@
+{
+	"emitters": [
+		
+	],
+	"periods":{
+		
+	},
+	"options":{
+		"override_shadows":"",
+		"intensity_multiplier": 1,
+		"range_multiplier": 1
+	}
+}

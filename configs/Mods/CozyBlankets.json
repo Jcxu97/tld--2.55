@@ -1,0 +1,7 @@
+﻿{
+	"bedrollWarmth": 5,
+	"blanketWarmth": 1,
+	"blanketMaxBonus": 5,
+	"blanketOldWarmth": 2,
+	"blanketOldMaxBonus": 10
+}

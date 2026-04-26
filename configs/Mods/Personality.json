@@ -1,0 +1,15 @@
+﻿{
+	"specialEventOverride": false,
+	"specialEventOutfit": 0,
+	"forceDisplayClothes": false,
+	"useCustomTextures": true,
+	"useTextureTint": true,
+	"skinTextureHue": 10,
+	"skinTextureSat": 20,
+	"skinTextureLum": 65,
+	"reloadTextures": false,
+	"leftHanded": false,
+	"weaponCameraFov": 4,
+	"hideGloves": true,
+	"debugLog": false
+}

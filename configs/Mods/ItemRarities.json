@@ -1,0 +1,21 @@
+﻿{
+	"customColours": false,
+	"commonRed": 0.6,
+	"commonGreen": 0.6,
+	"commonBlue": 0.6,
+	"uncommonRed": 0.3,
+	"uncommonGreen": 0.7,
+	"uncommonBlue": 0,
+	"rareRed": 0,
+	"rareGreen": 0.6,
+	"rareBlue": 0.9,
+	"epicRed": 0.7,
+	"epicGreen": 0.3,
+	"epicBlue": 0.9,
+	"legendaryRed": 0.9,
+	"legendaryGreen": 0.5,
+	"legendaryBlue": 0.2,
+	"mythicRed": 0.8,
+	"mythicGreen": 0.7,
+	"mythicBlue": 0.3
+}

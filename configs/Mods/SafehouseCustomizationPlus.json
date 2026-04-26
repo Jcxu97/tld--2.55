@@ -1,0 +1,17 @@
+﻿{
+	"hideIcon": 1,
+	"altWorkbenchInteraction": true,
+	"doWeightCalculation": true,
+	"autoWeightMultiplier": 1,
+	"outlineVisibility": 0,
+	"outlineDistance": 3,
+	"outlineHue": 0.61,
+	"outlineAlpha": 0.15,
+	"outlineThickness": 4,
+	"devInspect": true,
+	"debugLog": false,
+	"carryableProcessingInterval": 10,
+	"dupeKey": "Keypad8",
+	"ignorePlaceWeight": false,
+	"globalWeightModifier": 1
+}
