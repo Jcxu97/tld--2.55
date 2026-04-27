@@ -4,7 +4,7 @@ using MelonLoader;
 using Il2Cpp;
 using Il2CppTLD.IntBackedUnit;
 
-[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.5", "user")]
+[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.6", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace FoodStackable;
@@ -16,7 +16,7 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("FoodStackable v0.4.5 loaded — yield entirely to StackManager (any StackableItem)");
+        Log.Msg("FoodStackable v0.4.6 loaded — reapply label on click/toggle + relax StackableItem gate");
     }
 }
 
@@ -26,10 +26,13 @@ internal static class StackState
     // 用 dataItem 指针而不是 GearItem,避免跨 panel 冲突(容器/保温瓶共用 InventoryGridItem)
     public static Dictionary<System.IntPtr, int> Counts = new();
 
+    // 镜像 map:gi.Pointer → count。click/toggle 回调没有 dataItem 参数时用这个
+    // 一次只一个 panel active 的前提下,gi.Pointer 跨 panel 不碰撞
+    public static Dictionary<System.IntPtr, int> CountsByGi = new();
+
     // 这些 prefab 明确排除 —— 让游戏 / StackManager 原版处理,避免冲突
     public static readonly HashSet<string> ExcludePrefabs = new HashSet<string>
     {
-        "GEAR_MixedNuts",
         "GEAR_MashedPotatoes",
         "GEAR_WaterPurificationTablets",
         "GEAR_CigarettePackMarlboro",
@@ -49,7 +52,8 @@ internal static class Dedupe
     {
         if (list == null || list.Count <= 1) return;
 
-        var firstOfGroup = new Dictionary<string, System.IntPtr>();
+        // key → (dataItem.Pointer, gi.Pointer) 代表
+        var firstOfGroup = new Dictionary<string, (System.IntPtr di, System.IntPtr gi)>();
         var keep = new Il2CppSystem.Collections.Generic.List<InventoryGridDataItem>();
 
         for (int i = 0; i < list.Count; i++)
@@ -63,9 +67,11 @@ internal static class Dedupe
             // Skip liquids/Soda — vanilla handles
             if (gi.GetComponent<LiquidItem>() != null) { keep.Add(di); continue; }
 
-            // Has StackableItem component → 完全让 StackManager / 原版处理,不管 m_Units
-            // 这避免"刚捡一份时 m_Units=1,我们 UI 合并,下一份 StackManager 真合并"的竞态
-            if (gi.GetComponent<StackableItem>() != null) { keep.Add(di); continue; }
+            // 已真合并的 stackable(m_Units>1)由原版/StackManager 显示 × N,我们让路。
+            // 只挂组件但 m_Units=1 的(如整合包给 DryMilkPacket / MixedNuts 加的),
+            // 实际没被合,我们仍做 UI 堆叠
+            var stackable = gi.GetComponent<StackableItem>();
+            if (stackable != null && stackable.m_Units > 1) { keep.Add(di); continue; }
 
             // Skip hardcoded blacklist.
             // 必须用 GameObject.name(每个 prefab 独立),不能用 m_GearItemData.name —
@@ -84,14 +90,16 @@ internal static class Dedupe
             if (prefixHit) { keep.Add(di); continue; }
 
             string key = MakeKey(gi, prefab);
-            if (firstOfGroup.TryGetValue(key, out var repPtr))
+            if (firstOfGroup.TryGetValue(key, out var rep))
             {
-                StackState.Counts[repPtr] = StackState.Counts[repPtr] + 1;
+                StackState.Counts[rep.di] = StackState.Counts[rep.di] + 1;
+                StackState.CountsByGi[rep.gi] = StackState.CountsByGi[rep.gi] + 1;
             }
             else
             {
-                firstOfGroup[key] = di.Pointer;
+                firstOfGroup[key] = (di.Pointer, gi.Pointer);
                 StackState.Counts[di.Pointer] = 1;
+                StackState.CountsByGi[gi.Pointer] = 1;
                 keep.Add(di);
             }
         }
@@ -118,6 +126,7 @@ internal static class Patch_Inventory_RefreshTable
         try
         {
             StackState.Counts.Clear();
+            StackState.CountsByGi.Clear();
             Dedupe.Process(__instance.m_FilteredInventoryList);
         }
         catch (System.Exception ex)
@@ -135,12 +144,48 @@ internal static class Patch_Container_RefreshTables
         try
         {
             StackState.Counts.Clear();
+            StackState.CountsByGi.Clear();
             Dedupe.Process(__instance.m_FilteredInventoryList);  // 玩家背包栏
             Dedupe.Process(__instance.m_FilteredContainerList);  // 容器栏
         }
         catch (System.Exception ex)
         {
             ModMain.Log.Error($"[Container.RefreshTables.Prefix] {ex}");
+        }
+    }
+}
+
+// 点击 / 选中切换 后游戏会清 m_StackLabel,重新 apply 我们的 ×N
+[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.OnClick))]
+internal static class Patch_GridItem_OnClick
+{
+    private static void Postfix(InventoryGridItem __instance) => LabelFix.Reapply(__instance);
+}
+
+[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.ToggleSelection))]
+internal static class Patch_GridItem_ToggleSelection
+{
+    private static void Postfix(InventoryGridItem __instance) => LabelFix.Reapply(__instance);
+}
+
+internal static class LabelFix
+{
+    public static void Reapply(InventoryGridItem item)
+    {
+        try
+        {
+            var gi = item?.m_GearItem;
+            if (gi == null) return;
+            if (!StackState.CountsByGi.TryGetValue(gi.Pointer, out int count)) return;
+            if (count <= 1) return;
+            var label = item.m_StackLabel;
+            if (label == null) return;
+            label.text = "x" + count;
+            if (label.gameObject != null) label.gameObject.SetActive(true);
+        }
+        catch (System.Exception ex)
+        {
+            ModMain.Log.Error($"[LabelFix.Reapply] {ex}");
         }
     }
 }
