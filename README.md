@@ -77,6 +77,9 @@
 **更新记录:**
 - `v0.4.0` (2026-04-27) 首版,UI 去重 + `x N` 角标
 - `v0.4.1` (2026-04-27) 修:重量标签显示单份 → 改为 `单份 × N`(公英制自动识别)
+- `v0.4.2` (2026-04-27) 跳过原生 `StackableItem.m_Units > 1`;黑名单 `MixedNuts` / `MashedPotatoes` / `WaterPurificationTablets` / 两种香烟;前缀 `GEAR_cc*` 跳过卡牌
+- `v0.4.3` (2026-04-27) hook `Panel_Container.RefreshTables` → 容器视图也堆叠;dict key 由 `gi.Pointer` 改成 `dataItem.Pointer`,修"容器里单个物品错标 ×2"bug
+- `v0.4.4` (2026-04-27) key 从 `m_GearItemData.name` 改成 `gi.name`(GameObject 名),修"多个不同 prefab 因共用 GearItemData asset 被误合并"(例:roastedAlmonds 吞并多种食物,DryMilkPacket 和 HotCocoaBox 合成一格)
 
 ## 快速换机恢复
 
