@@ -4,7 +4,7 @@ using MelonLoader;
 using Il2Cpp;
 using Il2CppTLD.IntBackedUnit;
 
-[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.4", "user")]
+[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.5", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace FoodStackable;
@@ -16,7 +16,7 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("FoodStackable v0.4.4 loaded — precise prefab key via GameObject.name");
+        Log.Msg("FoodStackable v0.4.5 loaded — yield entirely to StackManager (any StackableItem)");
     }
 }
 
@@ -63,15 +63,18 @@ internal static class Dedupe
             // Skip liquids/Soda — vanilla handles
             if (gi.GetComponent<LiquidItem>() != null) { keep.Add(di); continue; }
 
-            // Skip items already stacked natively
-            var stackable = gi.GetComponent<StackableItem>();
-            if (stackable != null && stackable.m_Units > 1) { keep.Add(di); continue; }
+            // Has StackableItem component → 完全让 StackManager / 原版处理,不管 m_Units
+            // 这避免"刚捡一份时 m_Units=1,我们 UI 合并,下一份 StackManager 真合并"的竞态
+            if (gi.GetComponent<StackableItem>() != null) { keep.Add(di); continue; }
 
             // Skip hardcoded blacklist.
             // 必须用 GameObject.name(每个 prefab 独立),不能用 m_GearItemData.name —
             // 整合包里多个 mod 加的物品可能共用同一个 GearItemData asset,name 相同,
             // 会导致不同 prefab 被误合并(曾见 roastedAlmonds 吞并多种食物)
             string prefab = gi.name ?? "";
+            // Unity 实例化 prefab 后 GameObject.name 可能带 "(Clone)" 后缀
+            int cloneIdx = prefab.IndexOf("(Clone)");
+            if (cloneIdx >= 0) prefab = prefab.Substring(0, cloneIdx).TrimEnd();
             if (StackState.ExcludePrefabs.Contains(prefab)) { keep.Add(di); continue; }
             bool prefixHit = false;
             for (int p = 0; p < StackState.ExcludePrefixes.Length; p++)

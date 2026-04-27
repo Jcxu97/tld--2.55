@@ -80,6 +80,7 @@
 - `v0.4.2` (2026-04-27) 跳过原生 `StackableItem.m_Units > 1`;黑名单 `MixedNuts` / `MashedPotatoes` / `WaterPurificationTablets` / 两种香烟;前缀 `GEAR_cc*` 跳过卡牌
 - `v0.4.3` (2026-04-27) hook `Panel_Container.RefreshTables` → 容器视图也堆叠;dict key 由 `gi.Pointer` 改成 `dataItem.Pointer`,修"容器里单个物品错标 ×2"bug
 - `v0.4.4` (2026-04-27) key 从 `m_GearItemData.name` 改成 `gi.name`(GameObject 名),修"多个不同 prefab 因共用 GearItemData asset 被误合并"(例:roastedAlmonds 吞并多种食物,DryMilkPacket 和 HotCocoaBox 合成一格)
+- `v0.4.5` (2026-04-27) 和整合包 StackManager 的兼容性收紧:**所有**挂了 `StackableItem` 组件的物品(不管 `m_Units` 多少)都完全让 StackManager / 原版处理;gi.name 剥 `(Clone)` 后缀确保黑名单精确匹配
 
 ## 快速换机恢复
 
