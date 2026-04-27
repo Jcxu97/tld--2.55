@@ -48,7 +48,7 @@
 ⚠️ 只对**新生成**的物品生效;已经在存档里的老物品还是不能叠。
 
 ### `Mods/ItemPickerCustomList.txt`
-自动拾取列表从 ~130 行扩到 **380 行**(2026-04-27 加了 68 件衣服 + 杂项/工具/食物/配件共 ~25 件),新增类别:
+自动拾取列表从 ~130 行扩到 **627 行**(2026-04-27 三批累积:68 件衣服 + 25 件杂项 + 全量批扫 catalog.json 补齐 246 条),新增类别:
 - **弹药/武器耗材**:`Bullet`、`GunpowderCan`、`ScrapLead`、`ArrowHead`、`Accelerant`、`RifleCleaningKit`、`SharpeningStone` 等
 - **建材/工具**:`Prybar`、`SimpleTools`、`SewingKit`、`BeeHive`、`Flint`、`WireBundle`、`CarBattery`、`Battery9V`、`Fuse`、`ScrapPlastic`、`ElectronicParts`、`GlassShards`、`NutsNBolts`、`NutsNBoltsBox`、`TarpSheet`、`Charcoal`、`SprayPaintCan`、`FlareA`、`BlueFlare`、`TapeRoll`、`BottleHydrogenPeroxide` 等
 - **食物/饮料**:`CuredMeat*`(熊/鸟/驼鹿/虎鲸/雷鸟/兔/鹿/狼)、`SaltedMeat*`(同)、`CuredFish*` / `SaltedFish*`(9 种鱼)、`BirdMeatRaw/Cooked`、`BirdEggRaw/Boiled`、`OrcaMeatRaw/Cooked`、`CannedChili/Stew/Spaghetti/Pears/Mangos/Pineapples/Beans`、`Cooked*`(饼/炖菜/煎蛋/披萨/三明治)、`BabyFood*`、`Tea*`、`CoffeeCupSugar` 等
@@ -56,6 +56,14 @@
 - **原版遗漏的罐装**:`Soda`、`SodaEnergy`、`KetchupChips`、`AuroraEnergyDrink`、`CheeseDoodles`、`SwedishMeatballs`、`icecreamCup` 等
 - **衣服(2026-04-27 新增 68 件)**:外套/Parka(14)、马甲(3)、毛衣/卫衣(6)、衬衫(4)、裤子(8)、靴子/鞋(11)、袜子(2)、手套(9)、帽子(7)、围巾/头套(4)。包含 `BearSkinCoat` / `WolfSkinCape` / `Improvised*` 等自制装备变体。prefab 名全量来源:`tld_Data/StreamingAssets/aa/catalog.json`(848 条)。
 - **杂项补漏(2026-04-27 累计)**:`SodaGrape`、`DogFood`、`Hacksaw`、`CanOpener`、`RecycledCan`、`HeavyBandage`、`MagnifyingLens`、`CandyBar`、`MashedPotatoes`、`EmergencyStim`、`HighQualityTools`、`HatchetImprovised`、`Hammer`、`Rope`、`RevolverAmmoBox`、`MixedNuts`、`PinnacleCanPeaches`、`InsulatedFlask_C`、`Hatchet`、`Jeans`、`Toque`、`LongUnderwear`、`Flour`、`CookingPot`、`Skillet`。
+
+**全量批扫(2026-04-27 最后一次)**:从 `tld_Data/StreamingAssets/aa/catalog.json` 抽 848 个 GEAR_ prefab,去掉 `_Mat/_Dif` 材质后,差集补齐 246 条。明确排除(122 条)**会破坏游戏的剧情物**:
+- 剧情钥匙(~20:`BIKey1/2`、`LakeCabinKey_*`、`BankManagerHouseKey`、`DepositBoxKey` 等)— 自动捡可能阻断剧情
+- 剧情笔记(~70:`BackerNote*`、`VisorNote*`、`Blackrock*Note`、`DeadmanNote1-5` 等)— 挤背包
+- 明信片(21:`PostCard_*`)— 收集品
+- 尸体(3:`*Carcass`)— 要屠宰不是捡(`*Quarter` 肉块保留)
+- 水壶系统(4:`WaterSupply*`、`WaterBottle*`)— 水不走物品拾取
+- 占位/生物/剧情物(4:`NULL`、`Stalker`、`ElevatorCrank`、大背包 `BackPack_A*`)
 
 完整表在 `configs/Mods/ItemPickerCustomList.txt`
 
