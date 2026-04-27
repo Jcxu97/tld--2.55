@@ -949,3 +949,10 @@ GEAR_WorkICrampons
 GEAR_WorkNCrampons
 GEAR_WorkToolbelt
 GEAR_Yeast
+GEAR_solitudeCider
+GEAR_hematogen
+GEAR_MagnesiumPowder
+GEAR_CalciumChloride
+GEAR_CopperCarbonate
+GEAR_IronFilings
+GEAR_Rubidium

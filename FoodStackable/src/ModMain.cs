@@ -4,7 +4,7 @@ using MelonLoader;
 using Il2Cpp;
 using Il2CppTLD.IntBackedUnit;
 
-[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.8", "user")]
+[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.9", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace FoodStackable;
@@ -16,27 +16,27 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("FoodStackable v0.4.8 loaded — OnUpdate tick reapplies label via MelonMod");
+        Log.Msg("FoodStackable v0.4.9 loaded — LateUpdate tick reapplies stack label + weight");
     }
 
-    // Unity 引擎隐式调用的 MonoBehaviour.Update 在 Il2CppInterop 下 Harmony hook 不到。
-    // 改用 Melon 框架的 OnUpdate(每帧可靠调用),遍历"最近刷新过的 panel"
-    // 的 m_TableItems,对 CountsByGi 命中的 item 强制 apply label
-    public override void OnUpdate()
+    // OnLateUpdate 在所有 MonoBehaviour.Update 之后跑,保证我们是最后一个写 label 的
+    // 遍历 SeenItems(每次 RefreshDataItem Postfix 登记),对堆叠代表的 item
+    // 同时恢复 stack label 和 weight label
+    public override void OnLateUpdate()
     {
         try
         {
-            if (StackState.CountsByGi.Count == 0) return;
+            if (StackState.Counts.Count == 0) return;
             if (StackState.SeenItems.Count == 0) return;
 
             foreach (var kv in StackState.SeenItems)
             {
-                LabelFix.Reapply(kv.Value);
+                LabelFix.Reapply(kv.Value.item, kv.Value.di);
             }
         }
         catch (System.Exception ex)
         {
-            Log.Error($"[OnUpdate] {ex}");
+            Log.Error($"[OnLateUpdate] {ex}");
         }
     }
 }
@@ -55,9 +55,10 @@ internal static class StackState
     public static Panel_Inventory LastInventoryPanel;
     public static Panel_Container LastContainerPanel;
 
-    // 所有最近刷新过的 InventoryGridItem(跨所有 panel),OnUpdate 逐帧 reapply
-    // Key = item.Pointer, Value = item ref。每次 Prefix 清空
-    public static Dictionary<System.IntPtr, InventoryGridItem> SeenItems = new();
+    // 所有最近刷新过的 (InventoryGridItem, 它最近绑的 InventoryGridDataItem)
+    // OnLateUpdate 逐帧 reapply。Key = item.Pointer,Value = (item, di) pair
+    // 每次 Prefix 清空,RefreshDataItem Postfix 登记/更新
+    public static Dictionary<System.IntPtr, (InventoryGridItem item, InventoryGridDataItem di)> SeenItems = new();
 
     // 这些 prefab 明确排除 —— 让游戏 / StackManager 原版处理,避免冲突
     public static readonly HashSet<string> ExcludePrefabs = new HashSet<string>
@@ -192,18 +193,33 @@ internal static class Patch_Container_RefreshTables
 
 internal static class LabelFix
 {
-    public static void Reapply(InventoryGridItem item)
+    public static void Reapply(InventoryGridItem item, InventoryGridDataItem di)
     {
         try
         {
-            var gi = item?.m_GearItem;
-            if (gi == null) return;
-            if (!StackState.CountsByGi.TryGetValue(gi.Pointer, out int count)) return;
+            if (item == null || di == null) return;
+            if (!StackState.Counts.TryGetValue(di.Pointer, out int count)) return;
             if (count <= 1) return;
+
+            // stack label
             var label = item.m_StackLabel;
-            if (label == null) return;
-            label.text = "x" + count;
-            if (label.gameObject != null) label.gameObject.SetActive(true);
+            if (label != null)
+            {
+                string want = "x" + count;
+                if (label.text != want) label.text = want;
+                if (label.gameObject != null && !label.gameObject.activeSelf)
+                    label.gameObject.SetActive(true);
+            }
+
+            // weight label — 单份被游戏原版写了就盖回 N 倍
+            var weightLabel = item.m_WeightLabel;
+            if (weightLabel != null)
+            {
+                bool imperial = weightLabel.text != null && weightLabel.text.Contains("lb");
+                ItemWeight total = di.GetItemWeight(false) * count;
+                string want = imperial ? total.ToStringImperial(2u) : total.ToStringMetric(2u);
+                if (weightLabel.text != want) weightLabel.text = want;
+            }
         }
         catch (System.Exception ex)
         {
@@ -221,8 +237,8 @@ internal static class Patch_RefreshDataItem
         {
             if (dataItem == null) return;
 
-            // 记录此 item 到 SeenItems,让 OnUpdate 每帧兜底 reapply label
-            if (__instance != null) StackState.SeenItems[__instance.Pointer] = __instance;
+            // 记录 (item, 此次绑的 dataItem) 到 SeenItems,OnLateUpdate 每帧兜底 reapply
+            if (__instance != null) StackState.SeenItems[__instance.Pointer] = (__instance, dataItem);
 
             var label = __instance.m_StackLabel;
             if (label == null) return;

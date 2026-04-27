@@ -84,6 +84,7 @@
 - `v0.4.6` (2026-04-27) hook `InventoryGridItem.OnClick` / `ToggleSelection` Postfix 恢复 `×N` 角标(点击物品后游戏会清 `m_StackLabel`,之前 bug 导致点一下角标就没了);`StackableItem` 兜底从 v0.4.5 的过严收回到 `m_Units>1` —— 挂组件但没真合过的物品(DryMilkPacket / MixedNuts)恢复 UI 堆叠;`MixedNuts` 从黑名单移除
 - `v0.4.7` (2026-04-27) v0.4.6 的 OnClick/ToggleSelection 只盖到部分清 label 路径(用户报 bug 减轻但未彻底)。改成 hook `InventoryGridItem.Update()` 的 Postfix 每帧兜底 — **但在 Il2CppInterop 下 Harmony hook 不到 Unity 引擎隐式调用的 MonoBehaviour.Update,`CallerCount(0)` 确认无游戏代码调用,这个 hook 实际没生效**
 - `v0.4.8` (2026-04-27) 彻底修 v0.4.7 未解的 bug。改用 `MelonMod.OnUpdate()`(Melon 框架自己每帧可靠调用)+ `StackState.SeenItems` dict 记录所有刷新过的 `InventoryGridItem`,每帧遍历 reapply label。Panel_Container 不暴露 grid item 数组不是问题,SeenItems 自动收集所有 panel 的 items
+- `v0.4.9` (2026-04-27) 点击角标丢失 + 拖动后重量变单份。`OnUpdate` 跑在 Unity `MonoBehaviour.Update` 之前,被游戏之后的 Update 覆盖。改用 `OnLateUpdate`(所有 Update 之后跑);SeenItems 存 `(item, dataItem)` pair — reapply 用 dataItem.Pointer 查 Counts 更稳;同时恢复 weight label N 倍显示(不仅是 stack label)
 
 ## 快速换机恢复
 
