@@ -5,7 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(BunkerDefaults.Mod), "BunkerDefaults", "1.0.2", "Claude")]
+[assembly: MelonInfo(typeof(BunkerDefaults.Mod), "BunkerDefaults", "1.0.3", "Claude")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace BunkerDefaults;
@@ -15,23 +15,22 @@ public class Mod : MelonMod
     private readonly HashSet<string> _processed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     private string _modDataDir;
 
-    // Full 9-bunker FastTravel SaveModel, pre-serialized. Matches the format
-    // produced by Pathoschild's FastTravel mod (Version 0.2.0, SaveModel shape).
+    // v1.0.3 (2026-04-27) 按用户偏好重排 9 个 slot,只注入 5 个有真实坐标的。
+    // 另外 4 个 slot(0/2/5/8)留空 — 用户走到 Airfield / Coastal / WhalingStation /
+    // MountainPass 后按 FastTravel 的 Equals + 对应数字键覆盖
     //
-    // 2026-04-27 实测坐标:dest 2 (MountainPass) 和 dest 3 (Marsh) 的 CheatEngine
-    // 社区表坐标 **实际传送会掉地下/空中**。但用户要保留这两个 entry 以便后续自己
-    // 走到地堡按 FastTravel 保存键覆盖。用前先走到、按保存键、再按 7/8 才稳
+    // 被删的 entry:
+    //   Rural(坐标正常,但用户不要了)
+    //   Marsh(原坐标 Y=-83 坏,用户自己走到已存)— 不在新 layout 里
+    //   RiverValley(用户不要)
+    //   MountainPass(原坐标 Y=207 掉崖,用户走到存)— 挪到 slot 8 占位
     private static readonly string DefaultFastTravelJson =
         "{\"Version\":\"0.2.0\",\"ReturnPoint\":null,\"Destinations\":{" +
-        "\"0\":" + Dest("LakeRegion",          "神秘湖地堡",   1029.06, 91.99,   -52.52)   + "," +
-        "\"1\":" + Dest("RuralRegion",         "怡人山谷地堡",  423.89, 177.93,  1458.51)  + "," +
-        "\"2\":" + Dest("MountainPassRegion",  "林狼雪岭地堡", 1675.41, 207.32,  968.21)   + "," +  // ⚠ 掉崖
-        "\"3\":" + Dest("MarshRegion",         "孤寂沼泽地堡",  593.07, -83.38, -104.89)   + "," +  // ⚠ 掉地下
-        "\"4\":" + Dest("MountainTownRegion",  "山间小镇地堡", 1828.20, 444.39, 1771.27)   + "," +
-        "\"5\":" + Dest("RiverValleyRegion",   "寂静河谷地堡",  363.44, 238.61,  375.49)   + "," +
-        "\"6\":" + Dest("CanneryRegion",       "荒凉水湾地堡",  328.37, 344.50,  833.16)   + "," +
-        "\"7\":" + Dest("AshCanyonRegion",     "灰烬峡谷地堡",  -42.12, 172.95, -796.68)   + "," +
-        "\"8\":" + Dest("BlackrockRegion",     "黑岩地区地堡",  705.04, 373.98,  816.38)   +
+        "\"1\":" + Dest("LakeRegion",          "神秘湖地堡",   1029.06, 91.99,   -52.52)   + "," +
+        "\"3\":" + Dest("MountainTownRegion",  "山间小镇地堡", 1828.20, 444.39, 1771.27)   + "," +
+        "\"4\":" + Dest("CanneryRegion",       "荒凉水湾地堡",  328.37, 344.50,  833.16)   + "," +
+        "\"6\":" + Dest("BlackrockRegion",     "黑岩地区地堡",  705.04, 373.98,  816.38)   + "," +
+        "\"7\":" + Dest("AshCanyonRegion",     "灰烬峡谷地堡",  -42.12, 172.95, -796.68)   +
         "}}";
 
     private static string Dest(string scene, string name, double x, double y, double z)

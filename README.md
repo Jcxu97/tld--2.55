@@ -35,25 +35,21 @@
 
 **解决什么问题:** Pathoschild 的 FastTravel mod 要你**先走到**才能保存一个传送点。我这个 mod 在游戏每次启动时扫描 `Mods/ModData/*.moddata`,自动往 FastTravel 存档里**预填 9 个大地图地堡坐标**,新开存档也不用自己跑。
 
-**热键(继承 FastTravel 的):**
+**热键(继承 FastTravel 的)— v1.0.3 按偏好重排**:
 
-| 键 | 目的地 | 场景名 |
-|---|---|---|
-| `5` | 神秘湖地堡 | LakeRegion |
-| `6` | 怡人山谷地堡 | RuralRegion |
-| `7` | 林狼雪岭地堡 ⚠ | MountainPassRegion |
-| `8` | 孤寂沼泽地堡 ⚠ | MarshRegion |
-| `9` | 山间小镇地堡 | MountainTownRegion |
-| `F2` | 寂静河谷地堡 | RiverValleyRegion |
-| `F3` | 荒凉水湾地堡 | CanneryRegion |
-| `F4` | 灰烬峡谷地堡 | AshCanyonRegion |
-| `F7` | 黑岩地区地堡 | BlackrockRegion |
+| 键 | 目的地 | 场景名 | 默认坐标 |
+|---|---|---|---|
+| `5` | 废弃机场应急舱 | AirfieldRegion | **空,走到存** |
+| `6` | 神秘湖地堡 | LakeRegion | ✅ |
+| `7` | 沿海公路加油站 | CoastalRegion | **空,走到存** |
+| `8` | 山间小镇地堡 | MountainTownRegion | ✅ |
+| `9` | 荒凉水湾地堡 | CanneryRegion | ✅ |
+| `F2` | 荒芜据点 | WhalingStationRegion | **空,走到存** |
+| `F3` | 黑岩地区地堡 | BlackrockRegion | ✅ |
+| `F4` | 灰烬峡谷地堡 | AshCanyonRegion | ✅ |
+| `F7` | 林狼雪岭地堡 | MountainPassRegion | **空,走到存**(社区坐标 Y=207 掉崖) |
 
-坐标取自 CheatEngine 社区表。**⚠ MountainPass / Marsh 两条社区坐标
-实测会掉地下或悬崖**(Marsh 的 Y=-83 在水下,MountainPass 的 X/Z
-在山体外空中)。v1.0.2 保留这两个 entry(用户要求),**但第一次用
-之前必须走到地堡门口按 FastTravel 的"保存当前位置"键覆盖真实坐标**,
-否则传过去会下落。其它 7 条都正常。
+5 个 `✅` 默认可用。4 个 `空` 首次用前走到对应场景,按 **`=` (Equals) + 对应数字键** 覆盖真实坐标。CheatEngine 社区表的 MountainPass / Marsh 坐标实测都会掉崖 / 地下,已从默认注入移除。Rural / RiverValley / Marsh 按用户偏好也从默认移除(需要时自己走去按保存键)。
 
 **新开存档时的流程(重要):**
 1. 建新沙盒,玩到触发一次存档(睡觉 / `ESC→Save` / 过场景)
