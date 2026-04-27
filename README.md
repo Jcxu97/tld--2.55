@@ -41,18 +41,19 @@
 |---|---|---|
 | `5` | 神秘湖地堡 | LakeRegion |
 | `6` | 怡人山谷地堡 | RuralRegion |
-| ~~`7`~~ | ~~林狼雪岭地堡 MountainPassRegion~~ | v1.0.1 起不默认注入 |
-| ~~`8`~~ | ~~孤寂沼泽地堡 MarshRegion~~ | v1.0.1 起不默认注入 |
+| `7` | 林狼雪岭地堡 ⚠ | MountainPassRegion |
+| `8` | 孤寂沼泽地堡 ⚠ | MarshRegion |
 | `9` | 山间小镇地堡 | MountainTownRegion |
 | `F2` | 寂静河谷地堡 | RiverValleyRegion |
 | `F3` | 荒凉水湾地堡 | CanneryRegion |
 | `F4` | 灰烬峡谷地堡 | AshCanyonRegion |
 | `F7` | 黑岩地区地堡 | BlackrockRegion |
 
-坐标取自 CheatEngine 社区表。**MountainPass / Marsh 两条社区坐标
-实测坏了**:Marsh 的 Y=-83 传到地下一直下落,MountainPass 的 X/Z
-偏了也传到崖边空中。v1.0.1 从默认注入里移除这两条,玩家要自己
-走到这两个地堡按 FastTravel 保存键把真实坐标存进 moddata。
+坐标取自 CheatEngine 社区表。**⚠ MountainPass / Marsh 两条社区坐标
+实测会掉地下或悬崖**(Marsh 的 Y=-83 在水下,MountainPass 的 X/Z
+在山体外空中)。v1.0.2 保留这两个 entry(用户要求),**但第一次用
+之前必须走到地堡门口按 FastTravel 的"保存当前位置"键覆盖真实坐标**,
+否则传过去会下落。其它 7 条都正常。
 
 **新开存档时的流程(重要):**
 1. 建新沙盒,玩到触发一次存档(睡觉 / `ESC→Save` / 过场景)

@@ -5,7 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(BunkerDefaults.Mod), "BunkerDefaults", "1.0.1", "Claude")]
+[assembly: MelonInfo(typeof(BunkerDefaults.Mod), "BunkerDefaults", "1.0.2", "Claude")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace BunkerDefaults;
@@ -18,14 +18,15 @@ public class Mod : MelonMod
     // Full 9-bunker FastTravel SaveModel, pre-serialized. Matches the format
     // produced by Pathoschild's FastTravel mod (Version 0.2.0, SaveModel shape).
     //
-    // 2026-04-27: MountainPassRegion (dest 2) 和 MarshRegion (dest 3) 的 CheatEngine
-    // 社区表坐标实测有问题 — MarshRegion Y=-83 传到地下,MountainPass 传到崖边空中
-    // 一直下落。这两个 entry 从默认注入里移除,玩家需要自己走到地堡按 FastTravel
-    // 保存键把真实坐标覆盖进 moddata
+    // 2026-04-27 实测坐标:dest 2 (MountainPass) 和 dest 3 (Marsh) 的 CheatEngine
+    // 社区表坐标 **实际传送会掉地下/空中**。但用户要保留这两个 entry 以便后续自己
+    // 走到地堡按 FastTravel 保存键覆盖。用前先走到、按保存键、再按 7/8 才稳
     private static readonly string DefaultFastTravelJson =
         "{\"Version\":\"0.2.0\",\"ReturnPoint\":null,\"Destinations\":{" +
         "\"0\":" + Dest("LakeRegion",          "神秘湖地堡",   1029.06, 91.99,   -52.52)   + "," +
         "\"1\":" + Dest("RuralRegion",         "怡人山谷地堡",  423.89, 177.93,  1458.51)  + "," +
+        "\"2\":" + Dest("MountainPassRegion",  "林狼雪岭地堡", 1675.41, 207.32,  968.21)   + "," +  // ⚠ 掉崖
+        "\"3\":" + Dest("MarshRegion",         "孤寂沼泽地堡",  593.07, -83.38, -104.89)   + "," +  // ⚠ 掉地下
         "\"4\":" + Dest("MountainTownRegion",  "山间小镇地堡", 1828.20, 444.39, 1771.27)   + "," +
         "\"5\":" + Dest("RiverValleyRegion",   "寂静河谷地堡",  363.44, 238.61,  375.49)   + "," +
         "\"6\":" + Dest("CanneryRegion",       "荒凉水湾地堡",  328.37, 344.50,  833.16)   + "," +
