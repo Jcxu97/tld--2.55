@@ -378,3 +378,4 @@ GEAR_LongUnderwear
 GEAR_Flour
 GEAR_CookingPot
 GEAR_Skillet
+GEAR_TrailMix

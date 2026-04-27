@@ -4,7 +4,7 @@ using MelonLoader;
 using Il2Cpp;
 using Il2CppTLD.IntBackedUnit;
 
-[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.6", "user")]
+[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.7", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace FoodStackable;
@@ -16,7 +16,7 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("FoodStackable v0.4.6 loaded — reapply label on click/toggle + relax StackableItem gate");
+        Log.Msg("FoodStackable v0.4.7 loaded — per-frame label reapply covers all redraw paths");
     }
 }
 
@@ -155,15 +155,11 @@ internal static class Patch_Container_RefreshTables
     }
 }
 
-// 点击 / 选中切换 后游戏会清 m_StackLabel,重新 apply 我们的 ×N
-[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.OnClick))]
-internal static class Patch_GridItem_OnClick
-{
-    private static void Postfix(InventoryGridItem __instance) => LabelFix.Reapply(__instance);
-}
-
-[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.ToggleSelection))]
-internal static class Patch_GridItem_ToggleSelection
+// 每帧兜底:游戏有多条路径会清 m_StackLabel(OnClick/OnHover/UpdateConditionDisplay
+// 等等,Postfix 某些还跑在帧后期其它写操作之前),最稳 cover 是 hook Update()。
+// 只对 Counts 里有记录的 gi 重设 label 文本,非堆叠物品不碰,性能可忽略
+[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.Update))]
+internal static class Patch_GridItem_Update
 {
     private static void Postfix(InventoryGridItem __instance) => LabelFix.Reapply(__instance);
 }
