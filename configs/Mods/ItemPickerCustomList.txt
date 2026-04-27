@@ -353,3 +353,11 @@ GEAR_Balaclava
 GEAR_BasicWoolScarf
 GEAR_CottonScarf
 GEAR_WoolWrap
+GEAR_SodaGrape
+GEAR_DogFood
+GEAR_Hacksaw
+GEAR_CanOpener
+GEAR_RecycledCan
+GEAR_HeavyBandage
+GEAR_MagnifyingLens
+GEAR_CandyBar

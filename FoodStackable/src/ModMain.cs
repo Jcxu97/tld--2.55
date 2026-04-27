@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using HarmonyLib;
 using MelonLoader;
 using Il2Cpp;
+using Il2CppTLD.IntBackedUnit;
 
-[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.0", "user")]
+[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.1", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace FoodStackable;
@@ -15,7 +16,7 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("FoodStackable v0.4 loaded — UI-only stacking (no GearItem changes)");
+        Log.Msg("FoodStackable v0.4.1 loaded — UI-only stacking + N× weight label");
     }
 }
 
@@ -99,6 +100,14 @@ internal static class Patch_RefreshDataItem
             {
                 label.text = "x" + count;
                 if (label.gameObject != null) label.gameObject.SetActive(true);
+
+                var weightLabel = __instance.m_WeightLabel;
+                if (weightLabel != null)
+                {
+                    bool imperial = weightLabel.text != null && weightLabel.text.Contains("lb");
+                    ItemWeight total = dataItem.GetItemWeight(false) * count;
+                    weightLabel.text = imperial ? total.ToStringImperial(2u) : total.ToStringMetric(2u);
+                }
             }
         }
         catch (System.Exception ex)
