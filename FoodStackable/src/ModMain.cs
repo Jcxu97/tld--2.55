@@ -4,7 +4,7 @@ using MelonLoader;
 using Il2Cpp;
 using Il2CppTLD.IntBackedUnit;
 
-[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.7", "user")]
+[assembly: MelonInfo(typeof(FoodStackable.ModMain), "FoodStackable", "0.4.8", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 
 namespace FoodStackable;
@@ -16,7 +16,28 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("FoodStackable v0.4.7 loaded — per-frame label reapply covers all redraw paths");
+        Log.Msg("FoodStackable v0.4.8 loaded — OnUpdate tick reapplies label via MelonMod");
+    }
+
+    // Unity 引擎隐式调用的 MonoBehaviour.Update 在 Il2CppInterop 下 Harmony hook 不到。
+    // 改用 Melon 框架的 OnUpdate(每帧可靠调用),遍历"最近刷新过的 panel"
+    // 的 m_TableItems,对 CountsByGi 命中的 item 强制 apply label
+    public override void OnUpdate()
+    {
+        try
+        {
+            if (StackState.CountsByGi.Count == 0) return;
+            if (StackState.SeenItems.Count == 0) return;
+
+            foreach (var kv in StackState.SeenItems)
+            {
+                LabelFix.Reapply(kv.Value);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Log.Error($"[OnUpdate] {ex}");
+        }
     }
 }
 
@@ -29,6 +50,14 @@ internal static class StackState
     // 镜像 map:gi.Pointer → count。click/toggle 回调没有 dataItem 参数时用这个
     // 一次只一个 panel active 的前提下,gi.Pointer 跨 panel 不碰撞
     public static Dictionary<System.IntPtr, int> CountsByGi = new();
+
+    // OnUpdate tick 用来知道要扫哪个 panel 的 m_TableItems
+    public static Panel_Inventory LastInventoryPanel;
+    public static Panel_Container LastContainerPanel;
+
+    // 所有最近刷新过的 InventoryGridItem(跨所有 panel),OnUpdate 逐帧 reapply
+    // Key = item.Pointer, Value = item ref。每次 Prefix 清空
+    public static Dictionary<System.IntPtr, InventoryGridItem> SeenItems = new();
 
     // 这些 prefab 明确排除 —— 让游戏 / StackManager 原版处理,避免冲突
     public static readonly HashSet<string> ExcludePrefabs = new HashSet<string>
@@ -127,6 +156,9 @@ internal static class Patch_Inventory_RefreshTable
         {
             StackState.Counts.Clear();
             StackState.CountsByGi.Clear();
+            StackState.SeenItems.Clear();
+            StackState.LastInventoryPanel = __instance;
+            StackState.LastContainerPanel = null;
             Dedupe.Process(__instance.m_FilteredInventoryList);
         }
         catch (System.Exception ex)
@@ -145,6 +177,9 @@ internal static class Patch_Container_RefreshTables
         {
             StackState.Counts.Clear();
             StackState.CountsByGi.Clear();
+            StackState.SeenItems.Clear();
+            StackState.LastContainerPanel = __instance;
+            StackState.LastInventoryPanel = null;
             Dedupe.Process(__instance.m_FilteredInventoryList);  // 玩家背包栏
             Dedupe.Process(__instance.m_FilteredContainerList);  // 容器栏
         }
@@ -153,15 +188,6 @@ internal static class Patch_Container_RefreshTables
             ModMain.Log.Error($"[Container.RefreshTables.Prefix] {ex}");
         }
     }
-}
-
-// 每帧兜底:游戏有多条路径会清 m_StackLabel(OnClick/OnHover/UpdateConditionDisplay
-// 等等,Postfix 某些还跑在帧后期其它写操作之前),最稳 cover 是 hook Update()。
-// 只对 Counts 里有记录的 gi 重设 label 文本,非堆叠物品不碰,性能可忽略
-[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.Update))]
-internal static class Patch_GridItem_Update
-{
-    private static void Postfix(InventoryGridItem __instance) => LabelFix.Reapply(__instance);
 }
 
 internal static class LabelFix
@@ -194,6 +220,10 @@ internal static class Patch_RefreshDataItem
         try
         {
             if (dataItem == null) return;
+
+            // 记录此 item 到 SeenItems,让 OnUpdate 每帧兜底 reapply label
+            if (__instance != null) StackState.SeenItems[__instance.Pointer] = __instance;
+
             var label = __instance.m_StackLabel;
             if (label == null) return;
 

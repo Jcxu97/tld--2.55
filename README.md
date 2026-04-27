@@ -82,7 +82,8 @@
 - `v0.4.4` (2026-04-27) key 从 `m_GearItemData.name` 改成 `gi.name`(GameObject 名),修"多个不同 prefab 因共用 GearItemData asset 被误合并"(例:roastedAlmonds 吞并多种食物,DryMilkPacket 和 HotCocoaBox 合成一格)
 - `v0.4.5` (2026-04-27) 和整合包 StackManager 的兼容性收紧:**所有**挂了 `StackableItem` 组件的物品(不管 `m_Units` 多少)都完全让 StackManager / 原版处理;gi.name 剥 `(Clone)` 后缀确保黑名单精确匹配
 - `v0.4.6` (2026-04-27) hook `InventoryGridItem.OnClick` / `ToggleSelection` Postfix 恢复 `×N` 角标(点击物品后游戏会清 `m_StackLabel`,之前 bug 导致点一下角标就没了);`StackableItem` 兜底从 v0.4.5 的过严收回到 `m_Units>1` —— 挂组件但没真合过的物品(DryMilkPacket / MixedNuts)恢复 UI 堆叠;`MixedNuts` 从黑名单移除
-- `v0.4.7` (2026-04-27) v0.4.6 的 OnClick/ToggleSelection 只盖到部分清 label 路径(用户报 bug 减轻但未彻底)。改成 hook `InventoryGridItem.Update()` 的 Postfix 每帧兜底,覆盖所有 redraw 场景(UpdateConditionDisplay、OnHover、拖拽、等)。只对 `CountsByGi` 里有记录的 gi 重写 label,非堆叠物品不碰
+- `v0.4.7` (2026-04-27) v0.4.6 的 OnClick/ToggleSelection 只盖到部分清 label 路径(用户报 bug 减轻但未彻底)。改成 hook `InventoryGridItem.Update()` 的 Postfix 每帧兜底 — **但在 Il2CppInterop 下 Harmony hook 不到 Unity 引擎隐式调用的 MonoBehaviour.Update,`CallerCount(0)` 确认无游戏代码调用,这个 hook 实际没生效**
+- `v0.4.8` (2026-04-27) 彻底修 v0.4.7 未解的 bug。改用 `MelonMod.OnUpdate()`(Melon 框架自己每帧可靠调用)+ `StackState.SeenItems` dict 记录所有刷新过的 `InventoryGridItem`,每帧遍历 reapply label。Panel_Container 不暴露 grid item 数组不是问题,SeenItems 自动收集所有 panel 的 items
 
 ## 快速换机恢复
 
