@@ -1,5 +1,7 @@
 BunkerDefaults/src/bin/
 BunkerDefaults/src/obj/
+FoodStackable/src/bin/
+FoodStackable/src/obj/
 *.moddata
 *.backup_*
 *.log

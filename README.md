@@ -10,6 +10,9 @@
 ├── BunkerDefaults/         ← 我原创的 mod,可自由使用/修改
 │   ├── BunkerDefaults.dll      编译好的,直接丢 Mods/ 就行
 │   └── src/                    C# 源码 + 工程,dotnet build 即可
+├── FoodStackable/          ← 我原创的 mod,可自由使用/修改
+│   ├── FoodStackable.dll       编译好的,直接丢 Mods/ 就行
+│   └── src/                    C# 源码 + 工程,dotnet build 即可
 ├── configs/                ← 所有 mod 的配置快照(203 个文件)
 │   ├── Mods/                   Mods/ 下所有 *.json / *.txt(不含 .dll)
 │   └── UserData/               MelonLoader 全局偏好
@@ -56,6 +59,21 @@
 
 第 3 步的重载**每个新存档只需做一次**,之后永远好用。
 
+## FoodStackable — 自制 mod
+
+**解决什么问题:** 原版背包里每份食物(Jerky / CannedBeans / Soda 等)占一格,捡 6 份就是 6 格。视觉很乱。
+
+**做法:** Hook `Panel_Inventory.RefreshTable`,把 `m_FilteredInventoryList` 里同类(同 prefab + 同开罐状态)的物品去重,只显示一个代表格 + 右下角 `x6` 数字角标(复用游戏内置 `m_StackLabel`)。
+
+**不碰底层** —— `Inventory.m_Items` 里 6 份 GearItem 一份没动:
+- 吃一份 → 剩 5 份,下次刷新显示 `x5`
+- 每份各自按自己的 condition 腐坏,存档干净
+- 丢弃/装箱只影响代表那一份
+
+**Bonus:** 代表 = 最低 condition 那一份(游戏 filter 天然按 condition 升序排 + 我的 first-wins 策略)→ 点吃优先消化快坏的,符合生存最优解。
+
+**跳过**:纯液体(LampFuel / JerrycanRusty / 水)和 Soda 双料,游戏原版已处理。
+
 ## 快速换机恢复
 
 ```powershell
@@ -67,6 +85,7 @@ git clone https://github.com/Jcxu97/tld-自用改造2.55.git
 cp -r tld-自用改造2.55/configs/Mods/*       <TLD>/Mods/
 cp -r tld-自用改造2.55/configs/UserData/*   <TLD>/UserData/
 cp    tld-自用改造2.55/BunkerDefaults/BunkerDefaults.dll <TLD>/Mods/
+cp    tld-自用改造2.55/FoodStackable/FoodStackable.dll   <TLD>/Mods/
 ```
 
 ## 已知问题
@@ -77,5 +96,5 @@ cp    tld-自用改造2.55/BunkerDefaults/BunkerDefaults.dll <TLD>/Mods/
 
 ## License
 
-- `BunkerDefaults/` 下面我写的一切:MIT(见 `LICENSE`)
+- `BunkerDefaults/` 和 `FoodStackable/` 下面我写的一切:MIT(见 `LICENSE`)
 - `configs/` 下面的是我的设置快照 —— 各 mod 配置格式归原作者,这些只是"我填了什么值"。你随便拿去改。

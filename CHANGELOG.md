@@ -14,11 +14,12 @@
 | `ReducedLoot.dll` | 未装 |
 | `TheLongMood.dll` | 未装 |
 
-## 额外装的 mod(4 个)
+## 额外装的 mod(5 个)
 
 | DLL | 来源 / 用途 |
 |---|---|
 | `BunkerDefaults.dll` | **本仓库原创** —— 给每个存档预填 9 个地堡 FastTravel 传送点 |
+| `FoodStackable.dll` | **本仓库原创** —— 背包里同类食物视觉堆叠成一格 ×N,不改底层物品 |
 | `AudioCore.dll` | 某个 mod 的依赖 |
 | `ImprovedTrader.dll` | 优化商人交互 |
 | `RecipeRequirements.dll` | 食谱需求调整 |
@@ -47,12 +48,13 @@
 ⚠️ 只对**新生成**的物品生效;已经在存档里的老物品还是不能叠。
 
 ### `Mods/ItemPickerCustomList.txt`
-自动拾取列表从 ~130 行扩到 **288+ 行**,新增类别:
+自动拾取列表从 ~130 行扩到 **355 行**(2026-04-27 又加了 68 件衣服),新增类别:
 - **弹药/武器耗材**:`Bullet`、`GunpowderCan`、`ScrapLead`、`ArrowHead`、`Accelerant`、`RifleCleaningKit`、`SharpeningStone` 等
 - **建材/工具**:`Prybar`、`SimpleTools`、`SewingKit`、`BeeHive`、`Flint`、`WireBundle`、`CarBattery`、`Battery9V`、`Fuse`、`ScrapPlastic`、`ElectronicParts`、`GlassShards`、`NutsNBolts`、`NutsNBoltsBox`、`TarpSheet`、`Charcoal`、`SprayPaintCan`、`FlareA`、`BlueFlare`、`TapeRoll`、`BottleHydrogenPeroxide` 等
 - **食物/饮料**:`CuredMeat*`(熊/鸟/驼鹿/虎鲸/雷鸟/兔/鹿/狼)、`SaltedMeat*`(同)、`CuredFish*` / `SaltedFish*`(9 种鱼)、`BirdMeatRaw/Cooked`、`BirdEggRaw/Boiled`、`OrcaMeatRaw/Cooked`、`CannedChili/Stew/Spaghetti/Pears/Mangos/Pineapples/Beans`、`Cooked*`(饼/炖菜/煎蛋/披萨/三明治)、`BabyFood*`、`Tea*`、`CoffeeCupSugar` 等
 - **耗材**:`PineNeedle` 系列、`PineNeedleDried`、`FilmBoxColour/BW/Sepia`、`MapleSyrup`、`GranolaBar`、`CondensedMilk`、`BariumCarbonate`、`LampFuel`、`PackMatches`、`WoolSocks`、`BasicBoots`、`FleeceSweater` 等
 - **原版遗漏的罐装**:`Soda`、`SodaEnergy`、`KetchupChips`、`AuroraEnergyDrink`、`CheeseDoodles`、`SwedishMeatballs`、`icecreamCup` 等
+- **衣服(2026-04-27 新增 68 件)**:外套/Parka(14)、马甲(3)、毛衣/卫衣(6)、衬衫(4)、裤子(8)、靴子/鞋(11)、袜子(2)、手套(9)、帽子(7)、围巾/头套(4)。包含 `BearSkinCoat` / `WolfSkinCape` / `Improvised*` 等自制装备变体。prefab 名全量来源:`tld_Data/StreamingAssets/aa/catalog.json`(848 条)。
 
 完整表在 `configs/Mods/ItemPickerCustomList.txt`
 
