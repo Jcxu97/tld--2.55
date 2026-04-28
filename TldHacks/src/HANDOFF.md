@@ -1,10 +1,32 @@
 # TldHacks — 交接文档
 
-**最后更新**:2026-04-28(v2.7.14 → v2.7.17 session)  
-**当前版本**:v2.7.17(Menu.cs 里显示,commit 83a3ac9)  
+## ⚠️ 未解决 bug (v2.7.35 session)
+
+### T1: 容器/背包页 hover 堆叠显示变 1
+
+**现象**:打开柜子 → hover 或点击一个 50 熊肉的堆叠 cell → UI 显示变 "1",必须转移一次让数量变化才恢复 "x50"。
+**4 次尝试失败**:
+1. v2.7.30 `InventoryGridItem.OnHover` / `ToggleSelection` / `UpdateConditionDisplay` Postfix → 可能 silent fail
+2. v2.7.32 `Stacking.OnLateUpdate` 4 帧改每帧 → 不够
+3. v2.7.34 `Panel_Container.HoverItem` Postfix + `InventoryGridItem.Update` 仅 hover 时 reapply → 无效
+4. v2.7.35 force 隐藏 `m_UnitLabel` + `m_UnitSprite` + `InventoryGridItem.Update` 无条件 reapply → 无效
+
+**下一轮怀疑方向**:
+- 可能整个 cell 被游戏"selection 详情模式"替换了 GameObject,SeenItems 缓存的 item reference 失效
+- 或 NGUI 的 panel draw order 把 unit label 盖在 stack label 上面(Hierarchy 顺序问题)
+- 或 click/hover 后 Panel_Container 把 dataItem 换成了"详情 di"(非 representative),Counts 里查不到
+- 建议:加 log 确认 `Patch_Panel_Container_HoverItem` / `Patch_InventoryGridItem_Update` 实际 trigger 次数
+- 或看 dnSpy 里 `Panel_Container.HoverItem` 反编译代码,看它调用了什么
+
+记为 **T1**,下次继续处理。
+
+---
+
+**最后更新**:2026-04-28(v2.7.0 session)  
+**当前版本**:v2.7.0(Menu.cs 里显示)  
 **部署路径**:`D:\Steam\steamapps\common\TheLongDark\Mods\TldHacks.dll`  
-**源码路径**:`D:\TLD-Mods\TldHacks\`(工作副本)→ `D:\TLD-Mods\tld--2.55\TldHacks\src\`(仓库)  
-**仓库**:https://github.com/Jcxu97/tld--2.55
+**源码路径**:`D:\TLD-Mods\TldHacks\`  
+**仓库**:https://github.com/Jcxu97/tld--2.55(本地 `D:\TLD-Mods\tld--2.55\`,可能还没把 TldHacks 最新版同步过去)
 
 ---
 
@@ -20,73 +42,6 @@ TldHacks 用 MelonMod + Harmony patch + uConsole 命令 + 反射,**功能等价,
 - 菜单里有三列布局 + 滚动条,分 section 列出所有作弊
 - toggle 持久化(重启游戏保留)
 - 菜单样式参考桌面截图 `C:/Users/82077/Desktop/1.png`
-
----
-
-## ★ v2.7.14 → v2.7.17 本轮改动(2026-04-28)
-
-**主题**:一次性操作反馈 + 快速采集/制作/修理/拆解彻底解决 + 衣物不潮湿兜底 + 真隐身终极方案 + FPS 优化
-
-### v2.7.14 — 反馈 + 回退安全版
-
-- **恢复全部耐久 / 修复背包物品 / 修复手持物品** 三个按钮之前点了没反馈。新 `Cheats.RestoreAllSceneGear()` 扫场景 + 背包双通,写 `CheatState.LastActionLog = "场景 N 件 + 背包 M 件 恢复满 (失败 X)"`。菜单底部 `Last:` 栏显示。
-- `RestoreDurability` 改用官方 `GearItem.SetNormalizedHP(1f, true)`,`m_CurrentHP=100f` 作 fallback,返 bool 让上层统计成败。
-- `QuickActions.RepairAllInventory` 加详细 log:`[修复背包] 成功 N / 总 M (失败 X)`,诊断用。背包空 / m_Items=null 会明确写出。
-- 快速采集 v2.7.13 版本遗留:回退到 v2.7.11 可行方案(`AccelerateTimeOfDay=0` 保 yield),额外拦 `CameraFade.FadeOut/FadeIn` time=0 delay=0 避免黑屏。
-
-### v2.7.15 — 4 个关键修
-
-| 问题 | 根因 | 修法 |
-|---|---|---|
-| **物品不损耗 = 强制 100%** | `Patch_GearItem_ManualUpdate` Postfix 每帧 `SetNormalizedHP(1)`,+ `Patch_GearItem_Awake` 也自动满 | **删** 这两个 Postfix。只留 3 个 Prefix(`Degrade / WearOut / DegradeOnUse`)拦衰减源头。效果:HP 停在开 toggle 时的值,不掉不自动满 |
-| **衣物不潮湿** | tick 反射 `SetValue` 不稳定 | 加 2 个 Prefix patch:`ClothingItem.IncreaseWetnessPercent` / `MaybeGetWetOnGround`,直接 return false。tick 改成 wrapper 字段直接访问作兜底 |
-| **真隐身** | BaseAi 6 个字段归零不够,AI 有别的检测路径 | **新终极方案**:`PlayerManager.m_AiTarget.m_IsEnabled = !TrueInvisible`。AI 的世界查询连玩家都看不到 |
-| **TickAnimals 频率** | 120 帧太慢,新 spawn AI 压制延迟 | 改 60 帧(1s) |
-
-### v2.7.16 — FPS 优化
-
-| 改动 | 之前 | 现在 | 节省 |
-|---|---|---|---|
-| `Stacking.OnLateUpdate` | 每帧(60Hz),~30 物品 × 60 = 1800 ops/sec | 4 帧 1 次(15Hz),450 ops/sec | -75% |
-| `TickCamera` | 60 帧(1s) | 120 帧(2s) | -50% |
-| `TickAnimals` | 60 帧 | **180 帧(3s)** | -67% |
-| 删 `Patch_GearItem_ManualUpdate/Awake` Postfix(v2.7.15 已做) | ~1800 Harmony bridge/sec | 0 | 最大 FPS 杀手被拔掉 |
-
-核心 cheat 全保留:真隐身靠 `m_AiTarget.m_IsEnabled` 一次设生效,瞄准靠 `m_DisableAim*` bool,无限弹药/不损耗/免费制作全是 Prefix 模式,tick 低频 OK。
-
-### v2.7.17 — 最终完成
-
-| 问题 | v2.7.16 为何失败 | v2.7.17 修法 |
-|---|---|---|
-| **快速采集黑屏+动画** | 只改 `m_HarvestTimeSeconds` 不够,还有 intro lerp 动画 | `Panel_BodyHarvest.StartHarvest/StartQuarter` Postfix 额外零化 `m_IntroLerpTime / m_IntroTimer`,设 `m_DoingIntroLerp=false`,调 `CleanupTimelinePlaying()` |
-| **空手制作 19h 只做 0.42** | `TimeOfDay.Accelerate(1000x, 30s)` = 8h 游戏时长,19h craft 当然完不成 | `Panel_Crafting.CraftingStart` Postfix **直接调 `OnCraftingSuccess()`**,与时长无关 |
-| **衣物不潮湿还漏** | 2 个 Prefix 覆盖不全,游戏还有其他 wetness 写入点 | 加 `ClothingItem.Update` Postfix 兜底:每帧 `if (m_PercentWet > 0) m_PercentWet = 0`(toggle 关时早退) |
-| **修理/拆解不加速** | 完全没 patch 这两个 panel | `Panel_Repair.StartRepair` Postfix 零化计时 + 调 `RepairSuccessful/RepairFinished`;`Panel_BreakDown.OnBreakDown` Postfix 调 `BreakDownFinished` |
-
-### 用户已验证 ✅
-
-| 功能 | 状态 |
-|---|---|
-| 恢复全部耐久 / 修复背包物品 | ✅ Last 栏有反馈 |
-| 清除所有负面 | ✅ |
-| 物品不损耗(v2.7.15+) | ✅ 不强制 100 了,HP 停在当前值 |
-| 快速采集(v2.7.17) | 待测 |
-| 快速制作(v2.7.17) | 待测 |
-| 快速修理 / 拆解(v2.7.17) | 待测 |
-| 衣物不潮湿(v2.7.17) | 待测(v2.7.15 还无效) |
-| 真隐身(v2.7.15) | ✅ |
-
-### 下次接着的点
-
-1. **验证 v2.7.17 的 4 项**:采集黑屏是否消失、19h 制作是否完整完成、衣物雨中不涨 wetness、修理/拆解秒完成。有任一 regression 回报现象 + `Last:` 栏 / `Latest.log` 里 `[QuickCraft]` `[QuickRepair]` `[QuickBreakDown]` 前缀
-2. **性能观感**:v2.7.16 降频后 FPS 是否可接受。如果还卡,下一步是把 Stacking 降到 8 帧 或把 `TickCamera` 挪到 300 帧
-3. **`Panel_Repair.m_ElapsedProgressBarSeconds=999`** 这个强行设是否会让 UI 报错 —— 如果 Latest.log 有 `MissingFieldException`,说明 IL2CPP metadata 里字段名不一样,换 `m_ProgressBarTimeSeconds=0` 即可
-4. **v2.7.14 之前的 `Patch_GearItem_Awake` 删了** —— 如果用户后续报"进场景后物品 HP 不满但不损耗状态正常",那就是预期行为(不损耗 ≠ 自动满)。想一次拉满用 UI "恢复全部耐久" 按钮
-
-### 编译 / 部署节奏
-
-游戏在跑时 dll 被锁 → `cp` 会等 1000ms 后失败。csproj AfterBuild 已配置自动 cp,退游戏再 build 即可。
-同步到仓库的三样:`*.cs / *.csproj → TldHacks/src/`,`TldHacks.dll → TldHacks/TldHacks.dll`。
 
 ---
 

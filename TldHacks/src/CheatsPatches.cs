@@ -347,66 +347,46 @@ internal static class Patch_Craft_GetAdjustedTime
     }
 }
 
-// v2.7.35:改用 SetDayLengthScale 放大 1e9 倍,游戏时间推进 ~0
-// 之前 SetTODLocked 只锁 TOD value 显示,不冻结时间推进
-// 新方案:craft 开始 DayLengthScale *= 1e9,craft 结束恢复
-//   m_DayLengthScale 控制"真实秒 → 游戏时长"比例,放大后 10 秒 craft = 10/1e9 游戏秒 = 0 可见
-internal static class TimeScaleGuard
+// v2.7.36 QuickCraft 时钟冻结 —— 暴力方案:CraftingStart 到 End 之间 TimeOfDay.Update Prefix return false
+//   历次 v2.7.20/22/29/30/32/33/35 试了:Accelerate Prefix / AccelerateTime / SetTODLocked / DayLengthScale 全没生效
+//   说明 Panel_Crafting 不走 TimeOfDay.Accelerate,游戏可能通过其他路径推进时间(Update 内部累加)
+//   最后一招:拦 TimeOfDay.Update 整个 return false,craft 期间连 Update 都不跑 → 真正冻结
+internal static class CraftingTimeFreeze
 {
-    public static float OriginalScale = 0f;
-    public static bool Scaled = false;
-    public static float HugeScale = 1_000_000_000f;
+    public static bool Active = false;
+}
 
-    public static void ScaleUp()
+[HarmonyPatch(typeof(TimeOfDay), "Update")]
+internal static class Patch_TimeOfDay_Update_Freeze
+{
+    private static bool Prefix()
     {
-        if (Scaled) return;
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod == null) return;
-            OriginalScale = tod.GetDayLengthScale();
-            tod.SetDayLengthScale(HugeScale);
-            Scaled = true;
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[TimeScale.Up] {ex.Message}"); }
-    }
-
-    public static void Restore()
-    {
-        if (!Scaled) return;
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null) tod.SetDayLengthScale(OriginalScale > 0 ? OriginalScale : 1f);
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[TimeScale.Restore] {ex.Message}"); }
-        finally { Scaled = false; }
+        // 返 false = 跳过原 Update。Active 期间整个 TimeOfDay 不跑
+        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
     }
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_Start_LockTime
+internal static class Patch_Craft_Start_FreezeTime
 {
     private static void Postfix()
     {
         if (!CheatState.QuickCraft) return;
         FadeSuppressionWindow.Arm(3f);
-        TimeScaleGuard.ScaleUp();
+        CraftingTimeFreeze.Active = true;
     }
 }
 
-// CraftingEnd 在整个 batch 完全结束时调一次,此时恢复
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
-internal static class Patch_Craft_End_UnlockTime
+internal static class Patch_Craft_End_UnfreezeTime
 {
-    private static void Postfix() => TimeScaleGuard.Restore();
+    private static void Postfix() => CraftingTimeFreeze.Active = false;
 }
 
-// 玩家中途取消:OnCraftingInterrupted 也要恢复
 [HarmonyPatch(typeof(Panel_Crafting), "OnCraftingInterrupted")]
-internal static class Patch_Craft_Interrupted_UnlockTime
+internal static class Patch_Craft_Interrupted_UnfreezeTime
 {
-    private static void Postfix() => TimeScaleGuard.Restore();
+    private static void Postfix() => CraftingTimeFreeze.Active = false;
 }
 
 // OnCraftingSuccess 每个 item 完成时调,继续 Arm fade 但不解锁(batch 里还有剩余)
