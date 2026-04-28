@@ -284,22 +284,11 @@ internal static class Patch_CameraFade_Fade
 //   → 单个制作 1 秒真实时间完成,游戏时钟不跳,不黑屏
 //   batch 不受影响 —— Panel_Crafting.Update 按 craft time 推进 percent,不依赖 gameTimeHours
 // 注意:QuickAction(采集/修理/拆解) 不吃 Accelerate,避免 v2.7.26 "关了 QuickCraft 还不消耗时间"的误伤
-// v2.7.32:Prefix 列全 3 参数 + 用 __N 位置参数名,防 Harmony 因参数名不匹配 silent fail
-[HarmonyPatch(typeof(TimeOfDay), "Accelerate",
-    new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
-internal static class Patch_TimeOfDay_Accelerate_Craft
-{
-    // __0=realTimeSeconds, __1=gameTimeHours, __2=doFadeToBlack
-    private static void Prefix(ref float __0, ref float __1, ref bool __2)
-    {
-        if (CheatState.QuickCraft)
-        {
-            __1 = 0f;      // gameTimeHours = 0 → 游戏时钟不跳
-            __2 = false;   // doFadeToBlack = false → 不黑屏
-            // __0 (realTimeSeconds) 保持,让 batch 正常推进
-        }
-    }
-}
+// v2.7.33 —— 撤销 TimeOfDay.Accelerate Prefix(Panel_Crafting 可能不走 Accelerate 推进时钟)
+// 改用 TimeOfDay.SetTODLocked 直接冻结整个游戏时钟:
+//   CraftingStart Postfix → SetTODLocked(true)
+//   CraftingEnd Postfix → SetTODLocked(false)  (整个 batch 结束才解锁)
+// 用户接受黑屏,doFadeToBlack 不再拦(保持游戏默认行为)
 
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
 // 用户要的是"我打它一下它就死",不是"开关一开所有动物全死"
@@ -358,23 +347,45 @@ internal static class Patch_Craft_GetAdjustedTime
     }
 }
 
-// v2.7.29:CraftingStart + OnCraftingSuccess 都 Arm fade 窗口
-// batch 制作 10 个 × 1s = 10s,单次 Arm(1.5s)窗口不够,每个 item 完成都重 Arm
+// v2.7.33:用 TimeOfDay.SetTODLocked 锁时间 + 保留 fade 窗口 Arm
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_ArmFade
+internal static class Patch_Craft_Start_LockTime
 {
     private static void Postfix()
     {
-        if (CheatState.QuickCraft) FadeSuppressionWindow.Arm(3f);  // batch 入口多留一点
+        if (!CheatState.QuickCraft) return;
+        FadeSuppressionWindow.Arm(3f);
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod != null) tod.SetTODLocked(true);
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft.Lock] {ex.Message}"); }
     }
 }
 
+// CraftingEnd 在整个 batch 完全结束时调一次,此时解锁安全
+[HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
+internal static class Patch_Craft_End_UnlockTime
+{
+    private static void Postfix()
+    {
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod != null) tod.SetTODLocked(false);
+        }
+        catch { }
+    }
+}
+
+// OnCraftingSuccess 每个 item 完成时调,继续 Arm fade 但不解锁(batch 里还有剩余)
 [HarmonyPatch(typeof(Panel_Crafting), "OnCraftingSuccess")]
 internal static class Patch_Craft_OnSuccess_ArmFade
 {
     private static void Postfix()
     {
-        if (CheatState.QuickCraft) FadeSuppressionWindow.Arm(3f);  // batch 里每个 item 完成时重 Arm
+        if (CheatState.QuickCraft) FadeSuppressionWindow.Arm(3f);
     }
 }
 
