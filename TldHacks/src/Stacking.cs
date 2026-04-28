@@ -13,13 +13,10 @@ internal static class Stacking
     // 如果盲目用 SeenItems 里缓存的 (item, di) reapply,会把旧 count 写到新 gi 上 —— 表现为"部分堆叠视觉失效"。
     // 修正:每次 reapply 前 VERIFY item 当前 m_GearItem 还是我们当初 hook 时缓存的 gi。
     // 如果 cell 已经被复用到别的 gear,跳过本次,等 RefreshDataItem Postfix 重新登记。
-    // v2.7.16 降频 —— 原每帧跑(60Hz),背包满时 30 物品 × 60 fps = 1800 reflection ops/sec
-    // 改 4 帧跑一次(15Hz),视觉延迟肉眼不可见,FPS 开销 / 4
-    private static int _tickCounter = 0;
+    // v2.7.32 改回每帧 —— t1 bug:hover 时 label 被游戏重置为 "1",4 帧延迟肉眼可见(67ms)
+    //   每帧 reapply SeenItems 里只有 panel 打开时活跃的 cell(几十个),字符串比较非 set,开销可忽略
     public static void OnLateUpdate()
     {
-        if (++_tickCounter < 4) return;
-        _tickCounter = 0;
 
         try
         {

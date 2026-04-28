@@ -284,16 +284,19 @@ internal static class Patch_CameraFade_Fade
 //   → 单个制作 1 秒真实时间完成,游戏时钟不跳,不黑屏
 //   batch 不受影响 —— Panel_Crafting.Update 按 craft time 推进 percent,不依赖 gameTimeHours
 // 注意:QuickAction(采集/修理/拆解) 不吃 Accelerate,避免 v2.7.26 "关了 QuickCraft 还不消耗时间"的误伤
+// v2.7.32:Prefix 列全 3 参数 + 用 __N 位置参数名,防 Harmony 因参数名不匹配 silent fail
 [HarmonyPatch(typeof(TimeOfDay), "Accelerate",
     new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
 internal static class Patch_TimeOfDay_Accelerate_Craft
 {
-    private static void Prefix(ref float gameTimeHours, ref bool doFadeToBlack)
+    // __0=realTimeSeconds, __1=gameTimeHours, __2=doFadeToBlack
+    private static void Prefix(ref float __0, ref float __1, ref bool __2)
     {
         if (CheatState.QuickCraft)
         {
-            gameTimeHours = 0f;
-            doFadeToBlack = false;
+            __1 = 0f;      // gameTimeHours = 0 → 游戏时钟不跳
+            __2 = false;   // doFadeToBlack = false → 不黑屏
+            // __0 (realTimeSeconds) 保持,让 batch 正常推进
         }
     }
 }

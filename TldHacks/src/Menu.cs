@@ -94,7 +94,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.31");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.32");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -529,7 +529,8 @@ internal static class Menu
 
         // —— 生成动物 ——
         y = Section(10f, y, "生成动物 spawn_*");
-        string[] spawnCmds = { "spawn_wolf", "spawn_bear", "spawn_cougar", "spawn_moose", "spawn_doe", "spawn_stag", "spawn_rabbit_", "spawn_ptarmigan_" };
+        // v2.7.32 去掉 rabbit_ 和 ptarmigan_ 末尾下划线 —— 那是内部常量名不是真正的命令
+        string[] spawnCmds = { "spawn_wolf", "spawn_bear", "spawn_cougar", "spawn_moose", "spawn_doe", "spawn_stag", "spawn_rabbit", "spawn_ptarmigan" };
         string[] spawnLbls = { "狼", "熊", "美洲狮", "驼鹿", "母鹿", "雄鹿", "兔", "松鸡" };
         bx = 10f;
         for (int i = 0; i < spawnCmds.Length; i++)
