@@ -287,21 +287,23 @@ internal static class Patch_Craft_Start_Instant
     }
 }
 
-// ——— 隐身(逃跑版):CanSeeTarget / ScanForSmells 两条路径 ———
-// v2.7.21 —— 只 Stealth 影响 AI 感知;TrueInvisible 改为"伤害 0"语义(走 Condition.AddHealth)
+// ——— 隐身感知切断:CanSeeTarget / ScanForSmells ———
+// v2.7.23 —— TrueInvisible 语义恢复为"全动物忽略玩家"(狼熊不追/兔鹿不逃)
+//   Stealth 仍保持原语义(SetAiMode(Flee) 强制威胁动物逃跑,但兔鹿也会跟着逃,所以 Stealth 是"吓跑模式")
+//   TrueInvisible 靠感知层切断 → AI 根本感知不到玩家 → 所有动物当玩家不存在
 [HarmonyPatch(typeof(BaseAi), "CanSeeTarget")]
 internal static class Patch_BaseAi_CanSeeTarget
 {
     private static void Postfix(ref bool __result)
     {
-        if (CheatState.Stealth) __result = false;
+        if (CheatState.Stealth || CheatState.TrueInvisible) __result = false;
     }
 }
 
 [HarmonyPatch(typeof(BaseAi), "ScanForSmells")]
 internal static class Patch_BaseAi_ScanForSmells
 {
-    private static bool Prefix() => !CheatState.Stealth;
+    private static bool Prefix() => !(CheatState.Stealth || CheatState.TrueInvisible);
 }
 
 // v2.7.6 —— BaseAi 的 3 层 patch(ScanForNewTarget / IsPlayerAThreat / DoOnDetection)
@@ -651,8 +653,21 @@ internal static class CheatsTick
     private static bool _lastTickedFreeze = false;
     private static bool _lastTickedInvis = false;
 
-    // v2.7.22:TrueInvisible 靠 Condition.AddHealth Prefix 一条挡所有负 HP,不需要 tick
-    public static void TickAnimalsCheap() { }
+    // v2.7.23 TrueInvisible cheap:每 1s 设玩家自己的 m_AiTarget.m_IsEnabled
+    //   关掉 AiTarget 后,AI 的世界查询 FindAiTargets 里根本拿不到玩家 → 所有动物当玩家不存在
+    //   1 个字段访问,零 FindObjects 开销
+    public static void TickAnimalsCheap()
+    {
+        if (!CheatState.TrueInvisible && !_lastTickedInvis) return;
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm != null && pm.m_AiTarget != null)
+                pm.m_AiTarget.m_IsEnabled = !CheatState.TrueInvisible;
+        }
+        catch { }
+        _lastTickedInvis = CheatState.TrueInvisible;
+    }
 
     public static void TickAnimalsFull() => TickAnimals();
 
@@ -660,7 +675,8 @@ internal static class CheatsTick
     {
         bool runStealth = CheatState.Stealth || _lastTickedStealth;
         bool runFreeze  = CheatState.FreezeAnimals || _lastTickedFreeze;
-        if (!runStealth && !runFreeze) return;
+        bool runInvis   = CheatState.TrueInvisible || _lastTickedInvis;
+        if (!runStealth && !runFreeze && !runInvis) return;
 
         try
         {
@@ -669,7 +685,20 @@ internal static class CheatsTick
             {
                 _lastTickedStealth = CheatState.Stealth;
                 _lastTickedFreeze  = CheatState.FreezeAnimals;
+                _lastTickedInvis   = CheatState.TrueInvisible;
                 return;
+            }
+
+            // 缓存 FieldInfo (v2.7.15 做法)
+            if (_fi_baseAi_disableScan == null)
+            {
+                var t = typeof(BaseAi);
+                _fi_baseAi_disableScan        = t.GetField("m_DisableScanForTargets",      System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                _fi_baseAi_detectRange        = t.GetField("m_DetectionRange",             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                _fi_baseAi_detectFOV          = t.GetField("m_DetectionFOV",               System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                _fi_baseAi_hearFootsteps      = t.GetField("m_HearFootstepsRange",         System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                _fi_baseAi_hearRifle          = t.GetField("m_HearRifleRange",             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                _fi_baseAi_detectRangeFeeding = t.GetField("m_DetectionRangeWhileFeeding", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
             }
 
             foreach (var ai in ais)
@@ -684,8 +713,23 @@ internal static class CheatsTick
                             try { ai.m_OverrideSpeed = 0f; } catch { }
                     }
 
-                    // Stealth v2.7.21 强化:SetAiMode(Flee) + ClearTarget —— 清玩家作为 target
-                    // 修用户反馈 "狼熊发现后会一直跟着" —— 之前只切 mode,target 字段还记着玩家位置
+                    // TrueInvisible:切断所有感知通道 —— AI 像瞎子聋子,闻不到看不见听不见
+                    if (runInvis)
+                    {
+                        try { _fi_baseAi_disableScan?.SetValue(ai, CheatState.TrueInvisible); } catch { }
+                        if (CheatState.TrueInvisible)
+                        {
+                            try { ai.ClearTarget(); } catch { }
+                            try { _fi_baseAi_detectRange?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_detectFOV?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_hearFootsteps?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_hearRifle?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_detectRangeFeeding?.SetValue(ai, 0f); } catch { }
+                        }
+                    }
+
+                    // Stealth 主力:看到动物就强制切 Flee(逃跑)
+                    // (Stealth 和 TrueInvisible 互斥使用建议:TrueInvisible = 全忽略;Stealth = 全吓跑)
                     if (CheatState.Stealth)
                     {
                         try
@@ -710,6 +754,7 @@ internal static class CheatsTick
 
             _lastTickedStealth = CheatState.Stealth;
             _lastTickedFreeze  = CheatState.FreezeAnimals;
+            _lastTickedInvis   = CheatState.TrueInvisible;
         }
         catch { }
     }
