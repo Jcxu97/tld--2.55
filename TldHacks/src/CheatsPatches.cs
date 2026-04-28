@@ -347,32 +347,23 @@ internal static class Patch_Craft_GetAdjustedTime
     }
 }
 
-// v2.7.38 QuickCraft 时钟冻结 —— 正确方案:快照 + Postfix 拉回
-//   v2.7.37 return-false TimeOfDay.Update 副作用:deltaTime=0 导致 Panel_Crafting percent 不推进(卡 1%)
-//   新策略:
-//     1. CraftingStart 记录 _savedHours = GetHoursPlayedNotPaused()
-//     2. TimeOfDay.Update 正常跑(deltaTime 有效 → percent 推进 → batch 完成)
-//     3. TimeOfDay.Update Postfix 里把 HoursPlayed 强拉回 _savedHours
-//     4. CraftingEnd/Interrupted → Active=false 停止覆盖
-//   效果:craft 期间 deltaTime 正常(batch 可完成),同时时钟每帧被拉回 = 用户看不到跳
+// v2.7.39 QuickCraft 时钟冻结 —— 最终方案:让时钟跳,结束时拉回
+//   核心洞察(用户测试 v2.7.38 反馈):Panel_Crafting percent 推进依赖 TOD HoursPlayed 流逝
+//   → 冻结 Hours = percent 不走 = craft 永远卡 1%
+//   → 所以必须让 Hours 在 craft 期间正常推进,**结束时一次性拉回快照**
+//
+//   流程:
+//     CraftingStart Postfix → 快照 SavedHours,Active=true
+//     (craft 期间 Hours 正常跳,percent 推进,batch 完成)
+//     CraftingEnd Postfix → 把 Hours 拉回 SavedHours,Active=false
+//     OnCraftingInterrupted 同样拉回(玩家取消时不要留跳)
+//
+//   视觉:craft 时时钟会跳几秒(真实秒 × 比例),完成后瞬间回到 craft 前
+//   GetFinalCraftingTime=1 确保 craft 只需 1 游戏分钟真实时间 ≈ 几秒
 internal static class CraftingTimeFreeze
 {
     public static bool Active = false;
     public static float SavedHours = 0f;
-}
-
-[HarmonyPatch(typeof(TimeOfDay), "Update")]
-internal static class Patch_TimeOfDay_Update_Restore
-{
-    private static void Postfix(TimeOfDay __instance)
-    {
-        if (!CraftingTimeFreeze.Active || !CheatState.QuickCraft) return;
-        try
-        {
-            __instance.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
-        }
-        catch { }
-    }
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
@@ -385,7 +376,9 @@ internal static class Patch_Craft_Start_SnapshotTime
         try
         {
             var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null)
+            if (tod == null) return;
+            // 只在第一次 CraftingStart 记录(batch 里每个 item 都调 CraftingStart,保持第一次快照)
+            if (!CraftingTimeFreeze.Active)
             {
                 CraftingTimeFreeze.SavedHours = tod.GetHoursPlayedNotPaused();
                 CraftingTimeFreeze.Active = true;
@@ -396,15 +389,36 @@ internal static class Patch_Craft_Start_SnapshotTime
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
-internal static class Patch_Craft_End_StopRestore
+internal static class Patch_Craft_End_RestoreTime
 {
-    private static void Postfix() => CraftingTimeFreeze.Active = false;
+    private static void Postfix()
+    {
+        if (!CraftingTimeFreeze.Active) return;
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod != null) tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
+            ModMain.Log?.Msg($"[QuickCraft] time rolled back to {CraftingTimeFreeze.SavedHours:F2}h");
+        }
+        catch { }
+        finally { CraftingTimeFreeze.Active = false; }
+    }
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "OnCraftingInterrupted")]
-internal static class Patch_Craft_Interrupted_StopRestore
+internal static class Patch_Craft_Interrupted_RestoreTime
 {
-    private static void Postfix() => CraftingTimeFreeze.Active = false;
+    private static void Postfix()
+    {
+        if (!CraftingTimeFreeze.Active) return;
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod != null) tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
+        }
+        catch { }
+        finally { CraftingTimeFreeze.Active = false; }
+    }
 }
 
 // OnCraftingSuccess 每个 item 完成时调,继续 Arm fade 但不解锁(batch 里还有剩余)
