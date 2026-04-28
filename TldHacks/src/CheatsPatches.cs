@@ -334,47 +334,25 @@ internal static class Patch_Craft_CanCraft
 //   craft 完成瞬间 TOD 拉回 → 用户看不到跳
 // GetFinalCraftingTime / GetAdjustedCraftingTime 不再 patch,游戏看到正常 craft 时长
 
-// v2.7.41 QuickCraft 完全模仿 QuickHarvestRunner (烤肉方案,已 work)
-//   之前 v2.7.20-40 所有尝试(time=1 / gameHours=0 / TODLocked / DayScale / Hours 拉回)都失败
-//   根因:Panel_Crafting percent 推进依赖 TOD HoursPlayed,改 TOD 就破坏 percent
+// v2.7.42 QuickCraft 参照 CT 方案 —— 直接放大 percent 推进量
+//   CT 的 "秒制作" 脚本核心:
+//     MonoMethodInit(TLD.Gear.CraftingOperation.Update)
+//       mov [rcx+m_RealTimeDuration], (float)0.2
+//       mov [rcx+m_HoursToSpendCrafting], (float)100
+//   效果:游戏 Update 读 HoursToSpend=100 推 percent 瞬满,RealTime=0.2 秒完成
 //
-//   正解:不碰 TOD,也不改 craft time。CraftingStart Postfix Queue,2 帧后**直接调 OnCraftingSuccess**
-//   游戏自己处理 batch —— OnCraftingSuccess 完成当前 item,batch 剩余项会自动触发下一个 CraftingStart
-//   → 我们的 Postfix 又 Queue → 2 帧后又完成。batch 全部 item 每个约 2 帧真实时间,总共几十帧
-//   真实时间几乎不动,游戏时钟也不动(OnCraftingSuccess 瞬完成不触发 Accelerate)
-internal static class QuickCraftRunner
+//   映射到 MelonMod:CraftingOperation 是 IL2CPP 内部类反射不到,
+//   但它最终调 InProgressCraftItem.IncrementProgress(float percentagePoints)
+//   直接 patch 这个:percentagePoints=100 让每次推进 +100 → 一帧完成
+//
+//   不碰 TOD、不碰 craft time、不碰 Accelerate
+//   游戏自己走完成流程,batch 每个 item 一帧完成
+[HarmonyPatch(typeof(InProgressCraftItem), "IncrementProgress")]
+internal static class Patch_InProgressCraftItem_IncrementProgress
 {
-    internal static Panel_Crafting Instance;
-    internal static int Countdown = 0;
-
-    public static void Queue(Panel_Crafting inst)
+    private static void Prefix(ref float percentagePoints)
     {
-        // 每次 Queue 覆盖 —— batch 每个 CraftingStart 都重设 Countdown=2
-        Instance = inst;
-        Countdown = 2;
-    }
-
-    public static void Tick()
-    {
-        if (Instance == null) return;
-        if (Countdown > 0) { Countdown--; return; }
-        try
-        {
-            Instance.OnCraftingSuccess();
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
-        finally { Instance = null; Countdown = 0; }
-    }
-}
-
-[HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_Start_Queue
-{
-    private static void Postfix(Panel_Crafting __instance)
-    {
-        if (!CheatState.QuickCraft) return;
-        FadeSuppressionWindow.Arm(3f);
-        QuickCraftRunner.Queue(__instance);
+        if (CheatState.QuickCraft) percentagePoints = 100f;
     }
 }
 

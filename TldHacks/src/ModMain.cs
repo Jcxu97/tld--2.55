@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.41", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.42", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -32,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.41 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.42 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -99,9 +99,8 @@ public class ModMain : MelonMod
                 && Mathf.Abs(Time.timeScale - CheatState.SpeedMultiplier) > 0.01f)
                 Time.timeScale = CheatState.SpeedMultiplier;
 
-            // 快速采集 + 快速制作延迟完成 (v2.7.41)
+            // 快速采集延迟完成 (QuickCraft v2.7.42 改走 IncrementProgress Prefix,不需要 Tick)
             QuickHarvestRunner.Tick();
-            QuickCraftRunner.Tick();
 
             // v2.7.29:每 5s 同步 ModSettings → CheatState,让 ModSettings UI 改动能生效
             // (之前只 OnInitializeMelon 调一次,玩家改 ModSettings 要重启才应用)
