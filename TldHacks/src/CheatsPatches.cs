@@ -334,92 +334,47 @@ internal static class Patch_Craft_CanCraft
 //   craft 完成瞬间 TOD 拉回 → 用户看不到跳
 // GetFinalCraftingTime / GetAdjustedCraftingTime 不再 patch,游戏看到正常 craft 时长
 
-// v2.7.39 QuickCraft 时钟冻结 —— 最终方案:让时钟跳,结束时拉回
-//   核心洞察(用户测试 v2.7.38 反馈):Panel_Crafting percent 推进依赖 TOD HoursPlayed 流逝
-//   → 冻结 Hours = percent 不走 = craft 永远卡 1%
-//   → 所以必须让 Hours 在 craft 期间正常推进,**结束时一次性拉回快照**
+// v2.7.41 QuickCraft 完全模仿 QuickHarvestRunner (烤肉方案,已 work)
+//   之前 v2.7.20-40 所有尝试(time=1 / gameHours=0 / TODLocked / DayScale / Hours 拉回)都失败
+//   根因:Panel_Crafting percent 推进依赖 TOD HoursPlayed,改 TOD 就破坏 percent
 //
-//   流程:
-//     CraftingStart Postfix → 快照 SavedHours,Active=true
-//     (craft 期间 Hours 正常跳,percent 推进,batch 完成)
-//     CraftingEnd Postfix → 把 Hours 拉回 SavedHours,Active=false
-//     OnCraftingInterrupted 同样拉回(玩家取消时不要留跳)
-//
-//   视觉:craft 时时钟会跳几秒(真实秒 × 比例),完成后瞬间回到 craft 前
-//   GetFinalCraftingTime=1 确保 craft 只需 1 游戏分钟真实时间 ≈ 几秒
-internal static class CraftingTimeFreeze
+//   正解:不碰 TOD,也不改 craft time。CraftingStart Postfix Queue,2 帧后**直接调 OnCraftingSuccess**
+//   游戏自己处理 batch —— OnCraftingSuccess 完成当前 item,batch 剩余项会自动触发下一个 CraftingStart
+//   → 我们的 Postfix 又 Queue → 2 帧后又完成。batch 全部 item 每个约 2 帧真实时间,总共几十帧
+//   真实时间几乎不动,游戏时钟也不动(OnCraftingSuccess 瞬完成不触发 Accelerate)
+internal static class QuickCraftRunner
 {
-    public static bool Active = false;
-    public static float SavedHours = 0f;
-    public static float SavedScale = 0f;  // v2.7.40 保存原 DayLengthScale
-    // 真实 1 秒 → 游戏 N 小时。scale 越小 TOD 走越快。
-    // 默认 1 day = 24 游戏分钟真实时间 scale=1,我们设 0.001 → 真实 1 秒 ~ 16 游戏小时
-    // craft 10h 物品需要 10/16 ≈ 0.6 真实秒完成
-    public const float FastScale = 0.001f;
+    internal static Panel_Crafting Instance;
+    internal static int Countdown = 0;
+
+    public static void Queue(Panel_Crafting inst)
+    {
+        // 每次 Queue 覆盖 —— batch 每个 CraftingStart 都重设 Countdown=2
+        Instance = inst;
+        Countdown = 2;
+    }
+
+    public static void Tick()
+    {
+        if (Instance == null) return;
+        if (Countdown > 0) { Countdown--; return; }
+        try
+        {
+            Instance.OnCraftingSuccess();
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
+        finally { Instance = null; Countdown = 0; }
+    }
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_Start_SnapshotTime
+internal static class Patch_Craft_Start_Queue
 {
-    private static void Postfix()
+    private static void Postfix(Panel_Crafting __instance)
     {
         if (!CheatState.QuickCraft) return;
         FadeSuppressionWindow.Arm(3f);
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod == null) return;
-            // 只在第一次 CraftingStart 记录(batch 里每个 item 都调 CraftingStart,保持第一次快照)
-            if (!CraftingTimeFreeze.Active)
-            {
-                CraftingTimeFreeze.SavedHours = tod.GetHoursPlayedNotPaused();
-                CraftingTimeFreeze.SavedScale = tod.GetDayLengthScale();
-                tod.SetDayLengthScale(CraftingTimeFreeze.FastScale);  // v2.7.40 加速 TOD
-                CraftingTimeFreeze.Active = true;
-            }
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft.Snap] {ex.Message}"); }
-    }
-}
-
-[HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
-internal static class Patch_Craft_End_RestoreTime
-{
-    private static void Postfix()
-    {
-        if (!CraftingTimeFreeze.Active) return;
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null)
-            {
-                tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
-                tod.SetDayLengthScale(CraftingTimeFreeze.SavedScale > 0 ? CraftingTimeFreeze.SavedScale : 1f);  // v2.7.40 恢复原 scale
-            }
-            ModMain.Log?.Msg($"[QuickCraft] time rolled back to {CraftingTimeFreeze.SavedHours:F2}h, scale restored");
-        }
-        catch { }
-        finally { CraftingTimeFreeze.Active = false; }
-    }
-}
-
-[HarmonyPatch(typeof(Panel_Crafting), "OnCraftingInterrupted")]
-internal static class Patch_Craft_Interrupted_RestoreTime
-{
-    private static void Postfix()
-    {
-        if (!CraftingTimeFreeze.Active) return;
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null)
-            {
-                tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
-                tod.SetDayLengthScale(CraftingTimeFreeze.SavedScale > 0 ? CraftingTimeFreeze.SavedScale : 1f);
-            }
-        }
-        catch { }
-        finally { CraftingTimeFreeze.Active = false; }
+        QuickCraftRunner.Queue(__instance);
     }
 }
 
