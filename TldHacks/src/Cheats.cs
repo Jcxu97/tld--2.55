@@ -90,53 +90,94 @@ internal static class Cheats
     {
         int cleared = 0;
         var log = new System.Text.StringBuilder();
+        // v2.7.11:放弃依赖 End() —— 许多 End 方法要求"满足治愈条件"才真正清除。
+        // 直接用 wrapper 类型 setter 强置内部状态为 default,外加 End() 走一遍音效/UI 刷新。
 
-        // —— 已知 12 项用直接字段访问(Il2CppInterop 对 m_Active setter 都有 bridge)——
-        // 不再走反射 GetField —— 托管 wrapper 上 GetField 在 Il2CppInterop 下不可靠
-        ClearAffliction("Hypothermia",  GameManager.GetHypothermiaComponent(),  () => GameManager.GetHypothermiaComponent().HasHypothermia(),  () => GameManager.GetHypothermiaComponent().HypothermiaEnd(true),     ref cleared, log);
-        ClearAffliction("Frostbite",    GameManager.GetFrostbiteComponent(),    () => GameManager.GetFrostbiteComponent().HasFrostbite(),      () => GameManager.GetFrostbiteComponent().FrostbiteEnd(),             ref cleared, log);
-        ClearAffliction("CabinFever",   GameManager.GetCabinFeverComponent(),   () => GameManager.GetCabinFeverComponent().HasCabinFever(),    () => GameManager.GetCabinFeverComponent().CabinFeverEnd(),           ref cleared, log);
-        ClearAffliction("Dysentery",    GameManager.GetDysenteryComponent(),    () => GameManager.GetDysenteryComponent().HasDysentery(),      () => GameManager.GetDysenteryComponent().DysenteryEnd(true),         ref cleared, log);
-        ClearAffliction("FoodPoisoning",GameManager.GetFoodPoisoningComponent(),() => GameManager.GetFoodPoisoningComponent().HasFoodPoisoning(),() => GameManager.GetFoodPoisoningComponent().FoodPoisoningEnd(true),ref cleared, log);
-        ClearAffliction("BrokenRib",    GameManager.GetBrokenRibComponent(),    () => GameManager.GetBrokenRibComponent().HasBrokenRib(),      () => GameManager.GetBrokenRibComponent().BrokenRibEnd(0, true),      ref cleared, log);
-        ClearAffliction("SprainedWrist",GameManager.GetSprainedWristComponent(),() => GameManager.GetSprainedWristComponent().HasSprainedWrist(),() => GameManager.GetSprainedWristComponent().SprainedWristEnd(0, (AfflictionOptions)0), ref cleared, log);
-        ClearAffliction("SprainedAnkle",GameManager.GetSprainedAnkleComponent(),() => GameManager.GetSprainedAnkleComponent().HasSprainedAnkle(),() => GameManager.GetSprainedAnkleComponent().SprainedAnkleEnd(0, (AfflictionOptions)0), ref cleared, log);
-        ClearAffliction("BloodLoss",    GameManager.GetBloodLossComponent(),    () => GameManager.GetBloodLossComponent().HasBloodLoss(),      () => GameManager.GetBloodLossComponent().BloodLossEnd(0, (AfflictionOptions)0), ref cleared, log);
-        ClearAffliction("Infection",    GameManager.GetInfectionComponent(),    () => GameManager.GetInfectionComponent().HasInfection(),      () => GameManager.GetInfectionComponent().InfectionEnd(0),            ref cleared, log);
+        // —— Hypothermia ——
+        try { var c = GameManager.GetHypothermiaComponent(); if (c != null) {
+            bool had = c.HasHypothermia();
+            try { c.m_Active = false; } catch { }
+            try { c.m_ElapsedHours = 0f; } catch { }
+            try { c.m_ElapsedWarmTime = 0f; } catch { }
+            try { c.m_StartHasBeenCalled = false; } catch { }
+            try { c.m_SuppressHypothermia = true; c.HypothermiaEnd(true); c.m_SuppressHypothermia = false; } catch { }
+            if (had) { cleared++; log.Append("低温; "); }
+        }} catch (Exception ex) { log.Append($"低温-err:{ex.Message}; "); }
 
-        // —— m_Active=false 兜底(只有这 4 个类真有 m_Active public 字段)——
-        TryZeroActive<Hypothermia>  (GameManager.GetHypothermiaComponent(),   c => c.m_Active = false);
-        TryZeroActive<CabinFever>   (GameManager.GetCabinFeverComponent(),    c => c.m_Active = false);
-        TryZeroActive<Dysentery>    (GameManager.GetDysenteryComponent(),     c => c.m_Active = false);
-        TryZeroActive<FoodPoisoning>(GameManager.GetFoodPoisoningComponent(), c => c.m_Active = false);
+        // —— Frostbite ——
+        try { var c = GameManager.GetFrostbiteComponent(); if (c != null) {
+            bool had = c.HasFrostbite();
+            try { c.FrostbiteEnd(); } catch { }
+            try { c.m_SuppressFrostbite = true; } catch { }
+            if (had) { cleared++; log.Append("冻伤; "); }
+        }} catch (Exception ex) { log.Append($"冻伤-err:{ex.Message}; "); }
 
-        // 开 Suppress flag(能止新发)
-        try { var c = GameManager.GetHypothermiaComponent(); if (c != null) c.m_SuppressHypothermia = true; } catch { }
-        try { var c = GameManager.GetFrostbiteComponent();   if (c != null) c.m_SuppressFrostbite    = true; } catch { }
+        // —— CabinFever ——
+        try { var c = GameManager.GetCabinFeverComponent(); if (c != null) {
+            bool had = c.HasCabinFever();
+            try { c.m_Active = false; } catch { }
+            try { c.CabinFeverEnd(); c.ClearCabinFeverRisk(); } catch { }
+            if (had) { cleared++; log.Append("幽闭症; "); }
+        }} catch (Exception ex) { log.Append($"幽闭症-err:{ex.Message}; "); }
 
-        ModMain.Log?.Msg($"[Cheats] Cleared {cleared} affliction(s): {log}");
-        CheatState.LastActionLog = cleared > 0 ? $"已清 {cleared} 项负面: {log}" : "没有活跃的负面";
-    }
+        // —— Dysentery ——
+        try { var c = GameManager.GetDysenteryComponent(); if (c != null) {
+            bool had = c.HasDysentery();
+            try { c.m_Active = false; } catch { }
+            try { c.DysenteryEnd(true); } catch { }
+            if (had) { cleared++; log.Append("痢疾; "); }
+        }} catch (Exception ex) { log.Append($"痢疾-err:{ex.Message}; "); }
 
-    private static void ClearAffliction(string name, object comp, System.Func<bool> hasFn, System.Action endFn, ref int cleared, System.Text.StringBuilder log)
-    {
-        if (comp == null) { log.Append($"{name}:no-comp; "); return; }
-        try
-        {
-            if (hasFn())
-            {
-                endFn();
-                cleared++;
-                log.Append($"{name}; ");
-            }
-        }
-        catch (Exception ex) { log.Append($"{name}:err({ex.Message}); "); }
-    }
+        // —— FoodPoisoning ——
+        try { var c = GameManager.GetFoodPoisoningComponent(); if (c != null) {
+            bool had = c.HasFoodPoisoning();
+            try { c.m_Active = false; } catch { }
+            try { c.FoodPoisoningEnd(true); } catch { }
+            if (had) { cleared++; log.Append("食物中毒; "); }
+        }} catch (Exception ex) { log.Append($"食物中毒-err:{ex.Message}; "); }
 
-    private static void TryZeroActive<T>(T comp, Action<T> setter) where T : class
-    {
-        if (comp == null) return;
-        try { setter(comp); } catch { }
+        // —— SprainedWrist / Ankle ——
+        try { var c = GameManager.GetSprainedWristComponent(); if (c != null) {
+            bool had = c.HasSprainedWrist();
+            try { c.SetForceNoSprainWrist(true); } catch { }
+            // 没 Active 字段,直接 End(0)
+            try { c.SprainedWristEnd(0, (AfflictionOptions)0); } catch { }
+            try { c.SprainedWristEnd(1, (AfflictionOptions)0); } catch { } // 另一只手
+            if (had) { cleared++; log.Append("扭腕; "); }
+        }} catch (Exception ex) { log.Append($"扭腕-err:{ex.Message}; "); }
+
+        try { var c = GameManager.GetSprainedAnkleComponent(); if (c != null) {
+            bool had = c.HasSprainedAnkle();
+            try { c.SprainedAnkleEnd(0, (AfflictionOptions)0); } catch { }
+            try { c.SprainedAnkleEnd(1, (AfflictionOptions)0); } catch { }
+            if (had) { cleared++; log.Append("扭踝; "); }
+        }} catch (Exception ex) { log.Append($"扭踝-err:{ex.Message}; "); }
+
+        // —— BloodLoss ——
+        try { var c = GameManager.GetBloodLossComponent(); if (c != null) {
+            bool had = c.HasBloodLoss();
+            // 对每个身体部位都 End
+            for (int i = 0; i < 6; i++) try { c.BloodLossEnd(i, (AfflictionOptions)0); } catch { }
+            if (had) { cleared++; log.Append("出血; "); }
+        }} catch (Exception ex) { log.Append($"出血-err:{ex.Message}; "); }
+
+        // —— Infection ——
+        try { var c = GameManager.GetInfectionComponent(); if (c != null) {
+            bool had = c.HasInfection();
+            for (int i = 0; i < 6; i++) try { c.InfectionEnd(i); } catch { }
+            if (had) { cleared++; log.Append("感染; "); }
+        }} catch (Exception ex) { log.Append($"感染-err:{ex.Message}; "); }
+
+        // —— BrokenRib ——
+        try { var c = GameManager.GetBrokenRibComponent(); if (c != null) {
+            bool had = c.HasBrokenRib();
+            for (int i = 0; i < 6; i++) try { c.BrokenRibEnd(i, true); } catch { }
+            if (had) { cleared++; log.Append("骨折; "); }
+        }} catch (Exception ex) { log.Append($"骨折-err:{ex.Message}; "); }
+
+        string summary = cleared > 0 ? $"已清 {cleared} 项: {log}" : $"未检测到活跃负面; 尝试过: {log}";
+        ModMain.Log?.Msg($"[Cheats] {summary}");
+        CheatState.LastActionLog = summary;
     }
 
     // 真正切天气:WeatherTransition.ActivateWeatherSetImmediate(WeatherStage)
@@ -494,10 +535,21 @@ internal static class Patch_GearItem_ManualUpdate
     }
 }
 
-// InfiniteDurability 兜底:直接拦衰减源头(GearItem.Degrade(float))
-// 和 GearDecayModifier 共存 —— Harmony 多 Prefix 组合时任一返 false 则原方法 skip
+// InfiniteDurability 兜底:拦衰减 3 个源头 Degrade / WearOut / DegradeOnUse
 [HarmonyPatch(typeof(GearItem), "Degrade", new System.Type[] { typeof(float) })]
 internal static class Patch_GearItem_Degrade
+{
+    private static bool Prefix() => !CheatState.InfiniteDurability;
+}
+
+[HarmonyPatch(typeof(GearItem), "WearOut")]
+internal static class Patch_GearItem_WearOut
+{
+    private static bool Prefix() => !CheatState.InfiniteDurability;
+}
+
+[HarmonyPatch(typeof(GearItem), "DegradeOnUse")]
+internal static class Patch_GearItem_DegradeOnUse
 {
     private static bool Prefix() => !CheatState.InfiniteDurability;
 }

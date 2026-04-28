@@ -84,42 +84,19 @@ internal static class Patch_Condition_AddHealth_Filter
     }
 }
 
-// ——— 节约时间:采集 / 修理 durationMinutes→0,BreakDown 用 tick ———
-// 玩家打开面板点"开始",本 Prefix 把 durationMinutes 改 0 —— 动作瞬完,几乎不消耗游戏时间
-[HarmonyPatch(typeof(Panel_BodyHarvest), "StartHarvest", new System.Type[] { typeof(int), typeof(string) })]
-internal static class Patch_Harvest_StartHarvest
+// ——— 节约时间:v2.7.11 改方向 —— 不动 duration(duration=0 会导致 yield=0)
+// 改成拦截 AccelerateTimeOfDay —— 游戏内置"快进到动作完成"方法,minutes = 跳过的游戏分钟
+// Prefix 把 minutes 改 0,动作照完,TOD 不动,yield 也按原 duration 结算正确
+[HarmonyPatch(typeof(Panel_BodyHarvest), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
+internal static class Patch_Harvest_Accelerate
 {
-    private static void Prefix(ref int durationMinutes) { if (CheatState.QuickAction) durationMinutes = 0; }
+    private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
 
-[HarmonyPatch(typeof(Panel_BodyHarvest), "StartQuarter", new System.Type[] { typeof(int), typeof(string) })]
-internal static class Patch_Harvest_StartQuarter
+[HarmonyPatch(typeof(Panel_Repair), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
+internal static class Patch_Repair_Accelerate
 {
-    private static void Prefix(ref int durationMinutes) { if (CheatState.QuickAction) durationMinutes = 0; }
-}
-
-[HarmonyPatch(typeof(Panel_BodyHarvest), "GetHarvestDurationMinutes")]
-internal static class Patch_Harvest_GetHarvestDur
-{
-    private static void Postfix(ref float __result) { if (CheatState.QuickAction) __result = 0f; }
-}
-
-[HarmonyPatch(typeof(Panel_BodyHarvest), "GetQuarterDurationMinutes")]
-internal static class Patch_Harvest_GetQuarterDur
-{
-    private static void Postfix(ref float __result) { if (CheatState.QuickAction) __result = 0f; }
-}
-
-[HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
-internal static class Patch_Repair_StartRepair
-{
-    private static void Prefix(ref int durationMinutes) { if (CheatState.QuickAction) durationMinutes = 0; }
-}
-
-[HarmonyPatch(typeof(Panel_Repair), "GetModifiedRepairDuration", new System.Type[] { typeof(Repairable), typeof(int) })]
-internal static class Patch_Repair_GetModifiedDur
-{
-    private static void Postfix(ref int __result) { if (CheatState.QuickAction) __result = 0; }
+    private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
 
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
