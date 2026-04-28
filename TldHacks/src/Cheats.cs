@@ -33,7 +33,7 @@ internal static class CheatState
     // Items / Fire
     public static bool InfiniteDurability;
     public static bool NoWetClothes;
-    public static bool InfiniteFireDurations;
+    // InfiniteFireDurations 去除 —— 其他 mod 已覆盖
     // Crafting
     public static bool FreeCraft;
     public static bool QuickCraft;
@@ -55,6 +55,7 @@ internal static class CheatState
     // Skills / shortcuts
     public static bool QuickFire;          // 生火 100% 成功
     public static bool QuickClimb;         // 爬绳速度 ×5
+    public static bool QuickAction;        // 采集 / 修理 / 拆解 自动时间加速
     // Display
     public static string PositionText = "";
     public static string LastActionLog = "";  // Menu 里显示最后一次按钮操作的结果
@@ -88,51 +89,54 @@ internal static class Cheats
     public static void ClearAllAfflictions()
     {
         int cleared = 0;
+        var log = new System.Text.StringBuilder();
 
-        // —— 已知签名 + HasXxx 先判定(只清真实 active 的,才叫"清了一项")——
-        try { var c = GameManager.GetHypothermiaComponent();  if (c != null && c.HasHypothermia())  { c.HypothermiaEnd(true);       cleared++; } } catch { }
-        try { var c = GameManager.GetFrostbiteComponent();    if (c != null && c.HasFrostbite())    { c.FrostbiteEnd();             cleared++; } } catch { }
-        try { var c = GameManager.GetCabinFeverComponent();   if (c != null && c.HasCabinFever())   { c.CabinFeverEnd();            cleared++; } } catch { }
-        try { var c = GameManager.GetDysenteryComponent();    if (c != null && c.HasDysentery())    { c.DysenteryEnd(true);         cleared++; } } catch { }
-        try { var c = GameManager.GetFoodPoisoningComponent();if (c != null && c.HasFoodPoisoning()){ c.FoodPoisoningEnd(true);     cleared++; } } catch { }
-        try { var c = GameManager.GetBrokenRibComponent();    if (c != null && c.HasBrokenRib())    { c.BrokenRibEnd(0, true);      cleared++; } } catch { }
-        try { var c = GameManager.GetSprainedWristComponent();if (c != null && c.HasSprainedWrist()){ c.SprainedWristEnd(0, (AfflictionOptions)0); cleared++; } } catch { }
-        try { var c = GameManager.GetSprainedAnkleComponent();if (c != null && c.HasSprainedAnkle()){ c.SprainedAnkleEnd(0, (AfflictionOptions)0); cleared++; } } catch { }
-        try { var c = GameManager.GetBloodLossComponent();    if (c != null && c.HasBloodLoss())    { c.BloodLossEnd(0, (AfflictionOptions)0);     cleared++; } } catch { }
-        try { var c = GameManager.GetInfectionComponent();    if (c != null && c.HasInfection())    { c.InfectionEnd(0);            cleared++; } } catch { }
+        // —— 已知 12 项用直接字段访问(Il2CppInterop 对 m_Active setter 都有 bridge)——
+        // 不再走反射 GetField —— 托管 wrapper 上 GetField 在 Il2CppInterop 下不可靠
+        ClearAffliction("Hypothermia",  GameManager.GetHypothermiaComponent(),  () => GameManager.GetHypothermiaComponent().HasHypothermia(),  () => GameManager.GetHypothermiaComponent().HypothermiaEnd(true),     ref cleared, log);
+        ClearAffliction("Frostbite",    GameManager.GetFrostbiteComponent(),    () => GameManager.GetFrostbiteComponent().HasFrostbite(),      () => GameManager.GetFrostbiteComponent().FrostbiteEnd(),             ref cleared, log);
+        ClearAffliction("CabinFever",   GameManager.GetCabinFeverComponent(),   () => GameManager.GetCabinFeverComponent().HasCabinFever(),    () => GameManager.GetCabinFeverComponent().CabinFeverEnd(),           ref cleared, log);
+        ClearAffliction("Dysentery",    GameManager.GetDysenteryComponent(),    () => GameManager.GetDysenteryComponent().HasDysentery(),      () => GameManager.GetDysenteryComponent().DysenteryEnd(true),         ref cleared, log);
+        ClearAffliction("FoodPoisoning",GameManager.GetFoodPoisoningComponent(),() => GameManager.GetFoodPoisoningComponent().HasFoodPoisoning(),() => GameManager.GetFoodPoisoningComponent().FoodPoisoningEnd(true),ref cleared, log);
+        ClearAffliction("BrokenRib",    GameManager.GetBrokenRibComponent(),    () => GameManager.GetBrokenRibComponent().HasBrokenRib(),      () => GameManager.GetBrokenRibComponent().BrokenRibEnd(0, true),      ref cleared, log);
+        ClearAffliction("SprainedWrist",GameManager.GetSprainedWristComponent(),() => GameManager.GetSprainedWristComponent().HasSprainedWrist(),() => GameManager.GetSprainedWristComponent().SprainedWristEnd(0, (AfflictionOptions)0), ref cleared, log);
+        ClearAffliction("SprainedAnkle",GameManager.GetSprainedAnkleComponent(),() => GameManager.GetSprainedAnkleComponent().HasSprainedAnkle(),() => GameManager.GetSprainedAnkleComponent().SprainedAnkleEnd(0, (AfflictionOptions)0), ref cleared, log);
+        ClearAffliction("BloodLoss",    GameManager.GetBloodLossComponent(),    () => GameManager.GetBloodLossComponent().HasBloodLoss(),      () => GameManager.GetBloodLossComponent().BloodLossEnd(0, (AfflictionOptions)0), ref cleared, log);
+        ClearAffliction("Infection",    GameManager.GetInfectionComponent(),    () => GameManager.GetInfectionComponent().HasInfection(),      () => GameManager.GetInfectionComponent().InfectionEnd(0),            ref cleared, log);
 
-        // —— 直接设字段:某些组件没有 End 方法或签名 lookup 失败,强行 m_Active=false / m_Suppress*=true ——
-        string[] compNames = {
-            "Hypothermia","Frostbite","CabinFever","Dysentery","FoodPoisoning","BrokenRib","SprainedWrist","SprainedAnkle",
-            "BloodLoss","Infection","Headache","Scurvy","Parasites","Burns","BurnsElectric","Concussion",
-            "InfectionRisk","ChemicalPoisoning","ToxicFog","Suffocating","Fear","Anxiety","Inflammation"
-        };
-        foreach (var name in compNames)
+        // —— m_Active=false 兜底(只有这 4 个类真有 m_Active public 字段)——
+        TryZeroActive<Hypothermia>  (GameManager.GetHypothermiaComponent(),   c => c.m_Active = false);
+        TryZeroActive<CabinFever>   (GameManager.GetCabinFeverComponent(),    c => c.m_Active = false);
+        TryZeroActive<Dysentery>    (GameManager.GetDysenteryComponent(),     c => c.m_Active = false);
+        TryZeroActive<FoodPoisoning>(GameManager.GetFoodPoisoningComponent(), c => c.m_Active = false);
+
+        // 开 Suppress flag(能止新发)
+        try { var c = GameManager.GetHypothermiaComponent(); if (c != null) c.m_SuppressHypothermia = true; } catch { }
+        try { var c = GameManager.GetFrostbiteComponent();   if (c != null) c.m_SuppressFrostbite    = true; } catch { }
+
+        ModMain.Log?.Msg($"[Cheats] Cleared {cleared} affliction(s): {log}");
+        CheatState.LastActionLog = cleared > 0 ? $"已清 {cleared} 项负面: {log}" : "没有活跃的负面";
+    }
+
+    private static void ClearAffliction(string name, object comp, System.Func<bool> hasFn, System.Action endFn, ref int cleared, System.Text.StringBuilder log)
+    {
+        if (comp == null) { log.Append($"{name}:no-comp; "); return; }
+        try
         {
-            try
+            if (hasFn())
             {
-                var getter = typeof(GameManager).GetMethod($"Get{name}Component", BindingFlags.Static | BindingFlags.Public);
-                var comp = getter?.Invoke(null, null);
-                if (comp == null) continue;
-                var t = comp.GetType();
-
-                // 1) 强行 m_Active = false
-                var fActive = t.GetField("m_Active", BindingFlags.Instance | BindingFlags.Public);
-                if (fActive != null && fActive.FieldType == typeof(bool))
-                {
-                    var prev = (bool)fActive.GetValue(comp);
-                    if (prev) { fActive.SetValue(comp, false); cleared++; }
-                }
-                // 2) 顺带设 m_Suppress<Name> 防止立刻重新触发
-                var suppress = t.GetField($"m_Suppress{name}", BindingFlags.Instance | BindingFlags.Public);
-                if (suppress != null && suppress.FieldType == typeof(bool))
-                    suppress.SetValue(comp, true);
+                endFn();
+                cleared++;
+                log.Append($"{name}; ");
             }
-            catch { }
         }
+        catch (Exception ex) { log.Append($"{name}:err({ex.Message}); "); }
+    }
 
-        ModMain.Log?.Msg($"[Cheats] Cleared {cleared} affliction(s)");
-        CheatState.LastActionLog = $"已清 {cleared} 项负面";
+    private static void TryZeroActive<T>(T comp, Action<T> setter) where T : class
+    {
+        if (comp == null) return;
+        try { setter(comp); } catch { }
     }
 
     // 真正切天气:WeatherTransition.ActivateWeatherSetImmediate(WeatherStage)
@@ -212,13 +216,26 @@ internal static class Cheats
         if (gear == null) return;
         try
         {
-            // Clothing 的 HP 单位不是 0-100,设 100 会破坏 —— skip 让 ClothingItem 自己管
-            if (gear.GetComponent<ClothingItem>() != null) return;
-
-            // 其余 GearItem 的 m_CurrentHP 范围是 0-100,直接设 100 = 满
+            // v2.7.10:衣服也一视同仁 —— m_CurrentHP 对 Clothing / Tool / Weapon / Food 都是 0-100
             if (gear.m_CurrentHP < 100f) gear.m_CurrentHP = 100f;
         }
         catch { }
+    }
+
+    // 修复玩家当前手持物品 —— 一键
+    public static void RepairItemInHands()
+    {
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null) { CheatState.LastActionLog = "[修复手持] no PM"; return; }
+            var item = pm.m_ItemInHands;
+            if (item == null) { CheatState.LastActionLog = "[修复手持] 手上没东西"; return; }
+            RestoreDurability(item);
+            CheatState.LastActionLog = $"[修复手持] {item.name} → 100%";
+            ModMain.Log?.Msg($"[Repair.Hands] {item.name}");
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[Repair.Hands] {ex.Message}"); }
     }
 
     internal static void RestoreClothingDurability(object clothing)
@@ -453,7 +470,13 @@ internal static class Patch_SprainedAnkle_Start
 [HarmonyPatch(typeof(BloodLoss), "BloodLossStart")]
 internal static class Patch_BloodLoss_Start
 {
-    private static bool Prefix() => !CheatState.GodMode;
+    private static bool Prefix() => !(CheatState.GodMode || CheatState.ImmuneAnimalDamage);
+}
+
+[HarmonyPatch(typeof(BloodLoss), "BloodLossStartOverrideArea")]
+internal static class Patch_BloodLoss_StartOverride
+{
+    private static bool Prefix() => !(CheatState.GodMode || CheatState.ImmuneAnimalDamage);
 }
 
 [HarmonyPatch(typeof(Infection), "InfectionStart")]
@@ -469,6 +492,14 @@ internal static class Patch_GearItem_ManualUpdate
     {
         if (CheatState.InfiniteDurability) Cheats.RestoreDurability(__instance);
     }
+}
+
+// InfiniteDurability 兜底:直接拦衰减源头(GearItem.Degrade(float))
+// 和 GearDecayModifier 共存 —— Harmony 多 Prefix 组合时任一返 false 则原方法 skip
+[HarmonyPatch(typeof(GearItem), "Degrade", new System.Type[] { typeof(float) })]
+internal static class Patch_GearItem_Degrade
+{
+    private static bool Prefix() => !CheatState.InfiniteDurability;
 }
 
 [HarmonyPatch(typeof(GearItem), "Awake")]

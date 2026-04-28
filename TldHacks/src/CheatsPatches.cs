@@ -84,6 +84,57 @@ internal static class Patch_Condition_AddHealth_Filter
     }
 }
 
+// ——— 节约时间:采集 / 修理 durationMinutes→0,BreakDown 用 tick ———
+// 玩家打开面板点"开始",本 Prefix 把 durationMinutes 改 0 —— 动作瞬完,几乎不消耗游戏时间
+[HarmonyPatch(typeof(Panel_BodyHarvest), "StartHarvest", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Harvest_StartHarvest
+{
+    private static void Prefix(ref int durationMinutes) { if (CheatState.QuickAction) durationMinutes = 0; }
+}
+
+[HarmonyPatch(typeof(Panel_BodyHarvest), "StartQuarter", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Harvest_StartQuarter
+{
+    private static void Prefix(ref int durationMinutes) { if (CheatState.QuickAction) durationMinutes = 0; }
+}
+
+[HarmonyPatch(typeof(Panel_BodyHarvest), "GetHarvestDurationMinutes")]
+internal static class Patch_Harvest_GetHarvestDur
+{
+    private static void Postfix(ref float __result) { if (CheatState.QuickAction) __result = 0f; }
+}
+
+[HarmonyPatch(typeof(Panel_BodyHarvest), "GetQuarterDurationMinutes")]
+internal static class Patch_Harvest_GetQuarterDur
+{
+    private static void Postfix(ref float __result) { if (CheatState.QuickAction) __result = 0f; }
+}
+
+[HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Repair_StartRepair
+{
+    private static void Prefix(ref int durationMinutes) { if (CheatState.QuickAction) durationMinutes = 0; }
+}
+
+[HarmonyPatch(typeof(Panel_Repair), "GetModifiedRepairDuration", new System.Type[] { typeof(Repairable), typeof(int) })]
+internal static class Patch_Repair_GetModifiedDur
+{
+    private static void Postfix(ref int __result) { if (CheatState.QuickAction) __result = 0; }
+}
+
+// ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
+// 用户要的是"我打它一下它就死",不是"开关一开所有动物全死"
+// 4 参虚方法 ApplyDamage(damage, bleedOutMinutes, DamageSource, collider) 指定签名避免歧义
+[HarmonyPatch(typeof(BaseAi), "ApplyDamage",
+    new System.Type[] { typeof(float), typeof(float), typeof(DamageSource), typeof(string) })]
+internal static class Patch_BaseAi_ApplyDamage
+{
+    private static void Prefix(ref float damage)
+    {
+        if (CheatState.InstantKillAnimals && damage > 0f) damage = 9999f;
+    }
+}
+
 // ——— 免费制作:强制返回 "能造",跳过材料检查 ———
 [HarmonyPatch(typeof(Panel_Crafting), "CanCraftSelectedBlueprint")]
 internal static class Patch_Craft_CanCraftSelected
@@ -239,9 +290,11 @@ internal static class CheatsTick
                     }
                     if (CheatState.FastFire)
                     {
-                        try { if (g.m_FiringRateSeconds > 0.2f) g.m_FiringRateSeconds = 0.2f; } catch { }
-                        try { if (g.m_FireDelayOnAim > 0.05f) g.m_FireDelayOnAim = 0.05f; } catch { }
-                        try { if (g.m_FireDelayAfterReload > 0.1f) g.m_FireDelayAfterReload = 0.1f; } catch { }
+                        // 强制覆盖 —— 不要 if 守卫,游戏可能在 weapon 切换时重置为 prefab 值
+                        // 注意:m_FiringRateSeconds = 0 会卡死 state machine,0.05 是安全最小(20/秒)
+                        try { g.m_FiringRateSeconds     = 0.05f; } catch { }
+                        try { g.m_FireDelayOnAim        = 0f;    } catch { }
+                        try { g.m_FireDelayAfterReload  = 0f;    } catch { }
                     }
                     if (CheatState.NoRecoil)
                     {
@@ -273,11 +326,13 @@ internal static class CheatsTick
     private static bool _lastAnyAimToggle = false;
     // Cached reflection members (lazy init on first call)
     private static FieldInfo _fi_currentWeapon, _fi_recoilSpring;
-    private static FieldInfo[] _fi_camFloats;   // 对应 ShakeAmplitude / BobAmplitude 等
-    private static FieldInfo[] _fi_camSwayFloats; // sway 特有的几个
+    private static FieldInfo[] _fi_camFloats;   // 对应 ShakeAmplitude / ShakeSpeed / BobAmplitude 等
+    private static FieldInfo[] _fi_camSwayFloats; // camera sway 字段
     private static FieldInfo _fi_rsCur, _fi_rsTgt, _fi_rsVel;
-    private static FieldInfo _fi_weapShake, _fi_weapCold, _fi_weapRandom, _fi_weapBob;
-    private static FieldInfo _fi_weapSwayLim, _fi_weapSwayMax, _fi_weapSwayStart;
+    private static FieldInfo _fi_weapShake, _fi_weapShakeSpeed, _fi_weapCold, _fi_weapRandom, _fi_weapShakeInst;
+    private static FieldInfo _fi_weapBob, _fi_weapBobRate;
+    private static FieldInfo _fi_weapSwayLim, _fi_weapSwayMax, _fi_weapSwayStart, _fi_weapSwayCrouch, _fi_weapSwayMotion;
+    private static FieldInfo _fi_weapRotLook, _fi_weapRotStrafe, _fi_weapRotFall, _fi_weapRotSlope;
     private static FieldInfo _fi_weapDisSway, _fi_weapDisShake, _fi_weapDisBreath, _fi_weapDisStam;
     private static bool _reflectionInited = false;
 
@@ -316,13 +371,23 @@ internal static class CheatsTick
             _fi_weapDisShake  = wt.GetField("m_DisableAimShake",     BindingFlags.Instance | BindingFlags.Public);
             _fi_weapDisBreath = wt.GetField("m_DisableAimBreathing", BindingFlags.Instance | BindingFlags.Public);
             _fi_weapDisStam   = wt.GetField("m_DisableAimStamina",   BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapShake     = wt.GetField("ShakeAmplitude",        BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapCold      = wt.GetField("m_ColdShakeAngle",      BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapRandom    = wt.GetField("m_RandomShakeAngle",    BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapBob       = wt.GetField("BobAmplitude",          BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayLim   = wt.GetField("SwayLimits",            BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayMax   = wt.GetField("SwayMaxFatigue",        BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayStart = wt.GetField("SwayStartFatigue",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapShake      = wt.GetField("ShakeAmplitude",        BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapShakeSpeed = wt.GetField("ShakeSpeed",            BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapCold       = wt.GetField("m_ColdShakeAngle",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapRandom     = wt.GetField("m_RandomShakeAngle",    BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapShakeInst  = wt.GetField("m_Shake",               BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapBob        = wt.GetField("BobAmplitude",          BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapBobRate    = wt.GetField("BobRate",               BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayLim    = wt.GetField("SwayLimits",            BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayMax    = wt.GetField("SwayMaxFatigue",        BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayStart  = wt.GetField("SwayStartFatigue",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayCrouch = wt.GetField("SwayCrouchScalar",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayMotion = wt.GetField("SwayMotionSpeed",       BindingFlags.Instance | BindingFlags.Public);
+            // Rotation*Sway —— 移动/下蹲/跌倒/侧移时枪的摆动(最关键!)
+            _fi_weapRotLook    = wt.GetField("RotationLookSway",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapRotStrafe  = wt.GetField("RotationStrafeSway",    BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapRotFall    = wt.GetField("RotationFallSway",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapRotSlope   = wt.GetField("RotationSlopeSway",     BindingFlags.Instance | BindingFlags.Public);
         }
         _reflectionInited = true;
     }
@@ -371,27 +436,37 @@ internal static class CheatsTick
 
             if (CheatState.NoAimSway)
             {
-                // m_Max* / m_Ambient* 6 个 sway 字段
+                // m_Max* / m_Ambient* 6 个 camera sway 字段
                 for (int i = 0; i < _fi_camSwayFloats.Length; i++)
                     SetFloatIfNotNull(_fi_camSwayFloats[i], cam, 0f);
-                SetFloatIfNotNull(_fi_weapSwayLim,   weapon, 0f);
-                SetFloatIfNotNull(_fi_weapSwayMax,   weapon, 0f);
-                SetFloatIfNotNull(_fi_weapSwayStart, weapon, 0f);
+                // Weapon sway:SwayLimits/Max/Start/Crouch/Motion + 4 个 Rotation*Sway
+                SetFloatIfNotNull(_fi_weapSwayLim,    weapon, 0f);
+                SetFloatIfNotNull(_fi_weapSwayMax,    weapon, 0f);
+                SetFloatIfNotNull(_fi_weapSwayStart,  weapon, 0f);
+                SetFloatIfNotNull(_fi_weapSwayCrouch, weapon, 0f);
+                SetFloatIfNotNull(_fi_weapSwayMotion, weapon, 0f);
+                SetFloatIfNotNull(_fi_weapRotLook,    weapon, 0f);
+                SetFloatIfNotNull(_fi_weapRotStrafe,  weapon, 0f);
+                SetFloatIfNotNull(_fi_weapRotFall,    weapon, 0f);
+                SetFloatIfNotNull(_fi_weapRotSlope,   weapon, 0f);
             }
             if (CheatState.NoAimShake)
             {
-                // ShakeAmplitude[0] / ShakeSpeed[1]
-                SetFloatIfNotNull(_fi_camFloats[0], cam, 0f);
-                SetFloatIfNotNull(_fi_camFloats[1], cam, 0f);
-                SetFloatIfNotNull(_fi_weapShake,  weapon, 0f);
-                SetFloatIfNotNull(_fi_weapCold,   weapon, 0f);
-                SetFloatIfNotNull(_fi_weapRandom, weapon, 0f);
+                // Camera shake
+                SetFloatIfNotNull(_fi_camFloats[0], cam, 0f); // ShakeAmplitude
+                SetFloatIfNotNull(_fi_camFloats[1], cam, 0f); // ShakeSpeed
+                // Weapon shake
+                SetFloatIfNotNull(_fi_weapShake,      weapon, 0f);
+                SetFloatIfNotNull(_fi_weapShakeSpeed, weapon, 0f);
+                SetFloatIfNotNull(_fi_weapCold,       weapon, 0f);
+                SetFloatIfNotNull(_fi_weapRandom,     weapon, 0f);
+                SetFloatIfNotNull(_fi_weapShakeInst,  weapon, 0f);
             }
             if (CheatState.NoBreathSway)
             {
-                // BobAmplitude[2]
-                SetFloatIfNotNull(_fi_camFloats[2], cam, 0f);
-                SetFloatIfNotNull(_fi_weapBob, weapon, 0f);
+                SetFloatIfNotNull(_fi_camFloats[2], cam, 0f);    // Camera BobAmplitude
+                SetFloatIfNotNull(_fi_weapBob,      weapon, 0f); // Weapon BobAmplitude
+                SetFloatIfNotNull(_fi_weapBobRate,  weapon, 0f); // Weapon BobRate
             }
 
             if (CheatState.NoRecoil && _fi_recoilSpring != null)
@@ -418,18 +493,18 @@ internal static class CheatsTick
     // (旧的 TrySetFieldFloat / TrySetFieldBool / SetStructFieldFloat helper 已被缓存版
     //  FieldInfo 替换,删除。)
 
-    // ——— 动物不能动 / 隐身(v2.7.7 改造:用 m_DisableScanForTargets 游戏内建开关)———
-    // v2.7.8:修 toggle 关后字段卡 true 不复位 —— 记 _lastTickedStealth/Freeze,
-    // 上轮开过就再跑一次同步把字段还原
+    // ——— 动物不能动 / 隐身 ———
+    // v2.7.9 重写 Stealth:之前 m_DisableScanForTargets 单靠它不够 ——
+    // 游戏内部的检测路径还有别的入口。现在强力方案:
+    //   1) 设 m_DisableScanForTargets = true(阻止新增探测)
+    //   2) 对已经在 Attack/Stalking/Investigate/HoldGround 的 AI,立即 SetAiMode(Wander)
+    //      —— 公开方法,可靠;等于把玩家从威胁列表踢出
     private static System.Reflection.FieldInfo _fi_baseAi_disableScan;
-    private static System.Reflection.FieldInfo _fi_baseAi_currentTarget;
-    private static System.Reflection.FieldInfo _fi_baseAi_aiTarget;
     private static bool _lastTickedStealth = false;
     private static bool _lastTickedFreeze = false;
 
     public static void TickAnimals()
     {
-        // 早退条件:本轮 + 上轮 都没开过任何相关 toggle
         bool runStealth = CheatState.Stealth || _lastTickedStealth;
         bool runFreeze  = CheatState.FreezeAnimals || _lastTickedFreeze;
         if (!runStealth && !runFreeze) return;
@@ -441,10 +516,8 @@ internal static class CheatsTick
 
             if (_fi_baseAi_disableScan == null)
             {
-                var t = typeof(BaseAi);
-                _fi_baseAi_disableScan   = t.GetField("m_DisableScanForTargets", BindingFlags.Instance | BindingFlags.Public);
-                _fi_baseAi_currentTarget = t.GetField("m_CurrentTarget",          BindingFlags.Instance | BindingFlags.Public);
-                _fi_baseAi_aiTarget      = t.GetField("m_AiTarget",               BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_disableScan = typeof(BaseAi).GetField("m_DisableScanForTargets",
+                    BindingFlags.Instance | BindingFlags.Public);
             }
 
             foreach (var ai in ais)
@@ -459,16 +532,30 @@ internal static class CheatsTick
                             try { ai.m_OverrideSpeed = 0f; } catch { }
                     }
 
-                    // Stealth:双向同步游戏内建 m_DisableScanForTargets
+                    // Stealth:双向同步 m_DisableScanForTargets
                     if (runStealth && _fi_baseAi_disableScan != null)
                     {
                         try { _fi_baseAi_disableScan.SetValue(ai, CheatState.Stealth); } catch { }
                     }
-                    // 清当前目标,避免已锁上的玩家逃不掉
+
+                    // Stealth 主力:看到动物就强制切 Flee(逃跑),不管当前在什么 mode
+                    // 只跳过 Dead / Flee / Sleep 等本已非敌对 / 不可干涉的 mode
                     if (CheatState.Stealth)
                     {
-                        try { _fi_baseAi_currentTarget?.SetValue(ai, null); } catch { }
-                        try { _fi_baseAi_aiTarget?.SetValue(ai, null); } catch { }
+                        try
+                        {
+                            var mode = ai.GetAiMode();
+                            if (mode != AiMode.Flee
+                                && mode != AiMode.Dead
+                                && mode != AiMode.Sleep
+                                && mode != AiMode.Struggle
+                                && mode != AiMode.Stunned
+                                && mode != AiMode.ScriptedSequence)
+                            {
+                                ai.SetAiMode(AiMode.Flee);
+                            }
+                        }
+                        catch { }
                     }
                 }
                 catch { }
@@ -514,19 +601,7 @@ internal static class CheatsTick
         catch { }
     }
 
-    // ——— 火焰无限时长:保留 scaffold(用户已用 H 键方案,保留不 break)———
-    public static void TickFires()
-    {
-        if (!CheatState.InfiniteFireDurations) return;
-        try
-        {
-            TryLockFieldOnAll("TorchItem",       "m_ElapsedLifetimeTODHours", 0f);
-            TryLockFieldOnAll("FlareItem",       "m_ElapsedLifetimeTODHours", 0f);
-            TryLockFieldOnAll("CampFireItem",    "m_TemperatureLossPerSecond", 0f);
-            TryLockFieldOnAll("KeroseneLampItem","m_CurrentFuelLiters", 1f);
-        }
-        catch { }
-    }
+    // 火焰无限时长已移除 —— 用户说其他 mod(如 InfiniteFiresDLC)覆盖
 
     // ——— 爬绳加速 ———
     // 直接设固定值 5.0(原值 0.3~1.5 左右),幂等:多次 tick 不会叠加。
@@ -599,6 +674,25 @@ internal static class CheatsTick
         catch { }
     }
 
+    // ——— 节约时间:拆解(BreakDown 没有 StartXxx Prefix 路径,改 tick 设 m_SecondsToBreakDown=0)
+    // Harvest / Repair 走 Patch_Harvest_StartHarvest / Patch_Repair_StartRepair 这些 Prefix 搞定
+    private static FieldInfo _fi_breakdownSecs;
+    public static void TickQuickActions()
+    {
+        if (!CheatState.QuickAction) return;
+        try
+        {
+            if (_fi_breakdownSecs == null)
+                _fi_breakdownSecs = typeof(Panel_BreakDown).GetField("m_SecondsToBreakDown",
+                    BindingFlags.Instance | BindingFlags.Public);
+            if (_fi_breakdownSecs == null) return;
+
+            foreach (var p in UnityEngine.Object.FindObjectsOfType<Panel_BreakDown>())
+                try { _fi_breakdownSecs.SetValue(p, 0f); } catch { }
+        }
+        catch { }
+    }
+
     // ——— 衣物不潮湿 ———
     public static void TickClothingWetness()
     {
@@ -621,23 +715,5 @@ internal static class CheatsTick
         catch { }
     }
 
-    private static void TryLockFieldOnAll(string typeName, string fieldName, float value)
-    {
-        try
-        {
-            var asm = typeof(GameManager).Assembly;
-            var t = asm.GetType("Il2Cpp." + typeName) ?? asm.GetType(typeName);
-            if (t == null) return;
-            var f = t.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public);
-            if (f == null) return;
-            var il2t = Il2CppType.From(t);
-            var arr = UnityEngine.Object.FindObjectsOfType(il2t);
-            if (arr == null) return;
-            foreach (var inst in arr)
-            {
-                try { f.SetValue(inst, value); } catch { }
-            }
-        }
-        catch { }
-    }
+    // TryLockFieldOnAll 已移除 —— 仅 TickFires 用,TickFires 本身已删
 }

@@ -84,9 +84,7 @@ internal class TldHacksSettings : JsonModSettings
     [Name("No Wet Clothes(衣物不潮湿)")]
     public bool NoWetClothes = false;
 
-    [Name("Infinite Fire Durations(火焰无限时长)")]
-    [Description("火把/信号棒/营火/灯油/油灯/火把头,所有燃烧值锁满。")]
-    public bool InfiniteFireDurations = false;
+    // InfiniteFireDurations 去除 —— 其他 mod 已覆盖(InfiniteFiresDLC)
 
     // ——— Crafting ———
     [Section("Crafting / 制作")]
@@ -150,4 +148,8 @@ internal class TldHacksSettings : JsonModSettings
 
     [Name("Quick Rope Climb(爬绳速度 ×5)")]
     public bool QuickClimb = false;
+
+    [Name("Quick Action(采集/修理/拆解 时间自动加速)")]
+    [Description("采集尸骸 / 修理工具 / 拆解物品 时游戏内置有加速按钮,这个 toggle 自动帮你按")]
+    public bool QuickAction = false;
 }

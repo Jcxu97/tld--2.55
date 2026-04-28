@@ -91,7 +91,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.8");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.10");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -270,16 +270,17 @@ internal static class Menu
         if (GUI.Button(R(c2, y2, 180f, ROW_H), "全开地图")) Cheats.RevealFullMap();
         y2 += ROW_ADV + SECTION_END_ADV;
 
-        y2 = Section(c2, y2, "物品 / 火焰");
+        y2 = Section(c2, y2, "物品 / 衣物");
         bool dur = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.InfiniteDurability, " 物品不损耗");
         bool wet = GUI.Toggle(R(c2 + 180f, y2, 160f, ROW_H), s.NoWetClothes, " 衣物不潮湿");
         y2 += ROW_ADV;
-        bool fire= GUI.Toggle(R(c2, y2, 320f, ROW_H), s.InfiniteFireDurations, " 火焰无限时长(改按 H 键)");
+        // 火焰无限时长已移除 —— 其他 mod(InfiniteFiresDLC)覆盖 / 游戏内 H 键也可
+        GUI.Label(R(c2, y2, 360f, ROW_H), "火焰无限时长:由其他 mod 覆盖,此处不做");
         y2 += ROW_ADV + SECTION_END_ADV;
-        if (dur != s.InfiniteDurability || wet != s.NoWetClothes || fire != s.InfiniteFireDurations)
+        if (dur != s.InfiniteDurability || wet != s.NoWetClothes)
         {
-            s.InfiniteDurability = dur; s.NoWetClothes = wet; s.InfiniteFireDurations = fire;
-            CheatState.InfiniteDurability = dur; CheatState.NoWetClothes = wet; CheatState.InfiniteFireDurations = fire;
+            s.InfiniteDurability = dur; s.NoWetClothes = wet;
+            CheatState.InfiniteDurability = dur; CheatState.NoWetClothes = wet;
             s.Save();
         }
 
@@ -288,6 +289,8 @@ internal static class Menu
         y2 += ROW_ADV;
         if (GUI.Button(R(c2, y2, 170f, ROW_H), "恢复全部耐久")) Cheats.TickInfiniteDurability();
         if (GUI.Button(R(c2 + 180f, y2, 170f, ROW_H), "修复背包物品")) QuickActions.RepairAllInventory();
+        y2 += ROW_ADV;
+        if (GUI.Button(R(c2, y2, 260f, ROW_H), "修复手持物品")) Cheats.RepairItemInHands();
         y2 += ROW_ADV + SECTION_END_ADV;
 
         y2 = Section(c2, y2, "解锁");
@@ -309,17 +312,20 @@ internal static class Menu
         }
 
         // ========== 第三列 ==========
-        y3 = Section(c3, y3, "制作 / 技能快捷");
+        y3 = Section(c3, y3, "制作 / 节约时间");
         bool fc = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.FreeCraft, " 免费制作");
         bool qk = GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.QuickCraft, " 快速制作");
         y3 += ROW_ADV;
         bool qf = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.QuickFire, " 生火 100%");
         bool qcl= GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.QuickClimb, " 爬绳 ×5");
+        y3 += ROW_ADV;
+        bool qa = GUI.Toggle(R(c3, y3, 340f, ROW_H), s.QuickAction, " 采集/修理/拆解 自动加速");
         y3 += ROW_ADV + SECTION_END_ADV;
-        if (fc != s.FreeCraft || qk != s.QuickCraft || qf != s.QuickFire || qcl != s.QuickClimb)
+        if (fc != s.FreeCraft || qk != s.QuickCraft || qf != s.QuickFire || qcl != s.QuickClimb || qa != s.QuickAction)
         {
-            s.FreeCraft = fc; s.QuickCraft = qk; s.QuickFire = qf; s.QuickClimb = qcl;
+            s.FreeCraft = fc; s.QuickCraft = qk; s.QuickFire = qf; s.QuickClimb = qcl; s.QuickAction = qa;
             CheatState.FreeCraft = fc; CheatState.QuickCraft = qk; CheatState.QuickFire = qf; CheatState.QuickClimb = qcl;
+            CheatState.QuickAction = qa;
             s.Save();
         }
 
@@ -466,50 +472,15 @@ internal static class Menu
         y += ROW_ADV;
 
         // —— 状态 toggle ——
-        y = Section(10f, y, "状态(uConsole)");
-        bool cinv = GUI.Toggle(R(10f, y, 200f, ROW_H), CheatState.CInvulnerable, " 无敌 set_invulnerable");
-        bool cvis = GUI.Toggle(R(220f, y, 200f, ROW_H), CheatState.CInvisible, " 隐身 set_invisible");
-        bool cjam = GUI.Toggle(R(430f, y, 200f, ROW_H), CheatState.CNoJamConsole, " 永不卡壳");
-        bool cspr = GUI.Toggle(R(640f, y, 220f, ROW_H), CheatState.CNoSprain, " 不扭伤");
-        if (cinv != CheatState.CInvulnerable) { CheatState.CInvulnerable = cinv; ConsoleBridge.RunToggle("set_invulnerable", cinv); }
-        if (cvis != CheatState.CInvisible)    { CheatState.CInvisible    = cvis; ConsoleBridge.RunToggle("set_invisible", cvis); }
-        if (cjam != CheatState.CNoJamConsole) { CheatState.CNoJamConsole = cjam; ConsoleBridge.RunToggle("force_no_jam", cjam); }
-        if (cspr != CheatState.CNoSprain)     { CheatState.CNoSprain     = cspr; ConsoleBridge.RunToggle("force_no_random_sprain", cspr); }
-        y += ROW_ADV + SECTION_END_ADV;
-
-        // —— 飞行 ——
-        y = Section(10f, y, "移动 / 飞行");
-        bool fly = GUI.Toggle(R(10f, y, 200f, ROW_H), CheatState.CFly, " 飞行 fly");
-        if (fly != CheatState.CFly) { CheatState.CFly = fly; ConsoleBridge.Run("fly"); }
-        GUI.Label(R(220f, y, 600f, ROW_H), "(fly 命令是 toggle,每次调用翻转)");
-        y += ROW_ADV + SECTION_END_ADV;
-
-        // —— 天气锁定 ——
-        y = Section(10f, y, "天气锁定 lock_weather");
-        float bx = 10f;
-        int[] stages = { 0, 2, 5, 8, 9, 10 };
-        string[] labels = { "晴 0", "多云 2", "雪 5", "暴雪 8", "雾 9", "极光 10" };
-        for (int i = 0; i < stages.Length; i++)
-        {
-            if (GUI.Button(R(bx, y, 100f, ROW_H), $"锁 {labels[i]}")) ConsoleBridge.Run($"lock_weather {stages[i]}");
-            bx += 105f;
-        }
-        y += ROW_ADV;
-        bx = 10f;
-        for (int i = 0; i < stages.Length; i++)
-        {
-            if (GUI.Button(R(bx, y, 100f, ROW_H), $"设 {labels[i]}")) ConsoleBridge.Run($"set_weather {stages[i]}");
-            bx += 105f;
-        }
-        y += ROW_ADV;
-        if (GUI.Button(R(10f, y, 160f, ROW_H), "强制极光")) ConsoleBridge.Run("force_aurora true");
-        if (GUI.Button(R(180f, y, 160f, ROW_H), "关闭极光")) ConsoleBridge.Run("force_aurora false");
-        y += ROW_ADV + SECTION_END_ADV;
+        // (uConsole 状态 toggle + 飞行 全部删除 —— set_invulnerable / set_invisible /
+        //  force_no_jam / force_no_random_sprain / fly 在 release build 里都 no-op。
+        //  对应功能用 Tab 1 的 GodMode / Stealth / NoJam / NoSprainRisk 替代。)
+        // (天气锁定 UI 也去掉,用 Tab 1 第一列"天气 / 时间"即可)
 
         // —— 温度锁定 ——
         y = Section(10f, y, "温度锁定 lock_temperature");
         int[] temps = { 20, 10, 0, -10, -30 };
-        bx = 10f;
+        float bx = 10f;
         for (int i = 0; i < temps.Length; i++)
         {
             if (GUI.Button(R(bx, y, 95f, ROW_H), $"锁 {temps[i]}°C")) ConsoleBridge.Run($"lock_temperature {temps[i]}");

@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.8", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.10", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -19,6 +19,7 @@ public class ModMain : MelonMod
     private int _posTick = 0;
     private int _extraTick = 0;
     private int _camTick = 0;
+    private int _animalsTick = 0;
 
     public override void OnInitializeMelon()
     {
@@ -30,7 +31,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.8 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.10 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -51,7 +52,6 @@ public class ModMain : MelonMod
         CheatState.IgnoreLock = Settings.IgnoreLock;
         CheatState.QuickOpenContainer = Settings.QuickOpenContainer;
         CheatState.NoWetClothes = Settings.NoWetClothes;
-        CheatState.InfiniteFireDurations = Settings.InfiniteFireDurations;
         CheatState.FreeCraft = Settings.FreeCraft;
         CheatState.QuickCraft = Settings.QuickCraft;
         CheatState.InfiniteAmmo = Settings.InfiniteAmmo;
@@ -70,6 +70,7 @@ public class ModMain : MelonMod
         CheatState.NoSuffocating = Settings.NoSuffocating;
         CheatState.QuickFire = Settings.QuickFire;
         CheatState.QuickClimb = Settings.QuickClimb;
+        CheatState.QuickAction = Settings.QuickAction;
     }
 
     public override void OnUpdate()
@@ -104,26 +105,28 @@ public class ModMain : MelonMod
                 Cheats.TickInfiniteDurability();
             }
 
-            // 秒杀动物:~2 秒
-            if (CheatState.InstantKillAnimals && ++_killTick >= 120)
-            {
-                _killTick = 0;
-                Cheats.ScanAndKillAnimals();
-            }
+            // 一击必杀改成命中伤害放大(Patch_BaseAi_ApplyDamage),不再扫场景自动 kill
+            // (Cheats.ScanAndKillAnimals 保留给一次性手动按钮 / uConsole kill_all_animals)
 
             // Guns / Animals / Fires ~1.5 秒。三个 tick 里部分功能要"持续保持",
             // 降太多会手感差(如开枪时弹药回填延迟)。~90 帧是折中。
             // 而且只有相应 toggle 开了才进入扫描(每个 tick 内部有 early return)
+            // Stealth / FreezeAnimals:60 帧(~1s)—— 比 30 帧省 FPS,仍比 90 帧响应快
+            if (++_animalsTick >= 60)
+            {
+                _animalsTick = 0;
+                CheatsTick.TickAnimals();
+            }
+
             if (++_extraTick >= 90)
             {
                 _extraTick = 0;
                 CheatsTick.TickGuns();
-                CheatsTick.TickAnimals();
-                CheatsTick.TickFires();
                 CheatsTick.TickClothingWetness();
                 CheatsTick.TickClimbRope();
                 CheatsTick.TickStatus();
                 CheatsTick.TickLocks();
+                CheatsTick.TickQuickActions();
                 // 窗口状态类 one-shot apply:每次循环都调,内部 toggle 关时 DisableWindEffect 会被原游戏自己覆盖 —— 可以接受
                 ExtraOneShot.TickStopWind();
                 ExtraOneShot.TickSprainRisk();
