@@ -265,48 +265,39 @@ internal static class Patch_RefreshDataItem
     }
 }
 
-// t1 bug v2.7.30 修 —— 容器页 hover/click 一个堆叠 item 会让 label 变 "1",要等转移才恢复
-// 根因:OnHover / ToggleSelection / UpdateConditionDisplay 等路径不经 RefreshDataItem
-//   游戏把 m_StackLabel 重置 → 用户看 "1" 直到 OnLateUpdate 4 帧后 reapply
-// 修法:patch OnHover + ToggleSelection Postfix,从 SeenItems 缓存里的 dataItem reapply
-[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.OnHover))]
-internal static class Patch_InventoryGridItem_OnHover
+// t1 bug v2.7.34 —— 容器 hover 堆叠变 1 仍未修好
+// v2.7.30 加了 InventoryGridItem.OnHover/ToggleSelection Postfix 不 work
+//   说明 hover 时游戏的 label 重置路径不经这俩方法
+// 核心路径实际是 Panel_Container.HoverItem(gridItem, displayName, isOver, isContainerItem)
+//   它可能调用 InventoryGridItem.Refresh 重置 cell —— patch 这个 Postfix
+[HarmonyPatch(typeof(Panel_Container), nameof(Panel_Container.HoverItem))]
+internal static class Patch_Panel_Container_HoverItem
 {
-    private static void Postfix(InventoryGridItem __instance)
+    private static void Postfix(InventoryGridItem gridItem)
     {
         try
         {
-            if (__instance == null) return;
-            if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
-                LabelFix.Reapply(__instance, seen.di);
+            if (gridItem == null) return;
+            if (StackState.SeenItems.TryGetValue(gridItem.Pointer, out var seen))
+                LabelFix.Reapply(gridItem, seen.di);
         }
         catch { }
     }
 }
 
-[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.ToggleSelection))]
-internal static class Patch_InventoryGridItem_ToggleSelection
-{
-    private static void Postfix(InventoryGridItem __instance)
-    {
-        try
-        {
-            if (__instance == null) return;
-            if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
-                LabelFix.Reapply(__instance, seen.di);
-        }
-        catch { }
-    }
-}
+// Panel_Inventory 没有 HoverItem 方法,只 patch Panel_Container + InventoryGridItem.Update
 
-[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.UpdateConditionDisplay))]
-internal static class Patch_InventoryGridItem_UpdateCondition
+// InventoryGridItem.Update Postfix —— 保险兜底:每帧如果 cell 正在 hover 就 reapply
+// 虽然 v2.7.25 教训是避免每帧 Update Postfix,但 InventoryGridItem 只在 panel 打开时 active
+// 几十个 cell 每帧 label 比较,开销可接受(panel 关时 cell 被 disable,Unity 不调 Update)
+[HarmonyPatch(typeof(InventoryGridItem), "Update")]
+internal static class Patch_InventoryGridItem_Update
 {
     private static void Postfix(InventoryGridItem __instance)
     {
         try
         {
-            if (__instance == null) return;
+            if (__instance == null || !__instance.m_IsInHoverState) return;  // 只对 hover 中的 cell 跑
             if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
                 LabelFix.Reapply(__instance, seen.di);
         }

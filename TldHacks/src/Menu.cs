@@ -94,7 +94,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.33");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.34");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -290,7 +290,9 @@ internal static class Menu
 
         y2 = Section(c2, y2, "解锁");
         if (GUI.Button(R(c2, y2, 170f, ROW_H), "解锁全部壮举")) Feats.UnlockAllFeats();
-        if (GUI.Button(R(c2 + 180f, y2, 170f, ROW_H), "解锁全部蓝图")) QuickActions.UnlockAllBlueprints();
+        // v2.7.34 UI 标记:蓝图解锁实测失效 —— FindObjectsOfType 找不到 Blueprint (ScriptableObject not MonoBehaviour)
+        //   临时解法:开 "免费制作" toggle 等效 —— 所有蓝图都能 craft,无需解锁
+        if (GUI.Button(R(c2 + 180f, y2, 170f, ROW_H), "解锁蓝图⚠(失效/用免费制作)")) QuickActions.UnlockAllBlueprints();
         y2 += ROW_ADV + SECTION_END_ADV;
 
         y2 = Section(c2, y2, "免疫");
@@ -529,9 +531,9 @@ internal static class Menu
 
         // —— 生成动物 ——
         y = Section(10f, y, "生成动物 spawn_*");
-        // v2.7.32 去掉 rabbit_ 和 ptarmigan_ 末尾下划线 —— 那是内部常量名不是真正的命令
+        // v2.7.34 UI 标记:母鹿实测失效(可能是 2.55 内部行为变了),加 ⚠ 提示
         string[] spawnCmds = { "spawn_wolf", "spawn_bear", "spawn_cougar", "spawn_moose", "spawn_doe", "spawn_stag", "spawn_rabbit", "spawn_ptarmigan" };
-        string[] spawnLbls = { "狼", "熊", "美洲狮", "驼鹿", "母鹿", "雄鹿", "兔", "松鸡" };
+        string[] spawnLbls = { "狼", "熊", "美洲狮", "驼鹿", "母鹿⚠", "雄鹿", "兔", "松鸡" };
         bx = 10f;
         for (int i = 0; i < spawnCmds.Length; i++)
         {
