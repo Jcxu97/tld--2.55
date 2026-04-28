@@ -59,7 +59,13 @@ internal static class CheatState
     public static bool QuickAction;        // 采集 / 修理 / 拆解 自动时间加速
     // Display
     public static string PositionText = "";
-    public static string LastActionLog = "";  // Menu 里显示最后一次按钮操作的结果
+    // v2.7.29:LastActionLog 截断到 200 字符避免 UI 溢出
+    private static string _lastActionLog = "";
+    public static string LastActionLog
+    {
+        get => _lastActionLog;
+        set => _lastActionLog = (value != null && value.Length > 200) ? value.Substring(0, 200) : (value ?? "");
+    }
 
     // Console-command-based toggles(内存态,不持久化 —— 每次启动游戏要重新开)
     public static bool CInvulnerable;
@@ -355,35 +361,7 @@ internal static class Cheats
         }
     }
 
-    internal static void RestoreClothingDurability(object clothing)
-    {
-        if (clothing == null) return;
-        try
-        {
-            var type = clothing.GetType();
-            // 先找 max 作为目标值,fallback 100
-            float target = 100f;
-            foreach (var maxName in new[] { "m_MaxHP", "m_MaxCondition", "m_MaxDurability", "MaxHP", "MaxCondition", "MaxDurability" })
-            {
-                try
-                {
-                    var f = type.GetField(maxName, BindingFlags.Instance | BindingFlags.Public);
-                    if (f != null) { var v = f.GetValue(clothing); if (v != null) { target = Convert.ToSingle(v); break; } }
-                }
-                catch { }
-            }
-            foreach (var curName in new[] { "m_CurrentHP", "m_CurrentCondition", "m_CurrentDurability", "CurrentHP", "CurrentCondition", "CurrentDurability" })
-            {
-                try
-                {
-                    var f = type.GetField(curName, BindingFlags.Instance | BindingFlags.Public);
-                    if (f != null) { f.SetValue(clothing, target); break; }
-                }
-                catch { }
-            }
-        }
-        catch { }
-    }
+    // v2.7.29 删:RestoreClothingDurability 无调用点且反射 GetField 对 Il2Cpp property 无效
 
     // 扫场景所有 BaseAi 实例直接调 DebugKill / ApplyDamage —— 比 SendMessage 可靠
     public static void ScanAndKillAnimals()
@@ -398,7 +376,8 @@ internal static class Cheats
                 if (ai == null) continue;
                 try
                 {
-                    var go = ((Component)ai).gameObject;
+                    // v2.7.29:BaseAi 是 Il2Cpp MonoBehaviour,直接 .gameObject 访问即可(避免 (Component) 转型在 Il2CppInterop 下抛 InvalidCastException)
+                    var go = ai.gameObject;
                     if (go == null || !go.activeInHierarchy) continue;
                     // 优先 DebugKill(一步到位),失败了 fallback 到 ApplyDamage 9999
                     bool killed = false;
@@ -456,48 +435,20 @@ internal static class Cheats
     }
 
     // 玩家位置,每 10 帧更新。PositionText 给 Menu 显示用
+    // v2.7.29:去反射,直接调强类型 GameManager.GetPlayerTransform()
+    //   之前反射 pm.GetType().GetMethod("GetControlledGameObject") 对 Il2Cpp wrapper 抛 NotSupportedException
     public static void UpdatePlayerPosition()
     {
         try
         {
-            var pm = GameManager.GetPlayerManagerComponent();
-            if (pm == null) return;
-
-            Transform tr = null;
-            // try 1: pm.GetControlledGameObject() 方法
-            try
-            {
-                var mi = pm.GetType().GetMethod("GetControlledGameObject", BindingFlags.Instance | BindingFlags.Public);
-                if (mi != null)
-                {
-                    var go = mi.Invoke(pm, null) as GameObject;
-                    if (go != null) tr = go.transform;
-                }
-            }
-            catch { }
-            // try 2: pm.m_Player 字段 .transform
-            if (tr == null)
-            {
-                try
-                {
-                    var fi = pm.GetType().GetField("m_Player", BindingFlags.Instance | BindingFlags.Public);
-                    var v = fi?.GetValue(pm);
-                    if (v != null)
-                    {
-                        var pp = v.GetType().GetProperty("transform");
-                        tr = pp?.GetValue(v) as Transform;
-                    }
-                }
-                catch { }
-            }
-
+            var tr = GameManager.GetPlayerTransform();
             if (tr != null)
             {
                 var p = tr.position;
                 CheatState.PositionText = $"X:{p.x:F1}  Y:{p.y:F1}  Z:{p.z:F1}";
             }
         }
-        catch { }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[UpdatePos] {ex.Message}"); }
     }
 }
 

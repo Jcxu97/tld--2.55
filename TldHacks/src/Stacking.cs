@@ -31,9 +31,12 @@ internal static class Stacking
             foreach (var kv in StackState.SeenItems)
             {
                 var (item, cachedDi, cachedGiPtr) = kv.Value;
-                if (item == null) { (stale ??= new()).Add(kv.Key); continue; }
+                // v2.7.29:加 Pointer == Zero 检查,避免 Dispose 后的对象在 m_GearItem 访问 AccessViolation
+                if (item == null || item.Pointer == System.IntPtr.Zero)
+                { (stale ??= new()).Add(kv.Key); continue; }
 
-                var curGi = item.m_GearItem;
+                Il2Cpp.GearItem curGi = null;
+                try { curGi = item.m_GearItem; } catch { (stale ??= new()).Add(kv.Key); continue; }
                 if (curGi == null || curGi.Pointer != cachedGiPtr) continue;
 
                 LabelFix.Reapply(item, cachedDi);

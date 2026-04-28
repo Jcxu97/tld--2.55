@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.28", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.29", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -32,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.28 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.29 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -102,6 +102,10 @@ public class ModMain : MelonMod
             // 快速采集延迟完成
             QuickHarvestRunner.Tick();
 
+            // v2.7.29:每 5s 同步 ModSettings → CheatState,让 ModSettings UI 改动能生效
+            // (之前只 OnInitializeMelon 调一次,玩家改 ModSettings 要重启才应用)
+            if (_frame > 0 && (_frame % 300) == 150) SyncStateFromSettings();
+
             // (InfiniteCarry 已去除,由其他 mod 覆盖)
 
             // v2.7.21 FPS 修:所有 tick 按 frame modulo 摊到不同帧
@@ -165,5 +169,7 @@ public class ModMain : MelonMod
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
         Teleport.OnSceneLoaded(sceneName);
+        // v2.7.29 关键修:跨场景时清 BaseAi HashSet,避免 stale wrapper 残留 → AccessViolation
+        try { BaseAiRegistry.Known.Clear(); } catch { }
     }
 }

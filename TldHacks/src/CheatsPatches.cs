@@ -65,28 +65,50 @@ internal static class Patch_Gun_CanStartAiming
     }
 }
 
-// ——— Condition.AddHealth 总 Prefix:无坠落 + 免疫动物 + 不会窒息 + 真隐身=绝对无敌 ———
-[HarmonyPatch(typeof(Condition), "AddHealth", new System.Type[] { typeof(float), typeof(DamageSource) })]
-internal static class Patch_Condition_AddHealth_Filter
+// ——— Condition 伤害过滤总闸 ———
+// v2.7.29:AddHealth 有 3 个重载(2 参 / 3 参 / AddHealthWithNoHudNotification)
+//   之前只 patch 2 参,狼咬 BloodLoss 持续掉血走的是 3 参版 → 绕过 filter
+//   "真隐身彻底无效" / "免动物伤害失效" 根因
+//   现在 3 个重载全 patch,共用 HurtFilter 逻辑
+internal static class DamageFilter
 {
-    private static bool Prefix(float hp, DamageSource cause)
+    // 返回 false = 跳过原伤害;true = 放行(治疗或未配 toggle 的伤害)
+    public static bool ShouldBlock(float hp, DamageSource cause)
     {
-        if (hp >= 0f) return true; // 只拦负值(伤害),治疗放行
+        if (hp > 0f) return false;  // 治疗放行 (v2.7.29 从 >= 改 > 更严格)
 
-        // v2.7.22 —— TrueInvisible 再次重写:任何源的负 HP 全挡
-        //   v2.7.21 只拦 Wolf/Bear/Cougar 但狼咬触发 Mauled→BloodLoss 持续掉血绕过 filter
-        //   → "隐身彻底无效"。现在开 TrueInvisible = 血永不降
-        if (CheatState.TrueInvisible) return false;
+        if (CheatState.TrueInvisible) return true;  // 真隐身 = 绝对无敌
 
-        if (CheatState.NoFallDamage && cause == DamageSource.Falling) return false;
-        if (CheatState.NoSuffocating && cause == DamageSource.Suffocating) return false;
+        if (CheatState.NoFallDamage && cause == DamageSource.Falling) return true;
+        if (CheatState.NoSuffocating && cause == DamageSource.Suffocating) return true;
         if (CheatState.ImmuneAnimalDamage)
         {
             if (cause == DamageSource.Wolf || cause == DamageSource.Bear || cause == DamageSource.Cougar)
-                return false;
+                return true;
         }
-        return true;
+        return false;
     }
+}
+
+[HarmonyPatch(typeof(Condition), "AddHealth", new System.Type[] { typeof(float), typeof(DamageSource) })]
+internal static class Patch_Condition_AddHealth_2
+{
+    private static bool Prefix(float hp, DamageSource cause)
+        => !DamageFilter.ShouldBlock(hp, cause);
+}
+
+[HarmonyPatch(typeof(Condition), "AddHealth", new System.Type[] { typeof(float), typeof(DamageSource), typeof(bool) })]
+internal static class Patch_Condition_AddHealth_3
+{
+    private static bool Prefix(float hp, DamageSource cause)
+        => !DamageFilter.ShouldBlock(hp, cause);
+}
+
+[HarmonyPatch(typeof(Condition), "AddHealthWithNoHudNotification", new System.Type[] { typeof(float), typeof(DamageSource) })]
+internal static class Patch_Condition_AddHealthNoHud
+{
+    private static bool Prefix(float hp, DamageSource damageSource)
+        => !DamageFilter.ShouldBlock(hp, damageSource);
 }
 
 // ——— 快速采集 v2.7.19:彻底换方案 —— 延迟调 HarvestSuccessful/QuarterSuccessful 跳过整个时间流逝 + fade
@@ -99,6 +121,7 @@ internal static class Patch_Harvest_Start
     private static void Postfix(Panel_BodyHarvest __instance)
     {
         if (!CheatState.QuickAction) return;
+        FadeSuppressionWindow.Arm();  // v2.7.29:采集过程内吃 fade
         QuickHarvestRunner.Queue(__instance, QuickHarvestRunner.Action.Harvest);
     }
 }
@@ -109,6 +132,7 @@ internal static class Patch_Harvest_StartQuarter
     private static void Postfix(Panel_BodyHarvest __instance)
     {
         if (!CheatState.QuickAction) return;
+        FadeSuppressionWindow.Arm();
         QuickHarvestRunner.Queue(__instance, QuickHarvestRunner.Action.Quarter);
     }
 }
@@ -124,6 +148,8 @@ internal static class QuickHarvestRunner
 
     public static void Queue(Panel_BodyHarvest inst, Action a)
     {
+        // v2.7.29:防连采覆盖。正在等第一次完成时,第二次 Queue 会覆盖 Instance 导致第一次丢失
+        if (PendingAction != Action.None) return;
         Instance = inst; PendingAction = a; Countdown = 2;
     }
 
@@ -131,6 +157,13 @@ internal static class QuickHarvestRunner
     {
         if (PendingAction == Action.None) return;
         if (Instance == null) { Reset(); return; }
+        // v2.7.29:panel 已关或 disabled 时不调完成方法,避免 panel 生命周期错乱
+        try
+        {
+            if (!Instance.isActiveAndEnabled) { Reset(); return; }
+        }
+        catch { Reset(); return; }
+
         Countdown--;
         if (Countdown > 0) return;
         try
@@ -146,15 +179,15 @@ internal static class QuickHarvestRunner
     private static void Reset() { PendingAction = Action.None; Instance = null; Countdown = 0; }
 }
 
-// ——— 快速修理(工具 + 衣物通用)v2.7.21:双重保险
-//   StartRepair Postfix 一次性把进度跳满 —— 对衣物这种可能不走 Update 循环的路径生效
-//   Update Postfix 持续维持 —— 对工具有 progress bar 的情况每帧推进
+// ——— 快速修理 v2.7.29:只保留 StartRepair Postfix 一次 set,删 Update Postfix ———
+// 每帧 Update Postfix 是 FPS 杀手(v2.7.25 漏删),StartRepair 一次性把进度拉满 + 设 TimeAccel 就够
 [HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
 internal static class Patch_Repair_StartRepair
 {
     private static void Postfix(Panel_Repair __instance)
     {
         if (!CheatState.QuickAction) return;
+        FadeSuppressionWindow.Arm();
         try
         {
             __instance.m_ElapsedProgressBarSeconds = 999f;
@@ -163,43 +196,24 @@ internal static class Patch_Repair_StartRepair
             __instance.m_RepairWillSucceed = true;
             __instance.m_TimeAccelerated = true;
         }
-        catch { }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickRepair] {ex.Message}"); }
     }
 }
 
-[HarmonyPatch(typeof(Panel_Repair), "Update")]
-internal static class Patch_Repair_Update
-{
-    private static void Postfix(Panel_Repair __instance)
-    {
-        if (!CheatState.QuickAction) return;
-        try
-        {
-            if (!__instance.m_RepairInProgress) return;
-            if (__instance.m_RepairSucceeded || __instance.m_RepairFailed) return;
-            __instance.m_ElapsedProgressBarSeconds = __instance.m_ProgressBarTimeSeconds + 1f;
-            __instance.m_RepairTimeSeconds = 0.01f;
-            __instance.m_RepairWillSucceed = true;
-            __instance.m_TimeAccelerated = true;
-        }
-        catch { }
-    }
-}
-
-// ——— 快速拆解 v2.7.18:同 Repair 思路 ———
-[HarmonyPatch(typeof(Panel_BreakDown), "Update")]
-internal static class Patch_BreakDown_Update
+// ——— 快速拆解 v2.7.29:改 OnBreakDown Postfix 一次 set,删 Update Postfix ———
+[HarmonyPatch(typeof(Panel_BreakDown), "OnBreakDown")]
+internal static class Patch_BreakDown_OnBreakDown
 {
     private static void Postfix(Panel_BreakDown __instance)
     {
         if (!CheatState.QuickAction) return;
+        FadeSuppressionWindow.Arm();
         try
         {
-            if (!__instance.m_IsBreakingDown) return;
             __instance.m_TimeSpentBreakingDown = __instance.m_SecondsToBreakDown + 1f;
             __instance.m_TimeIsAccelerated = true;
         }
-        catch { }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickBreakDown] {ex.Message}"); }
     }
 }
 
@@ -207,15 +221,33 @@ internal static class Patch_BreakDown_Update
 //   前者递归风险,后者每帧强推字段让游戏状态机错乱 → 2.7.18 卡死根因
 //   新方案靠 QuickHarvestRunner 延迟完成 = 直接跳过整个 fade + time 流程,根本不让黑屏出现
 
-// v2.7.24 加回 CameraFade 4 个 Prefix —— 用户反馈采集/制作仍有黑屏
-//   只设 time=0 delay=0 让 fade 瞬完,不调 FinishFade/UpdateCameraFade(那是 v2.7.18 卡死根因)
-//   Action 仍会触发,游戏逻辑不断,只是视觉上不黑
+// v2.7.29 —— CameraFade 吃 fade 加时间窗口,避免死亡/切场景的正常黑屏被误吃
+//   Panel_BodyHarvest / Panel_Crafting / Panel_Repair / Panel_BreakDown 的 Start/Postfix 里
+//   调 FadeSuppressionWindow.Arm(1.5f) 打开 1.5s 吃 fade 窗口
+//   1.5s 外的 fade 正常显示(死亡/切场景/烟雾效果不受影响)
+internal static class FadeSuppressionWindow
+{
+    private static float _expiresAt = 0f;
+    public static void Arm(float seconds = 1.5f)
+    {
+        try { _expiresAt = UnityEngine.Time.realtimeSinceStartup + seconds; } catch { }
+    }
+    public static bool IsActive
+    {
+        get
+        {
+            try { return UnityEngine.Time.realtimeSinceStartup < _expiresAt; }
+            catch { return false; }
+        }
+    }
+}
+
 [HarmonyPatch(typeof(CameraFade), "FadeOut", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
 internal static class Patch_CameraFade_FadeOut
 {
     private static void Prefix(ref float time, ref float delay)
     {
-        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+        if (FadeSuppressionWindow.IsActive) { time = 0f; delay = 0f; }
     }
 }
 
@@ -224,7 +256,7 @@ internal static class Patch_CameraFade_FadeIn
 {
     private static void Prefix(ref float time, ref float delay)
     {
-        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+        if (FadeSuppressionWindow.IsActive) { time = 0f; delay = 0f; }
     }
 }
 
@@ -233,7 +265,7 @@ internal static class Patch_CameraFade_FadeTo
 {
     private static void Prefix(ref float time, ref float delay)
     {
-        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+        if (FadeSuppressionWindow.IsActive) { time = 0f; delay = 0f; }
     }
 }
 
@@ -242,7 +274,7 @@ internal static class Patch_CameraFade_Fade
 {
     private static void Prefix(ref float time, ref float delay)
     {
-        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+        if (FadeSuppressionWindow.IsActive) { time = 0f; delay = 0f; }
     }
 }
 
@@ -287,12 +319,13 @@ internal static class Patch_Craft_CanCraft
     }
 }
 
-// ——— 快速制作 v2.7.27:三段式,batch 完整 + 不跳时间 + 无黑屏 ———
-//   1. GetFinalCraftingTimeWithAllModifiers / GetAdjustedCraftingTime Postfix = 1(秒)
-//      让游戏认为每个制作 1 秒真实时间 → Update 每帧推进 deltaTime/1 = 瞬满
-//      (为什么不设 0:0 会除零 crash)
-//   2. CraftingStart Postfix 循环调 OnCraftingSuccess —— batch 里所有 item 一次性完成
-//   3. 因为 craft time=1 秒,游戏调 Accelerate(realSec=1, gameHours=tiny)时钟推进极少 → 看不出跳时间
+// ——— 快速制作 v2.7.29:简化为 time=1 策略,完全移除循环递归护栏 ———
+// v2.7.27 的 static _busy 护栏有 bug:OnCraftingSuccess 递归触发 CraftingStart 时内层 return
+// 跳过 batch 第 2+ 个 item。改成纯粹 "每个 craft time 归 1 秒" 让游戏自己跑 batch:
+//   GetFinalCraftingTimeWithAllModifiers / GetAdjustedCraftingTime Postfix = 1
+//   → 游戏 Update 读 craftTime=1 → 第 1 个 1 秒完成 → 自动跑第 2 个 1 秒 → ...
+//   batch 10 个 = 10 秒,无黑屏,游戏时钟跳动极少
+// 不再 patch CraftingStart Postfix —— 让游戏流程自洽推进
 [HarmonyPatch(typeof(Panel_Crafting), "GetFinalCraftingTimeWithAllModifiers")]
 internal static class Patch_Craft_GetFinalTime
 {
@@ -311,30 +344,23 @@ internal static class Patch_Craft_GetAdjustedTime
     }
 }
 
+// v2.7.29:CraftingStart + OnCraftingSuccess 都 Arm fade 窗口
+// batch 制作 10 个 × 1s = 10s,单次 Arm(1.5s)窗口不够,每个 item 完成都重 Arm
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_Start_Instant
+internal static class Patch_Craft_ArmFade
 {
-    // 防递归:OnCraftingSuccess 内部可能重调 CraftingStart 启动 batch 下一个 item
-    private static bool _busy = false;
-
-    private static void Postfix(Panel_Crafting __instance)
+    private static void Postfix()
     {
-        if (!CheatState.QuickCraft) return;
-        if (_busy) return;
-        _busy = true;
-        try
-        {
-            // 循环调完成,batch 有几个做几个;已完成/材料耗尽时内部 throw → break
-            int done = 0;
-            for (int i = 0; i < 100; i++)
-            {
-                try { __instance.OnCraftingSuccess(); done++; }
-                catch { break; }
-            }
-            ModMain.Log?.Msg($"[QuickCraft] {done} completed");
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
-        finally { _busy = false; }
+        if (CheatState.QuickCraft) FadeSuppressionWindow.Arm(3f);  // batch 入口多留一点
+    }
+}
+
+[HarmonyPatch(typeof(Panel_Crafting), "OnCraftingSuccess")]
+internal static class Patch_Craft_OnSuccess_ArmFade
+{
+    private static void Postfix()
+    {
+        if (CheatState.QuickCraft) FadeSuppressionWindow.Arm(3f);  // batch 里每个 item 完成时重 Arm
     }
 }
 
@@ -357,29 +383,49 @@ internal static class Patch_BaseAi_ScanForSmells
     private static bool Prefix() => !(CheatState.Stealth || CheatState.TrueInvisible);
 }
 
-// v2.7.26 —— BaseAi.Start Postfix:新 AI 出生时一次性设 TrueInvisible 字段
-//   替代 TickAnimalsFull 每 5s 扫 FindObjectsOfType<BaseAi> + 写 10 字段/AI 的高开销
-//   AI 一般稳定,新生出少,这条 patch 几乎零开销 + tick 降到 10s 兜底
+// v2.7.29 —— BaseAi 注册式:Start Postfix 加入 HashSet + OnDisable Prefix 移除
+//   替代 TickAnimalsFull 每 N 秒 FindObjectsOfType<BaseAi> 的高开销(大地图 200+ AI)
+//   Start Postfix 在新 AI 出生时 (1) 注册到 _knownAis (2) 若 TrueInvisible 开则一次性设字段
+internal static class BaseAiRegistry
+{
+    public static readonly System.Collections.Generic.HashSet<BaseAi> Known = new();
+
+    public static void ApplyInvisibleFields(BaseAi ai)
+    {
+        try
+        {
+            ai.m_DisableScanForTargets = true;
+            ai.m_DetectionRange = 0f;
+            ai.m_DetectionFOV = 0f;
+            ai.m_HearFootstepsRange = 0f;
+            ai.m_HearRifleRange = 0f;
+            ai.m_HearCarAlarmRange = 0f;
+            ai.m_SmellRange = 0f;
+            ai.m_DetectionRangeWhileFeeding = 0f;
+            ai.m_HearFootstepsRangeWhileFeeding = 0f;
+            ai.m_HearFootstepsRangeWhileSleeping = 0f;
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[TrueInvisible] field set failed: {ex.Message}"); }
+    }
+}
+
 [HarmonyPatch(typeof(BaseAi), "Start")]
-internal static class Patch_BaseAi_Start_Invis
+internal static class Patch_BaseAi_Start_Register
 {
     private static void Postfix(BaseAi __instance)
     {
-        if (!CheatState.TrueInvisible) return;
-        try
-        {
-            __instance.m_DisableScanForTargets = true;
-            __instance.m_DetectionRange = 0f;
-            __instance.m_DetectionFOV = 0f;
-            __instance.m_HearFootstepsRange = 0f;
-            __instance.m_HearRifleRange = 0f;
-            __instance.m_HearCarAlarmRange = 0f;
-            __instance.m_SmellRange = 0f;
-            __instance.m_DetectionRangeWhileFeeding = 0f;
-            __instance.m_HearFootstepsRangeWhileFeeding = 0f;
-            __instance.m_HearFootstepsRangeWhileSleeping = 0f;
-        }
-        catch { }
+        if (__instance == null) return;
+        BaseAiRegistry.Known.Add(__instance);
+        if (CheatState.TrueInvisible) BaseAiRegistry.ApplyInvisibleFields(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(BaseAi), "OnDisable")]
+internal static class Patch_BaseAi_OnDisable_Unregister
+{
+    private static void Prefix(BaseAi __instance)
+    {
+        if (__instance != null) BaseAiRegistry.Known.Remove(__instance);
     }
 }
 
@@ -437,12 +483,13 @@ internal static class Patch_FireMgr_Success
 }
 
 // ——— 关闭瞄准景深(DOF)—— 拦截 EnableCameraWeaponPostEffects(true),强制传 false ———
+// v2.7.29:参数名改 __0 避免 TLD 更新改参数名后 Harmony silently 失配
 [HarmonyPatch(typeof(CameraEffects), "EnableCameraWeaponPostEffects")]
 internal static class Patch_CamEffects_WeaponPost
 {
-    private static void Prefix(ref bool isEnabled)
+    private static void Prefix(ref bool __0)
     {
-        if (CheatState.NoAimDOF) isEnabled = false;
+        if (CheatState.NoAimDOF) __0 = false;
     }
 }
 
@@ -552,10 +599,22 @@ internal static class CheatsTick
     private static FieldInfo _fi_weapRotLook, _fi_weapRotStrafe, _fi_weapRotFall, _fi_weapRotSlope;
     private static FieldInfo _fi_weapDisSway, _fi_weapDisShake, _fi_weapDisBreath, _fi_weapDisStam;
     private static bool _reflectionInited = false;
+    // v2.7.29:按武器类型缓存 FieldInfo。之前用 Rifle 的 FieldInfo SetValue 到 Bow 实例 → ArgumentException
+    private static System.Type _cachedWeaponType = null;
 
     private static void EnsureReflectionInited(object weapon)
     {
         if (_reflectionInited && weapon == null) return;
+        // v2.7.29:武器类型切换(Rifle ↔ Bow ↔ Revolver),全部 weapon field 要重新绑
+        if (weapon != null && weapon.GetType() != _cachedWeaponType)
+        {
+            _fi_weapDisSway = _fi_weapDisShake = _fi_weapDisBreath = _fi_weapDisStam = null;
+            _fi_weapShake = _fi_weapShakeSpeed = _fi_weapCold = _fi_weapRandom = _fi_weapShakeInst = null;
+            _fi_weapBob = _fi_weapBobRate = null;
+            _fi_weapSwayLim = _fi_weapSwayMax = _fi_weapSwayStart = _fi_weapSwayCrouch = _fi_weapSwayMotion = null;
+            _fi_weapRotLook = _fi_weapRotStrafe = _fi_weapRotFall = _fi_weapRotSlope = null;
+            _cachedWeaponType = weapon.GetType();
+        }
         var camT = typeof(vp_FPSCamera);
         _fi_currentWeapon = _fi_currentWeapon ?? camT.GetField("m_CurrentWeapon", BindingFlags.Instance | BindingFlags.Public);
         _fi_recoilSpring  = _fi_recoilSpring  ?? camT.GetField("m_RecoilSpring",  BindingFlags.Instance | BindingFlags.Public);
@@ -751,8 +810,11 @@ internal static class CheatsTick
 
         try
         {
-            var ais = UnityEngine.Object.FindObjectsOfType<BaseAi>();
-            if (ais == null)
+            // v2.7.29:改用注册表(HashSet)而不是 FindObjectsOfType<BaseAi>
+            //   大地图 200+ AI 的 FindObjects 要 ~20-50ms,HashSet iterate 只几百纳秒
+            //   HashSet 维护:BaseAi.Start Postfix 加入,OnDisable Prefix 移除
+            var ais = BaseAiRegistry.Known;
+            if (ais.Count == 0)
             {
                 _lastTickedStealth = CheatState.Stealth;
                 _lastTickedFreeze  = CheatState.FreezeAnimals;
@@ -760,9 +822,15 @@ internal static class CheatsTick
                 return;
             }
 
+            // v2.7.29 兜底:Il2Cpp wrapper == null 判断不可靠,还要检查 Pointer
+            System.Collections.Generic.List<BaseAi> stale = null;
             foreach (var ai in ais)
             {
-                if (ai == null) continue;
+                if (ai == null || ai.Pointer == System.IntPtr.Zero)
+                {
+                    (stale ??= new()).Add(ai);
+                    continue;
+                }
                 try
                 {
                     if (runFreeze)
@@ -815,6 +883,9 @@ internal static class CheatsTick
                 }
                 catch { }
             }
+
+            // v2.7.29:清 stale AI(场景切换时可能遗留的 disposed wrapper)
+            if (stale != null) foreach (var s in stale) ais.Remove(s);
 
             _lastTickedStealth = CheatState.Stealth;
             _lastTickedFreeze  = CheatState.FreezeAnimals;
