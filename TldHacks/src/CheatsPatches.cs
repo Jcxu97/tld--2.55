@@ -366,6 +366,46 @@ internal static class Patch_TimeOfDay_Update_Freeze
     }
 }
 
+// v2.7.37 —— 拦 craft 时间跳跃的直接路径
+//   Panel_Crafting 可能直接调 SetHoursPlayedNotPaused(+craftTime) 瞬跳时钟
+//   Active 期间拦下这个调用
+[HarmonyPatch(typeof(TimeOfDay), "SetHoursPlayedNotPaused")]
+internal static class Patch_TimeOfDay_SetHoursPlayed_Freeze
+{
+    private static bool Prefix()
+    {
+        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
+    }
+}
+
+[HarmonyPatch(typeof(TimeOfDay), "SetNormalizedTime", new System.Type[] { typeof(float) })]
+internal static class Patch_TimeOfDay_SetNormalizedTime_Freeze
+{
+    private static bool Prefix()
+    {
+        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
+    }
+}
+
+[HarmonyPatch(typeof(TimeOfDay), "SetNormalizedTime", new System.Type[] { typeof(float), typeof(bool) })]
+internal static class Patch_TimeOfDay_SetNormalizedTime2_Freeze
+{
+    private static bool Prefix()
+    {
+        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
+    }
+}
+
+// TimeLapseBegin/End 是 craft/sleep 等用的"时间流逝"状态,也要拦
+[HarmonyPatch(typeof(TimeOfDay), "TimeLapseBegin")]
+internal static class Patch_TimeOfDay_TimeLapseBegin
+{
+    private static bool Prefix()
+    {
+        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
+    }
+}
+
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
 internal static class Patch_Craft_Start_FreezeTime
 {
