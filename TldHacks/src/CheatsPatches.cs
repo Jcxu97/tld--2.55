@@ -65,7 +65,7 @@ internal static class Patch_Gun_CanStartAiming
     }
 }
 
-// ——— Condition.AddHealth 总 Prefix:无坠落伤害 + 免疫动物伤害 + 不会窒息 ———
+// ——— Condition.AddHealth 总 Prefix:无坠落 + 免疫动物 + 不会窒息 + 真隐身=绝对无敌 ———
 [HarmonyPatch(typeof(Condition), "AddHealth", new System.Type[] { typeof(float), typeof(DamageSource) })]
 internal static class Patch_Condition_AddHealth_Filter
 {
@@ -73,10 +73,14 @@ internal static class Patch_Condition_AddHealth_Filter
     {
         if (hp >= 0f) return true; // 只拦负值(伤害),治疗放行
 
+        // v2.7.22 —— TrueInvisible 再次重写:任何源的负 HP 全挡
+        //   v2.7.21 只拦 Wolf/Bear/Cougar 但狼咬触发 Mauled→BloodLoss 持续掉血绕过 filter
+        //   → "隐身彻底无效"。现在开 TrueInvisible = 血永不降
+        if (CheatState.TrueInvisible) return false;
+
         if (CheatState.NoFallDamage && cause == DamageSource.Falling) return false;
         if (CheatState.NoSuffocating && cause == DamageSource.Suffocating) return false;
-        // v2.7.21 —— TrueInvisible 重语义为"动物攻击 0 伤害",与 ImmuneAnimalDamage 同效
-        if (CheatState.ImmuneAnimalDamage || CheatState.TrueInvisible)
+        if (CheatState.ImmuneAnimalDamage)
         {
             if (cause == DamageSource.Wolf || cause == DamageSource.Bear || cause == DamageSource.Cougar)
                 return false;
@@ -203,20 +207,21 @@ internal static class Patch_BreakDown_Update
 //   前者递归风险,后者每帧强推字段让游戏状态机错乱 → 2.7.18 卡死根因
 //   新方案靠 QuickHarvestRunner 延迟完成 = 直接跳过整个 fade + time 流程,根本不让黑屏出现
 
-// ——— 快速操作 v2.7.20 终极方案 ———
+// ——— 快速操作 v2.7.22 终极方案 ———
 // 所有"制作/修理/拆解/采集"都调 TimeOfDay.Accelerate(realTimeSec, gameTimeHours, doFadeToBlack)
-// 拦它一条就同时解决:
-//   1. 黑屏 (doFadeToBlack=false)
-//   2. 等 8 小时真实时间 (realTimeSeconds=0)
-//   3. 游戏内时间仍正常流逝 (gameTimeHours 保留,不破坏制作/采集必要的时间消耗)
+// v2.7.22 —— 用户反馈"时间没被冻结",把 gameTimeHours 也置 0,游戏内时钟不再前进
+//   副作用分析:制作 buff 不受影响(v2.7.17 的 Panel_Crafting.CraftingStart Postfix 直接调 OnCraftingSuccess)
+//   快速采集直接调 HarvestSuccessful,不走时间消耗
+//   唯一残留:如果用户关掉"快速制作/快速采集"toggle,time 参数原样传回 → 正常行为
 [HarmonyPatch(typeof(TimeOfDay), "Accelerate",
     new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
 internal static class Patch_TimeOfDay_Accelerate
 {
-    private static void Prefix(ref float realTimeSeconds, ref bool doFadeToBlack)
+    private static void Prefix(ref float realTimeSeconds, ref float gameTimeHours, ref bool doFadeToBlack)
     {
         if (!CheatState.QuickCraft && !CheatState.QuickAction) return;
         realTimeSeconds = 0.01f;
+        gameTimeHours = 0f;
         doFadeToBlack = false;
     }
 }
@@ -225,10 +230,11 @@ internal static class Patch_TimeOfDay_Accelerate
     new System.Type[] { typeof(float), typeof(float) })]
 internal static class Patch_TimeOfDay_AccelerateTime
 {
-    private static void Prefix(ref float realtimeDurationSeconds)
+    private static void Prefix(ref float realtimeDurationSeconds, ref float gameTimeHours)
     {
         if (!CheatState.QuickCraft && !CheatState.QuickAction) return;
         realtimeDurationSeconds = 0.01f;
+        gameTimeHours = 0f;
     }
 }
 
@@ -645,14 +651,8 @@ internal static class CheatsTick
     private static bool _lastTickedFreeze = false;
     private static bool _lastTickedInvis = false;
 
-    // v2.7.21 TrueInvisible 语义重写:
-    //   用户反馈"隐身应该是动物不能攻击到你,而不是动物不能发现你"(原因:兔鹿会跑,狼熊跟着不放)
-    //   新语义:TrueInvisible = 动物可见可攻击,但造成的伤害 = 0(由 Patch_Condition_AddHealth_Filter 处理)
-    //   感知/target 相关 patch 全部取消,动物行为回归正常
-    public static void TickAnimalsCheap()
-    {
-        // 保留空实现;原 m_AiTarget.m_IsEnabled 逻辑已撤销(那会让兔鹿也感知不到玩家 = 异常)
-    }
+    // v2.7.22:TrueInvisible 靠 Condition.AddHealth Prefix 一条挡所有负 HP,不需要 tick
+    public static void TickAnimalsCheap() { }
 
     public static void TickAnimalsFull() => TickAnimals();
 
