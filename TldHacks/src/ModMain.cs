@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.14", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.15", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -31,7 +31,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.14 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.15 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }

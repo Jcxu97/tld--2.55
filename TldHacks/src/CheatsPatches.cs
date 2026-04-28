@@ -84,8 +84,41 @@ internal static class Patch_Condition_AddHealth_Filter
     }
 }
 
-// ——— 节约时间 v2.7.14:回到 v2.7.11 可行方案 —— AccelerateTimeOfDay=0 保 yield,
-// 额外拦 CameraFade.FadeOut 把黑屏秒过(time=0 = 无黑屏)
+// ——— 节约时间 v2.7.15 —— 发现真正的动画计时字段 m_HarvestTimeSeconds / m_HarvestTimeMinutes
+// StartHarvest/StartQuarter Postfix 后立刻把这俩设 0.01 —— 动画几乎零时间,yield 由 BodyHarvest 决定
+// 不破坏 yield 逻辑
+[HarmonyPatch(typeof(Panel_BodyHarvest), "StartHarvest", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Harvest_Start
+{
+    private static void Postfix(Panel_BodyHarvest __instance)
+    {
+        if (!CheatState.QuickAction) return;
+        try
+        {
+            __instance.m_HarvestTimeSeconds = 0.01f;
+            __instance.m_HarvestTimeMinutes = 0f;
+            __instance.m_TimeAccelerated = true;
+        }
+        catch { }
+    }
+}
+
+[HarmonyPatch(typeof(Panel_BodyHarvest), "StartQuarter", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Harvest_StartQuarter
+{
+    private static void Postfix(Panel_BodyHarvest __instance)
+    {
+        if (!CheatState.QuickAction) return;
+        try
+        {
+            __instance.m_HarvestTimeSeconds = 0.01f;
+            __instance.m_HarvestTimeMinutes = 0f;
+            __instance.m_TimeAccelerated = true;
+        }
+        catch { }
+    }
+}
+
 [HarmonyPatch(typeof(Panel_BodyHarvest), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
 internal static class Patch_Harvest_Accelerate
 {
@@ -98,9 +131,8 @@ internal static class Patch_Repair_Accelerate
     private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
 
-// 黑屏拦截:游戏在 accelerate time 时会 CameraFade.FadeOut 让画面变黑。
-// QuickAction 开时把 time 强制 0 —— fade 瞬完,看不到黑屏。副作用:场景转换也瞬切。
-// 用户没反馈过场景转换问题,暂且接受。
+// 黑屏/时间流逝 overlay —— TLD 用 CameraFade.FadeOut 让画面变黑。强制 time=0 让过场瞬完。
+// 副作用:场景转换也瞬切。
 [HarmonyPatch(typeof(CameraFade), "FadeOut", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
 internal static class Patch_CameraFade_FadeOut
 {
@@ -203,6 +235,19 @@ internal static class Patch_Lock_IsLocked
 // Lock.RequiresToolToUnlock + PlayerHasRequiredToolToUnlock, Breath.GetBreathTimePercent,
 // Encumber.IsEncumbered + GetEncumbranceSlowdownMultiplier 这 5 个 patch 去掉 ——
 // 前者因启动卡死嫌疑,后者因为对应功能(IC/IS)已去除(交给 UniversalTweaks 等 mod)
+
+// ——— 衣物不潮湿:拦源头 IncreaseWetnessPercent 和 MaybeGetWetOnGround ———
+[HarmonyPatch(typeof(ClothingItem), "IncreaseWetnessPercent", new System.Type[] { typeof(float) })]
+internal static class Patch_Clothing_IncreaseWet
+{
+    private static bool Prefix() => !CheatState.NoWetClothes;
+}
+
+[HarmonyPatch(typeof(ClothingItem), "MaybeGetWetOnGround", new System.Type[] { typeof(float) })]
+internal static class Patch_Clothing_GetWetOnGround
+{
+    private static bool Prefix() => !CheatState.NoWetClothes;
+}
 
 // ——— 冰面不破:冰面破裂触发 / 落水 直接跳过 ———
 [HarmonyPatch(typeof(IceCrackingTrigger), "BreakIce")]
@@ -523,6 +568,17 @@ internal static class CheatsTick
         bool runInvis   = CheatState.TrueInvisible || _lastTickedInvis;
         if (!runStealth && !runFreeze && !runInvis) return;
 
+        // v2.7.15 真隐身:直接关闭玩家自己的 AiTarget,AI 的世界查询里玩家根本不存在
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm != null && pm.m_AiTarget != null)
+            {
+                pm.m_AiTarget.m_IsEnabled = !CheatState.TrueInvisible;
+            }
+        }
+        catch { }
+
         try
         {
             var ais = UnityEngine.Object.FindObjectsOfType<BaseAi>();
@@ -729,7 +785,7 @@ internal static class CheatsTick
         catch { }
     }
 
-    // ——— 衣物不潮湿 ———
+    // ——— 衣物不潮湿 ——— v2.7.15 改进:直接 wrapper 字段访问 + tick 频率跟 90 帧
     public static void TickClothingWetness()
     {
         if (!CheatState.NoWetClothes) return;
@@ -740,12 +796,7 @@ internal static class CheatsTick
             foreach (var c in clothes)
             {
                 if (c == null) continue;
-                try
-                {
-                    var f = typeof(ClothingItem).GetField("m_PercentWet", BindingFlags.Instance | BindingFlags.Public);
-                    if (f != null) f.SetValue(c, 0f);
-                }
-                catch { }
+                try { c.m_PercentWet = 0f; } catch { }
             }
         }
         catch { }

@@ -572,14 +572,9 @@ internal static class Patch_Infection_Start
     private static bool Prefix() => !CheatState.GodMode;
 }
 
-[HarmonyPatch(typeof(GearItem), "ManualUpdate")]
-internal static class Patch_GearItem_ManualUpdate
-{
-    private static void Postfix(GearItem __instance)
-    {
-        if (CheatState.InfiniteDurability) Cheats.RestoreDurability(__instance);
-    }
-}
+// v2.7.15:ManualUpdate Postfix 强制 100 太粗暴 —— 用户要的是"不衰减",不是"自动满"
+// 删掉 Postfix,只靠 Degrade / WearOut / DegradeOnUse 3 个 Prefix 拦衰减源头
+// 想一次性拉满用"恢复全部耐久"按钮 / "修复背包物品"按钮
 
 // InfiniteDurability 兜底:拦衰减 3 个源头 Degrade / WearOut / DegradeOnUse
 [HarmonyPatch(typeof(GearItem), "Degrade", new System.Type[] { typeof(float) })]
@@ -600,13 +595,6 @@ internal static class Patch_GearItem_DegradeOnUse
     private static bool Prefix() => !CheatState.InfiniteDurability;
 }
 
-[HarmonyPatch(typeof(GearItem), "Awake")]
-internal static class Patch_GearItem_Awake
-{
-    private static void Postfix(GearItem __instance)
-    {
-        if (CheatState.InfiniteDurability) Cheats.RestoreDurability(__instance);
-    }
-}
+// Patch_GearItem_Awake 也删 —— 同样是'强制到 100',不符合用户'不损耗'要求
 
 // Patch_Inventory_MaybeAdd / Patch_Inventory_AddGear 已去除(InfiniteCarry 功能交给其他 mod)
