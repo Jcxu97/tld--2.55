@@ -13,14 +13,19 @@ internal static class Stacking
     // 如果盲目用 SeenItems 里缓存的 (item, di) reapply,会把旧 count 写到新 gi 上 —— 表现为"部分堆叠视觉失效"。
     // 修正:每次 reapply 前 VERIFY item 当前 m_GearItem 还是我们当初 hook 时缓存的 gi。
     // 如果 cell 已经被复用到别的 gear,跳过本次,等 RefreshDataItem Postfix 重新登记。
+    // v2.7.16 降频 —— 原每帧跑(60Hz),背包满时 30 物品 × 60 fps = 1800 reflection ops/sec
+    // 改 4 帧跑一次(15Hz),视觉延迟肉眼不可见,FPS 开销 / 4
+    private static int _tickCounter = 0;
     public static void OnLateUpdate()
     {
+        if (++_tickCounter < 4) return;
+        _tickCounter = 0;
+
         try
         {
             if (StackState.Counts.Count == 0) return;
             if (StackState.SeenItems.Count == 0) return;
 
-            // 不能在遍历中修改 dict。先收集待删的 key,遍历结束统一清理
             System.Collections.Generic.List<System.IntPtr> stale = null;
 
             foreach (var kv in StackState.SeenItems)
@@ -28,15 +33,8 @@ internal static class Stacking
                 var (item, cachedDi, cachedGiPtr) = kv.Value;
                 if (item == null) { (stale ??= new()).Add(kv.Key); continue; }
 
-                // 关键 verify:当前绑定的 GearItem 是否还是我们缓存的那个?
-                // 复用后 item.m_GearItem 会变,此时跳过,不写 stale label
                 var curGi = item.m_GearItem;
-                if (curGi == null || curGi.Pointer != cachedGiPtr)
-                {
-                    // cell 已被复用 / 绑到空。等 RefreshDataItem Postfix 重新登记。
-                    // 不从 SeenItems 删除 —— Postfix 会 overwrite 这个 key
-                    continue;
-                }
+                if (curGi == null || curGi.Pointer != cachedGiPtr) continue;
 
                 LabelFix.Reapply(item, cachedDi);
             }

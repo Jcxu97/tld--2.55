@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.15", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.16", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -15,7 +15,6 @@ public class ModMain : MelonMod
     internal static TldHacksSettings Settings;
 
     private int _durabilityTick = 0;
-    private int _killTick = 0;
     private int _posTick = 0;
     private int _extraTick = 0;
     private int _camTick = 0;
@@ -31,7 +30,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.15 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.16 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -112,8 +111,9 @@ public class ModMain : MelonMod
             // Guns / Animals / Fires ~1.5 秒。三个 tick 里部分功能要"持续保持",
             // 降太多会手感差(如开枪时弹药回填延迟)。~90 帧是折中。
             // 而且只有相应 toggle 开了才进入扫描(每个 tick 内部有 early return)
-            // Stealth / TrueInvisible:60 帧(~1s)—— 新 AI 生成后最多 1s 内被压制
-            if (++_animalsTick >= 60)
+            // Stealth / TrueInvisible:180 帧(~3s)—— 新 AI 生成后最多 3s 内压制;省 FPS
+            // 真隐身核心是 m_AiTarget.m_IsEnabled=false(一次设了 AI 就看不见),tick 低频 ok
+            if (++_animalsTick >= 180)
             {
                 _animalsTick = 0;
                 CheatsTick.TickAnimals();
@@ -133,8 +133,9 @@ public class ModMain : MelonMod
                 ExtraOneShot.TickSprainRisk();
             }
 
-            // 摄像机 / 武器 aim 相关:60 帧 ≈ 1 秒,进一步降 FPS 开销
-            if (++_camTick >= 60)
+            // 摄像机 / 武器 aim:120 帧 ≈ 2 秒。核心 bool 开关 m_DisableAim* 一次设了就生效,
+            // tick 主要是新武器切换后重新同步,2 秒延迟完全可接受
+            if (++_camTick >= 120)
             {
                 _camTick = 0;
                 CheatsTick.TickCamera();
