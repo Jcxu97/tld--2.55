@@ -83,7 +83,7 @@ internal static class Menu
         if (!Open) return;
 
         var s = ModMain.Settings;
-        if (s != null) _scale = Mathf.Clamp(s.MenuScale, 0.6f, 2.0f);
+        if (s != null) _scale = Mathf.Clamp(s.MenuScale, 0.6f, 3.0f);
 
         _window.width = W * _scale;
         _window.height = H * _scale;
@@ -91,7 +91,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.7");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.8");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -128,7 +128,7 @@ internal static class Menu
         { s.MenuScale = Mathf.Max(0.6f, s.MenuScale - 0.1f); s.Save(); }
         GUI.Label(R(W - 166f, 3f, 50f, 20f), $"x{s.MenuScale:F1}");
         if (GUI.Button(R(W - 114f, 3f, 22f, 20f), "+"))
-        { s.MenuScale = Mathf.Min(2.0f, s.MenuScale + 0.1f); s.Save(); }
+        { s.MenuScale = Mathf.Min(3.0f, s.MenuScale + 0.1f); s.Save(); }
         if (GUI.Button(R(W - 86f, 3f, 72f, 20f), "Close")) Close();
 
         // 标签页

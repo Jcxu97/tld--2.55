@@ -419,25 +419,30 @@ internal static class CheatsTick
     //  FieldInfo 替换,删除。)
 
     // ——— 动物不能动 / 隐身(v2.7.7 改造:用 m_DisableScanForTargets 游戏内建开关)———
-    // 之前 v2.7.5 试图 Harmony patch BaseAi.ScanForNewTarget / IsPlayerAThreat / DoOnDetection
-    // 导致启动卡死。现在纯 tick 设字段,双向同步(关 toggle 会复位)。
+    // v2.7.8:修 toggle 关后字段卡 true 不复位 —— 记 _lastTickedStealth/Freeze,
+    // 上轮开过就再跑一次同步把字段还原
     private static System.Reflection.FieldInfo _fi_baseAi_disableScan;
     private static System.Reflection.FieldInfo _fi_baseAi_currentTarget;
     private static System.Reflection.FieldInfo _fi_baseAi_aiTarget;
+    private static bool _lastTickedStealth = false;
+    private static bool _lastTickedFreeze = false;
 
     public static void TickAnimals()
     {
-        if (!CheatState.FreezeAnimals && !CheatState.Stealth) return;
+        // 早退条件:本轮 + 上轮 都没开过任何相关 toggle
+        bool runStealth = CheatState.Stealth || _lastTickedStealth;
+        bool runFreeze  = CheatState.FreezeAnimals || _lastTickedFreeze;
+        if (!runStealth && !runFreeze) return;
+
         try
         {
             var ais = UnityEngine.Object.FindObjectsOfType<BaseAi>();
-            if (ais == null) return;
+            if (ais == null) { _lastTickedStealth = CheatState.Stealth; _lastTickedFreeze = CheatState.FreezeAnimals; return; }
 
-            // 缓存 FieldInfo(首次调用)
             if (_fi_baseAi_disableScan == null)
             {
                 var t = typeof(BaseAi);
-                _fi_baseAi_disableScan  = t.GetField("m_DisableScanForTargets", BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_disableScan   = t.GetField("m_DisableScanForTargets", BindingFlags.Instance | BindingFlags.Public);
                 _fi_baseAi_currentTarget = t.GetField("m_CurrentTarget",          BindingFlags.Instance | BindingFlags.Public);
                 _fi_baseAi_aiTarget      = t.GetField("m_AiTarget",               BindingFlags.Instance | BindingFlags.Public);
             }
@@ -447,22 +452,19 @@ internal static class CheatsTick
                 if (ai == null) continue;
                 try
                 {
-                    if (CheatState.FreezeAnimals)
+                    if (runFreeze)
                     {
-                        ai.m_SpeedForPathfindingOverride = true;
-                        ai.m_OverrideSpeed = 0f;
-                    }
-                    else
-                    {
-                        ai.m_SpeedForPathfindingOverride = false;
+                        try { ai.m_SpeedForPathfindingOverride = CheatState.FreezeAnimals; } catch { }
+                        if (CheatState.FreezeAnimals)
+                            try { ai.m_OverrideSpeed = 0f; } catch { }
                     }
 
-                    // Stealth:打开游戏内建"不扫目标"开关 —— 双向同步
-                    if (_fi_baseAi_disableScan != null)
+                    // Stealth:双向同步游戏内建 m_DisableScanForTargets
+                    if (runStealth && _fi_baseAi_disableScan != null)
                     {
                         try { _fi_baseAi_disableScan.SetValue(ai, CheatState.Stealth); } catch { }
                     }
-                    // 同时清当前已锁定目标,避免已被锁上的玩家逃不掉
+                    // 清当前目标,避免已锁上的玩家逃不掉
                     if (CheatState.Stealth)
                     {
                         try { _fi_baseAi_currentTarget?.SetValue(ai, null); } catch { }
@@ -471,13 +473,17 @@ internal static class CheatsTick
                 }
                 catch { }
             }
+
+            _lastTickedStealth = CheatState.Stealth;
+            _lastTickedFreeze  = CheatState.FreezeAnimals;
         }
         catch { }
     }
 
-    // ——— 忽略上锁(v2.7.7 改造:用 Lock.SetLockState(Unlocked) tick,替代砍掉的 RequiresTool/PlayerHasTool patch)———
-    // 配合保留的 Patch_Lock_IsLocked 双重保险
+    // ——— 忽略上锁:v2.7.8 修 —— 不能用 lk.IsLocked() 判(被 Patch_Lock_IsLocked 篡返回 false)
+    // 改直接读 m_LockState 字段
     private static System.Reflection.MethodInfo _mi_lock_setLockState;
+    private static System.Reflection.FieldInfo _fi_lock_state;
     public static void TickLocks()
     {
         if (!CheatState.IgnoreLock) return;
@@ -487,18 +493,19 @@ internal static class CheatsTick
             if (locks == null) return;
 
             if (_mi_lock_setLockState == null)
-            {
-                _mi_lock_setLockState = typeof(Lock).GetMethod("SetLockState",
-                    BindingFlags.Instance | BindingFlags.Public);
-            }
-            if (_mi_lock_setLockState == null) return;
+                _mi_lock_setLockState = typeof(Lock).GetMethod("SetLockState", BindingFlags.Instance | BindingFlags.Public);
+            if (_fi_lock_state == null)
+                _fi_lock_state = typeof(Lock).GetField("m_LockState", BindingFlags.Instance | BindingFlags.Public);
+            if (_mi_lock_setLockState == null || _fi_lock_state == null) return;
 
             foreach (var lk in locks)
             {
                 if (lk == null) continue;
                 try
                 {
-                    if (lk.IsLocked())
+                    // 直接读字段,绕过 Patch_Lock_IsLocked 的 Postfix 篡改
+                    var state = _fi_lock_state.GetValue(lk);
+                    if (state != null && (int)state == (int)LockState.Locked)
                         _mi_lock_setLockState.Invoke(lk, new object[] { LockState.Unlocked });
                 }
                 catch { }

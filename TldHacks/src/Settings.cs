@@ -17,8 +17,8 @@ internal class TldHacksSettings : JsonModSettings
     [Description("按此键切换 uConsole fly 命令。需要 DeveloperConsole.dll 启用。")]
     public KeyCode FlyHotkey = KeyCode.F1;
 
-    [Slider(0.6f, 2.0f, 14)]
-    [Name("Menu UI Scale(菜单缩放)")]
+    [Slider(0.6f, 3.0f, 24)]
+    [Name("Menu UI Scale(菜单缩放,4K 可设 2-3)")]
     public float MenuScale = 1f;
 
     // ——— Stacking ———
