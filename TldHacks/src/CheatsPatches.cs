@@ -84,17 +84,70 @@ internal static class Patch_Condition_AddHealth_Filter
     }
 }
 
-// ——— 节约时间:v2.7.11 改方向 —— 不动 duration(duration=0 会导致 yield=0)
-// 改成拦截 AccelerateTimeOfDay —— 游戏内置"快进到动作完成"方法,minutes = 跳过的游戏分钟
-// Prefix 把 minutes 改 0,动作照完,TOD 不动,yield 也按原 duration 结算正确
+// ——— 节约时间 v2.7.13 新方法:直接跳到 "已完成" 状态,彻底跳过动画 + 黑屏 ———
+// 用户参照 CT 文件:点一下就采完,没动画没黑屏
+// 策略:patch StartHarvest/StartQuarter 的 Prefix —— 直接调 BodyHarvest.OnHarvestActionSuccess()
+// 给 yield,调 ExitBodyHarvestPanel 关面板,return false 跳过原方法(不启动动画计时器)
+[HarmonyPatch(typeof(Panel_BodyHarvest), "StartHarvest", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Harvest_StartInstant
+{
+    private static bool Prefix(Panel_BodyHarvest __instance)
+    {
+        if (!CheatState.QuickAction) return true; // 正常流程
+        try
+        {
+            var bh = __instance.m_BodyHarvest;
+            if (bh != null) bh.OnHarvestActionSuccess();
+            __instance.ExitBodyHarvestPanel();
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickHarvest] {ex.Message}"); }
+        return false; // skip 原 StartHarvest —— 无动画,无 TOD 推进,无黑屏
+    }
+}
+
+[HarmonyPatch(typeof(Panel_BodyHarvest), "StartQuarter", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Harvest_StartQuarterInstant
+{
+    private static bool Prefix(Panel_BodyHarvest __instance)
+    {
+        if (!CheatState.QuickAction) return true;
+        try
+        {
+            var bh = __instance.m_BodyHarvest;
+            if (bh != null) bh.OnHarvestActionSuccess();
+            __instance.ExitBodyHarvestPanel();
+        }
+        catch { }
+        return false;
+    }
+}
+
+// ——— 修理:直接调 RepairSuccessful() 跳过动画 ———
+[HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Repair_StartInstant
+{
+    private static bool Prefix(Panel_Repair __instance)
+    {
+        if (!CheatState.QuickAction) return true;
+        try
+        {
+            __instance.RepairSuccessful();
+            __instance.RepairFinished();
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickRepair] {ex.Message}"); }
+        return false;
+    }
+}
+
+// AccelerateTimeOfDay 兜底(防万一动画启动了,仍然让 TOD 不推进)
 [HarmonyPatch(typeof(Panel_BodyHarvest), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
-internal static class Patch_Harvest_Accelerate
+internal static class Patch_Harvest_Accelerate_Fallback
 {
     private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
 
 [HarmonyPatch(typeof(Panel_Repair), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
-internal static class Patch_Repair_Accelerate
+internal static class Patch_Repair_Accelerate_Fallback
 {
     private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
@@ -217,8 +270,18 @@ internal static class Patch_CamEffects_WeaponPost
     }
 }
 
-// ——— 快速开容器:直接把 delay 0 / 立刻 elapsed ———
-// Enable 有两个重载,Harmony 自动匹配会歧义,指定 3 参版本
+// ——— 快速开容器 ——
+// v2.7.13:原 Patch_Container_Enable Postfix 覆盖字段不够 —— 改 EnableAfterDelay Prefix 拦源头
+[HarmonyPatch(typeof(Panel_Container), "EnableAfterDelay", new System.Type[] { typeof(float) })]
+internal static class Patch_Container_EnableAfterDelay
+{
+    private static void Prefix(ref float delaySeconds)
+    {
+        if (CheatState.QuickOpenContainer) delaySeconds = 0f;
+    }
+}
+
+// 兜底:Enable(bool,bool,Action) Postfix 仍强制 elapsed=999 让任何残留 delay 立刻完成
 [HarmonyPatch(typeof(Panel_Container), "Enable", new System.Type[] { typeof(bool), typeof(bool), typeof(Il2CppSystem.Action) })]
 internal static class Patch_Container_Enable
 {
@@ -478,6 +541,10 @@ internal static class CheatsTick
     //   2) 对已经在 Attack/Stalking/Investigate/HoldGround 的 AI,立即 SetAiMode(Wander)
     //      —— 公开方法,可靠;等于把玩家从威胁列表踢出
     private static System.Reflection.FieldInfo _fi_baseAi_disableScan;
+    // v2.7.13 TrueInvisible 强化:把 AI 的探测/听觉 range 都归零,堵所有感知通道
+    private static System.Reflection.FieldInfo _fi_baseAi_detectRange, _fi_baseAi_detectFOV;
+    private static System.Reflection.FieldInfo _fi_baseAi_hearFootsteps, _fi_baseAi_hearRifle;
+    private static System.Reflection.FieldInfo _fi_baseAi_detectRangeFeeding;
     private static bool _lastTickedStealth = false;
     private static bool _lastTickedFreeze = false;
     private static bool _lastTickedInvis = false;
@@ -502,8 +569,13 @@ internal static class CheatsTick
 
             if (_fi_baseAi_disableScan == null)
             {
-                _fi_baseAi_disableScan = typeof(BaseAi).GetField("m_DisableScanForTargets",
-                    BindingFlags.Instance | BindingFlags.Public);
+                var t = typeof(BaseAi);
+                _fi_baseAi_disableScan      = t.GetField("m_DisableScanForTargets",      BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_detectRange      = t.GetField("m_DetectionRange",             BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_detectFOV        = t.GetField("m_DetectionFOV",               BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_hearFootsteps    = t.GetField("m_HearFootstepsRange",         BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_hearRifle        = t.GetField("m_HearRifleRange",             BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_detectRangeFeeding = t.GetField("m_DetectionRangeWhileFeeding", BindingFlags.Instance | BindingFlags.Public);
             }
 
             foreach (var ai in ais)
@@ -518,10 +590,20 @@ internal static class CheatsTick
                             try { ai.m_OverrideSpeed = 0f; } catch { }
                     }
 
-                    // TrueInvisible:双向同步 m_DisableScanForTargets(AI 检测不到玩家)
-                    if (runInvis && _fi_baseAi_disableScan != null)
+                    // TrueInvisible:切断所有感知通道
+                    if (runInvis)
                     {
-                        try { _fi_baseAi_disableScan.SetValue(ai, CheatState.TrueInvisible); } catch { }
+                        if (_fi_baseAi_disableScan != null)
+                            try { _fi_baseAi_disableScan.SetValue(ai, CheatState.TrueInvisible); } catch { }
+                        if (CheatState.TrueInvisible)
+                        {
+                            // 视觉 / 嗅觉 / 听觉 4 条 range 全归零 —— AI 像近视瞎子
+                            try { _fi_baseAi_detectRange?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_detectFOV?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_hearFootsteps?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_hearRifle?.SetValue(ai, 0f); } catch { }
+                            try { _fi_baseAi_detectRangeFeeding?.SetValue(ai, 0f); } catch { }
+                        }
                     }
 
                     // Stealth 主力:看到动物就强制切 Flee(逃跑),不管当前在什么 mode

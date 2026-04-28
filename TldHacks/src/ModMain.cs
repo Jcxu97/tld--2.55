@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.12", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.13", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -31,7 +31,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.12 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.13 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -112,8 +112,8 @@ public class ModMain : MelonMod
             // Guns / Animals / Fires ~1.5 秒。三个 tick 里部分功能要"持续保持",
             // 降太多会手感差(如开枪时弹药回填延迟)。~90 帧是折中。
             // 而且只有相应 toggle 开了才进入扫描(每个 tick 内部有 early return)
-            // Stealth / FreezeAnimals:60 帧(~1s)—— 比 30 帧省 FPS,仍比 90 帧响应快
-            if (++_animalsTick >= 60)
+            // Stealth / FreezeAnimals / TrueInvisible:120 帧(~2s)省 FPS;关键是 patches 已兜底
+            if (++_animalsTick >= 120)
             {
                 _animalsTick = 0;
                 CheatsTick.TickAnimals();
@@ -133,9 +133,8 @@ public class ModMain : MelonMod
                 ExtraOneShot.TickSprainRisk();
             }
 
-            // 摄像机 / 武器 aim 相关:30 帧 ≈ 0.5 秒一次,缓存 FieldInfo 单次开销极小
-            // 全关 AND 上次也全关 → 函数内部零开销早退
-            if (++_camTick >= 30)
+            // 摄像机 / 武器 aim 相关:60 帧 ≈ 1 秒,进一步降 FPS 开销
+            if (++_camTick >= 60)
             {
                 _camTick = 0;
                 CheatsTick.TickCamera();
