@@ -3,6 +3,7 @@ using System.Reflection;
 using HarmonyLib;
 using Il2Cpp;
 using Il2CppInterop.Runtime;
+using Il2CppTLD.Gear;
 using UnityEngine;
 
 namespace TldHacks;
@@ -334,25 +335,28 @@ internal static class Patch_Craft_CanCraft
 //   craft 完成瞬间 TOD 拉回 → 用户看不到跳
 // GetFinalCraftingTime / GetAdjustedCraftingTime 不再 patch,游戏看到正常 craft 时长
 
-// v2.7.42 QuickCraft 参照 CT 方案 —— 直接放大 percent 推进量
-//   CT 的 "秒制作" 脚本核心:
+// v2.7.43 QuickCraft 完整复刻 CT 方案 —— 在 CraftingOperation.Update 开头设字段
+//   CT 脚本:
 //     MonoMethodInit(TLD.Gear.CraftingOperation.Update)
+//       push rcx
 //       mov [rcx+m_RealTimeDuration], (float)0.2
 //       mov [rcx+m_HoursToSpendCrafting], (float)100
-//   效果:游戏 Update 读 HoursToSpend=100 推 percent 瞬满,RealTime=0.2 秒完成
-//
-//   映射到 MelonMod:CraftingOperation 是 IL2CPP 内部类反射不到,
-//   但它最终调 InProgressCraftItem.IncrementProgress(float percentagePoints)
-//   直接 patch 这个:percentagePoints=100 让每次推进 +100 → 一帧完成
-//
-//   不碰 TOD、不碰 craft time、不碰 Accelerate
-//   游戏自己走完成流程,batch 每个 item 一帧完成
-[HarmonyPatch(typeof(InProgressCraftItem), "IncrementProgress")]
-internal static class Patch_InProgressCraftItem_IncrementProgress
+//       pop rcx
+//       jmp original_TLD.Gear.CraftingOperation.Update
+//   映射成 Harmony:CraftingOperation.Update Prefix 设两个字段,返回 true 让原 Update 跑
+//   Il2CppTLD.Gear.CraftingOperation 就是 CT 的 TLD.Gear.CraftingOperation(namespace 前缀 Il2Cpp)
+[HarmonyPatch(typeof(CraftingOperation), "Update")]
+internal static class Patch_CraftingOp_Update
 {
-    private static void Prefix(ref float percentagePoints)
+    private static void Prefix(CraftingOperation __instance)
     {
-        if (CheatState.QuickCraft) percentagePoints = 100f;
+        if (!CheatState.QuickCraft) return;
+        try
+        {
+            __instance.m_RealTimeDuration = 0.2f;
+            __instance.m_HoursToSpendCrafting = 100f;
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
     }
 }
 
