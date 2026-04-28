@@ -176,6 +176,36 @@ internal static class Cheats
             if (had) { cleared++; log.Append("骨折; "); }
         }} catch (Exception ex) { log.Append($"骨折-err:{ex.Message}; "); }
 
+        // —— SprainPain (扭伤疼痛 / "疼痛"主来源) —— v2.7.21 新增
+        try { var c = GameManager.GetSprainPainComponent(); if (c != null) {
+            bool had = c.HasSprainPain();
+            try { c.Cure(); } catch { }
+            if (had) { cleared++; log.Append("疼痛; "); }
+        }} catch (Exception ex) { log.Append($"疼痛-err:{ex.Message}; "); }
+
+        // —— Headache (头痛) —— v2.7.21 新增
+        try { var c = GameManager.GetHeadacheComponent(); if (c != null) {
+            bool had = c.HasHeadache();
+            try { c.Cure(); } catch { }
+            if (had) { cleared++; log.Append("头痛; "); }
+        }} catch (Exception ex) { log.Append($"头痛-err:{ex.Message}; "); }
+
+        // —— Burns (烧伤) —— v2.7.21 新增
+        try { var c = GameManager.GetBurnsComponent(); if (c != null) {
+            bool had = c.HasBurns();
+            try { c.m_Active = false; } catch { }
+            try { c.BurnsEnd(true); } catch { }
+            if (had) { cleared++; log.Append("烧伤; "); }
+        }} catch (Exception ex) { log.Append($"烧伤-err:{ex.Message}; "); }
+
+        // —— IntestinalParasites (肠寄生虫) —— v2.7.21 新增
+        try { var c = GameManager.GetIntestinalParasitesComponent(); if (c != null) {
+            bool had = c.HasIntestinalParasites();
+            try { c.m_HasParasites = false; c.m_HasParasiteRisk = false; } catch { }
+            try { c.IntestinalParasitesEnd(true); } catch { }
+            if (had) { cleared++; log.Append("肠寄生虫; "); }
+        }} catch (Exception ex) { log.Append($"肠寄生虫-err:{ex.Message}; "); }
+
         string summary = cleared > 0 ? $"已清 {cleared} 项: {log}" : $"未检测到活跃负面; 尝试过: {log}";
         ModMain.Log?.Msg($"[Cheats] {summary}");
         CheatState.LastActionLog = summary;

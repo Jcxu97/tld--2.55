@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.20", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.21", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -19,7 +19,7 @@ public class ModMain : MelonMod
     private int _camTick = 0;
     private int _animalsCheapTick = 0;
     private int _animalsFullTick = 0;
-    // v2.7.20 —— 单调递增帧计数器,用 modulo 把 7 个 tick 摊到不同帧,消除 90 帧 1 次的集中大 spike
+    // v2.7.21 —— 单调递增帧计数器,用 modulo 把 7 个 tick 摊到不同帧,消除 90 帧 1 次的集中大 spike
     private int _frame = 0;
 
     public override void OnInitializeMelon()
@@ -32,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.20 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.21 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -92,7 +92,7 @@ public class ModMain : MelonMod
                 ConsoleBridge.Run("fly");
             }
 
-            // Time scale —— v2.7.20:默认 1.0 时不写回,避免覆盖第三方时间加速 mod
+            // Time scale —— v2.7.21:默认 1.0 时不写回,避免覆盖第三方时间加速 mod
             // 只有用户在菜单主动改成 != 1.0 的倍率时才强制同步
             if (CheatState.SpeedMultiplier > 0f
                 && Mathf.Abs(CheatState.SpeedMultiplier - 1f) > 0.01f
@@ -104,7 +104,7 @@ public class ModMain : MelonMod
 
             // (InfiniteCarry 已去除,由其他 mod 覆盖)
 
-            // v2.7.20 FPS 修:所有 tick 按 frame modulo 摊到不同帧
+            // v2.7.21 FPS 修:所有 tick 按 frame modulo 摊到不同帧
             // 之前 _extraTick==90 时 7 个 sub-tick 同帧触发 = 单帧 ~50ms 巨 spike = 跳帧
             // 现在每种 tick 有自己的 phase + period,最多 1 个 heavy tick/帧
             _frame++;
