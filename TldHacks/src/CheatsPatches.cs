@@ -218,14 +218,8 @@ internal static class Patch_Encumber_Slowdown
     }
 }
 
-[HarmonyPatch(typeof(Encumber), "GetEffectiveCarryCapacityKG")]
-internal static class Patch_Encumber_CapacityKG
-{
-    private static void Postfix(ref float __result)
-    {
-        if (CheatState.InfiniteCarry) __result = 999f;
-    }
-}
+// GetEffectiveCarryCapacityKG 实际返回 ItemWeight(不是 float),patch 签名不好写 ——
+// IsEncumbered=false + Slowdown=1 已经足够让玩家不受重量影响,这个 patch 删掉
 
 // ——— 冰面不破:冰面破裂触发 / 落水 直接跳过 ———
 [HarmonyPatch(typeof(IceCrackingTrigger), "BreakIce")]
@@ -261,7 +255,8 @@ internal static class Patch_CamEffects_WeaponPost
 }
 
 // ——— 快速开容器:直接把 delay 0 / 立刻 elapsed ———
-[HarmonyPatch(typeof(Panel_Container), "Enable")]
+// Enable 有两个重载,Harmony 自动匹配会歧义,指定 3 参版本
+[HarmonyPatch(typeof(Panel_Container), "Enable", new System.Type[] { typeof(bool), typeof(bool), typeof(Il2CppSystem.Action) })]
 internal static class Patch_Container_Enable
 {
     private static void Postfix(Panel_Container __instance)
