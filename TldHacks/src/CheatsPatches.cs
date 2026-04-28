@@ -121,8 +121,7 @@ internal static class Patch_Craft_Start_TimeAccel
     }
 }
 
-// ——— 隐身:AI 完全看不到 / 不扫描玩家 ———
-// 多层拦截(单一 patch 不够彻底,游戏内 AI 逻辑有多个入口)
+// ——— 隐身:AI 完全看不到 / 不扫描玩家(v2.7.0 原有 2 层)———
 [HarmonyPatch(typeof(BaseAi), "CanSeeTarget")]
 internal static class Patch_BaseAi_CanSeeTarget
 {
@@ -132,15 +131,17 @@ internal static class Patch_BaseAi_CanSeeTarget
     }
 }
 
-// AI 不主动扫新目标 —— 最关键的一条,阻止 AI 把玩家登记为 target
-[HarmonyPatch(typeof(BaseAi), "ScanForNewTarget")]
-internal static class Patch_BaseAi_ScanForNewTarget
+[HarmonyPatch(typeof(BaseAi), "ScanForSmells")]
+internal static class Patch_BaseAi_ScanForSmells
 {
     private static bool Prefix() => !CheatState.Stealth;
 }
 
-[HarmonyPatch(typeof(BaseAi), "ScanForSmells")]
-internal static class Patch_BaseAi_ScanForSmells
+// ——— v2.7.4 注释掉:下面 8 条 patch 是 v2.7.1 新加的,疑似导致启动卡死 ———
+// 注释保留代码以便日后逐个重启测试。需要 debug 时取消对应块的注释重新 build。
+/*
+[HarmonyPatch(typeof(BaseAi), "ScanForNewTarget")]
+internal static class Patch_BaseAi_ScanForNewTarget
 {
     private static bool Prefix() => !CheatState.Stealth;
 }
@@ -159,8 +160,9 @@ internal static class Patch_BaseAi_DoOnDetection
 {
     private static bool Prefix() => !CheatState.Stealth;
 }
+*/
 
-// ——— 忽略上锁:3 层拦截,任何查锁的地方都让它看起来没锁/玩家已有工具 ———
+// ——— 忽略上锁(v2.7.0 原有 IsLocked)———
 [HarmonyPatch(typeof(Lock), "IsLocked")]
 internal static class Patch_Lock_IsLocked
 {
@@ -170,6 +172,7 @@ internal static class Patch_Lock_IsLocked
     }
 }
 
+/*
 [HarmonyPatch(typeof(Lock), "RequiresToolToUnlock")]
 internal static class Patch_Lock_RequiresTool
 {
@@ -188,8 +191,6 @@ internal static class Patch_Lock_PlayerHasTool
     }
 }
 
-// ——— 无限体力(InfiniteStamina)—— Breath.GetBreathTimePercent 返回 1 + tick 保持字段满 ———
-// 原 Patch_Breath_Update 挂的是 MonoBehaviour.Update,Il2Cpp 下 Harmony 钩不到 —— 所以之前无效
 [HarmonyPatch(typeof(Breath), "GetBreathTimePercent")]
 internal static class Patch_Breath_GetPercent
 {
@@ -199,7 +200,6 @@ internal static class Patch_Breath_GetPercent
     }
 }
 
-// ——— 无限负重:拦截 Encumber 的各层判定 ———
 [HarmonyPatch(typeof(Encumber), "IsEncumbered")]
 internal static class Patch_Encumber_IsEncumbered
 {
@@ -214,12 +214,10 @@ internal static class Patch_Encumber_Slowdown
 {
     private static void Postfix(ref float __result)
     {
-        if (CheatState.InfiniteCarry) __result = 1f; // 不减速
+        if (CheatState.InfiniteCarry) __result = 1f;
     }
 }
-
-// GetEffectiveCarryCapacityKG 实际返回 ItemWeight(不是 float),patch 签名不好写 ——
-// IsEncumbered=false + Slowdown=1 已经足够让玩家不受重量影响,这个 patch 删掉
+*/
 
 // ——— 冰面不破:冰面破裂触发 / 落水 直接跳过 ———
 [HarmonyPatch(typeof(IceCrackingTrigger), "BreakIce")]

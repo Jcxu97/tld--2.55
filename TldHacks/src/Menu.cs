@@ -84,7 +84,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.3");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.4");
     }
 
     // 字号随 _scale 一起缩放。IMGUI 默认 fontSize=0 用内置 12px,这里统一基础 14pt。
