@@ -418,7 +418,13 @@ internal static class CheatsTick
     // (旧的 TrySetFieldFloat / TrySetFieldBool / SetStructFieldFloat helper 已被缓存版
     //  FieldInfo 替换,删除。)
 
-    // ——— 动物不能动 / 隐身补丁 ———
+    // ——— 动物不能动 / 隐身(v2.7.7 改造:用 m_DisableScanForTargets 游戏内建开关)———
+    // 之前 v2.7.5 试图 Harmony patch BaseAi.ScanForNewTarget / IsPlayerAThreat / DoOnDetection
+    // 导致启动卡死。现在纯 tick 设字段,双向同步(关 toggle 会复位)。
+    private static System.Reflection.FieldInfo _fi_baseAi_disableScan;
+    private static System.Reflection.FieldInfo _fi_baseAi_currentTarget;
+    private static System.Reflection.FieldInfo _fi_baseAi_aiTarget;
+
     public static void TickAnimals()
     {
         if (!CheatState.FreezeAnimals && !CheatState.Stealth) return;
@@ -426,6 +432,16 @@ internal static class CheatsTick
         {
             var ais = UnityEngine.Object.FindObjectsOfType<BaseAi>();
             if (ais == null) return;
+
+            // 缓存 FieldInfo(首次调用)
+            if (_fi_baseAi_disableScan == null)
+            {
+                var t = typeof(BaseAi);
+                _fi_baseAi_disableScan  = t.GetField("m_DisableScanForTargets", BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_currentTarget = t.GetField("m_CurrentTarget",          BindingFlags.Instance | BindingFlags.Public);
+                _fi_baseAi_aiTarget      = t.GetField("m_AiTarget",               BindingFlags.Instance | BindingFlags.Public);
+            }
+
             foreach (var ai in ais)
             {
                 if (ai == null) continue;
@@ -441,18 +457,49 @@ internal static class CheatsTick
                         ai.m_SpeedForPathfindingOverride = false;
                     }
 
+                    // Stealth:打开游戏内建"不扫目标"开关 —— 双向同步
+                    if (_fi_baseAi_disableScan != null)
+                    {
+                        try { _fi_baseAi_disableScan.SetValue(ai, CheatState.Stealth); } catch { }
+                    }
+                    // 同时清当前已锁定目标,避免已被锁上的玩家逃不掉
                     if (CheatState.Stealth)
                     {
-                        foreach (var fn in new[] { "m_CurrentTarget", "m_Target", "m_DetectedTarget", "m_Attacker" })
-                        {
-                            try
-                            {
-                                var f = typeof(BaseAi).GetField(fn, BindingFlags.Instance | BindingFlags.Public);
-                                f?.SetValue(ai, null);
-                            }
-                            catch { }
-                        }
+                        try { _fi_baseAi_currentTarget?.SetValue(ai, null); } catch { }
+                        try { _fi_baseAi_aiTarget?.SetValue(ai, null); } catch { }
                     }
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
+    // ——— 忽略上锁(v2.7.7 改造:用 Lock.SetLockState(Unlocked) tick,替代砍掉的 RequiresTool/PlayerHasTool patch)———
+    // 配合保留的 Patch_Lock_IsLocked 双重保险
+    private static System.Reflection.MethodInfo _mi_lock_setLockState;
+    public static void TickLocks()
+    {
+        if (!CheatState.IgnoreLock) return;
+        try
+        {
+            var locks = UnityEngine.Object.FindObjectsOfType<Lock>();
+            if (locks == null) return;
+
+            if (_mi_lock_setLockState == null)
+            {
+                _mi_lock_setLockState = typeof(Lock).GetMethod("SetLockState",
+                    BindingFlags.Instance | BindingFlags.Public);
+            }
+            if (_mi_lock_setLockState == null) return;
+
+            foreach (var lk in locks)
+            {
+                if (lk == null) continue;
+                try
+                {
+                    if (lk.IsLocked())
+                        _mi_lock_setLockState.Invoke(lk, new object[] { LockState.Unlocked });
                 }
                 catch { }
             }
