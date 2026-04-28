@@ -137,27 +137,10 @@ internal static class Patch_BaseAi_ScanForSmells
     private static bool Prefix() => !CheatState.Stealth;
 }
 
-// v2.7.5 —— Stealth 恢复 3 层拦截(v2.7.4 切掉后不够用,实测失效)
-[HarmonyPatch(typeof(BaseAi), "ScanForNewTarget")]
-internal static class Patch_BaseAi_ScanForNewTarget
-{
-    private static bool Prefix() => !CheatState.Stealth;
-}
-
-[HarmonyPatch(typeof(BaseAi), "IsPlayerAThreat")]
-internal static class Patch_BaseAi_IsPlayerAThreat
-{
-    private static void Postfix(ref bool __result)
-    {
-        if (CheatState.Stealth) __result = false;
-    }
-}
-
-[HarmonyPatch(typeof(BaseAi), "DoOnDetection")]
-internal static class Patch_BaseAi_DoOnDetection
-{
-    private static bool Prefix() => !CheatState.Stealth;
-}
+// v2.7.6 —— BaseAi 的 3 层 patch(ScanForNewTarget / IsPlayerAThreat / DoOnDetection)
+// 实测是启动卡死的罪魁,切掉。保留 v2.7.0 原有的 2 层(CanSeeTarget + ScanForSmells)。
+// Stealth 功能不会 100% 完美(可能狼仍能看见你),但游戏能启动优先。
+// 未来修法:要么改 tick 每帧清 target 字段,要么 patch 具体的感知方法(不是泛用的)。
 
 // ——— 忽略上锁(只保留 IsLocked,其余 patch 去掉 —— 2.7.1 启动卡死嫌疑)———
 [HarmonyPatch(typeof(Lock), "IsLocked")]
