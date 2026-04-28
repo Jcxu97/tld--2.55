@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.44", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.45", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -32,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.44 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.45 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -73,6 +73,23 @@ public class ModMain : MelonMod
         CheatState.QuickFire = Settings.QuickFire;
         CheatState.QuickClimb = Settings.QuickClimb;
         CheatState.QuickAction = Settings.QuickAction;
+        // CT 复刻 v2.7.45+
+        CheatState.QuickCook = Settings.QuickCook;
+        CheatState.QuickSearch = Settings.QuickSearch;
+        CheatState.QuickHarvest = Settings.QuickHarvest;
+        CheatState.QuickBreakDown = Settings.QuickBreakDown;
+        CheatState.UnlockSafes = Settings.UnlockSafes;
+        CheatState.LampFuelNoDrain = Settings.LampFuelNoDrain;
+        CheatState.FlaskNoHeatLoss = Settings.FlaskNoHeatLoss;
+        CheatState.FlaskInfiniteVol = Settings.FlaskInfiniteVol;
+        CheatState.FlaskAnyItem = Settings.FlaskAnyItem;
+        CheatState.QuickEvolve = Settings.QuickEvolve;
+        CheatState.InfiniteContainer = Settings.InfiniteContainer;
+        CheatState.FireTemp300 = Settings.FireTemp300;
+        CheatState.FireNeverDie = Settings.FireNeverDie;
+        CheatState.CureFrostbite = Settings.CureFrostbite;
+        CheatState.ClearDeathPenalty = Settings.ClearDeathPenalty;
+        CheatState.QuickFishing = Settings.QuickFishing;
     }
 
     public override void OnUpdate()

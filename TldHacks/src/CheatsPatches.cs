@@ -1055,3 +1055,177 @@ internal static class CheatsTick
 
     // TryLockFieldOnAll 已移除 —— 仅 TickFires 用,TickFires 本身已删
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//   v2.7.45 CT 复刻 —— 从 CT 脚本直接映射的 Harmony patches
+// ═══════════════════════════════════════════════════════════════════
+
+// —— 秒烤肉 CT:CookingPotItem.UpdateCookingTimeAndState 设 m_CookingElapsedHours=10 ——
+[HarmonyPatch(typeof(CookingPotItem), "UpdateCookingTimeAndState")]
+internal static class Patch_CookingPot_Update
+{
+    private static void Prefix(CookingPotItem __instance)
+    {
+        if (!CheatState.QuickCook) return;
+        try { __instance.m_CookingElapsedHours = 10f; } catch { }
+    }
+}
+
+// —— 秒搜索/秒采集地上作物 CT:NOP 某字节让 TimedHold 瞬过 ——
+// 映射:UpdateHoldInteraction Prefix 强推 m_Timer = m_DefaultHoldTime 让 progress 瞬满
+[HarmonyPatch(typeof(Il2CppTLD.Interactions.TimedHoldInteraction), "UpdateHoldInteraction")]
+internal static class Patch_TimedHold_Update
+{
+    private static void Prefix(Il2CppTLD.Interactions.TimedHoldInteraction __instance)
+    {
+        if (!CheatState.QuickSearch) return;
+        try { __instance.m_Timer = __instance.m_DefaultHoldTime; } catch { }
+    }
+}
+
+// —— 秒割肉 CT:Panel_BodyHarvest.Refresh 设 HarvestTimeSeconds=TotalHarvestTimeSeconds,Minutes=0 ——
+[HarmonyPatch(typeof(Panel_BodyHarvest), "Refresh")]
+internal static class Patch_Harvest_Refresh_Quick
+{
+    private static void Prefix(Panel_BodyHarvest __instance)
+    {
+        if (!CheatState.QuickHarvest) return;
+        try
+        {
+            __instance.m_HarvestTimeSeconds = __instance.m_TotalHarvestTimeSeconds;
+            __instance.m_HarvestTimeMinutes = 0f;
+        }
+        catch { }
+    }
+}
+
+// 秒割肉 CT 还加:BodyHarvest.MaybeFreeze 设 m_PercentFrozen=0(冻肉也能割)
+[HarmonyPatch(typeof(BodyHarvest), "MaybeFreeze")]
+internal static class Patch_BodyHarvest_MaybeFreeze
+{
+    private static void Prefix(BodyHarvest __instance)
+    {
+        if (!CheatState.QuickHarvest) return;
+        try { __instance.m_PercentFrozen = 0f; } catch { }
+    }
+}
+
+// —— 秒打碎 CT:Panel_BreakDown.UpdateDurationLabel 设 SecondsToBreakDown=0.2, BreakDown.TimeCostHours=0 ——
+[HarmonyPatch(typeof(Panel_BreakDown), "UpdateDurationLabel")]
+internal static class Patch_BreakDown_UpdateDuration
+{
+    private static void Prefix(Panel_BreakDown __instance)
+    {
+        if (!CheatState.QuickBreakDown) return;
+        try
+        {
+            __instance.m_SecondsToBreakDown = 0.2f;
+            if (__instance.m_BreakDown != null)
+                __instance.m_BreakDown.m_TimeCostHours = 0f;
+        }
+        catch { }
+    }
+}
+
+// —— 解锁保险箱 CT:SafeCracking.Update 直接 jmp UnlockSafe ——
+[HarmonyPatch(typeof(SafeCracking), "Update")]
+internal static class Patch_SafeCracking_Update
+{
+    private static void Postfix(SafeCracking __instance)
+    {
+        if (!CheatState.UnlockSafes) return;
+        try { __instance.UnlockSafe(); } catch { }
+    }
+}
+
+// —— 解锁上锁门/柜子 CT:LockedInteraction.IsLocked 强 return false ——
+[HarmonyPatch(typeof(LockedInteraction), "IsLocked")]
+internal static class Patch_LockedInteraction_IsLocked_Unlock
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.UnlockSafes || CheatState.IgnoreLock) __result = false;
+    }
+}
+
+// —— 防风油灯油不减 CT:KeroseneLampItem.ReduceFuel 首字节 db C3(return) ——
+[HarmonyPatch(typeof(Il2CppTLD.Gear.KeroseneLampItem), "ReduceFuel")]
+internal static class Patch_KeroseneLamp_ReduceFuel
+{
+    private static bool Prefix() => !CheatState.LampFuelNoDrain;
+}
+
+// —— 保温杯永不失温 CT:InsulatedFlask.CalculateHeatLoss NOP 关键字节 ——
+[HarmonyPatch(typeof(Il2CppTLD.Gear.InsulatedFlask), "CalculateHeatLoss")]
+internal static class Patch_Flask_CalcHeatLoss
+{
+    private static bool Prefix() => !CheatState.FlaskNoHeatLoss;
+}
+
+// —— 保温杯存放无限 CT:InsulatedFlask.UpdateVolume NOP ——
+[HarmonyPatch(typeof(Il2CppTLD.Gear.InsulatedFlask), "UpdateVolume")]
+internal static class Patch_Flask_UpdateVolume
+{
+    private static bool Prefix() => !CheatState.FlaskInfiniteVol;
+}
+
+// —— 保温瓶装任意 CT:IsItemCompatibleWithFlask 强 true ——
+[HarmonyPatch(typeof(Il2CppTLD.Gear.InsulatedFlask), "IsItemCompatibleWithFlask", new System.Type[] { typeof(GearItem) })]
+internal static class Patch_Flask_IsCompatible
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FlaskAnyItem) __result = true;
+    }
+}
+
+// —— 加工秒完成 CT:EvolveItem.Update 设 TimeToEvolveGameDays=0, TimeSpentEvolvingGameHours=1 ——
+[HarmonyPatch(typeof(EvolveItem), "Update")]
+internal static class Patch_EvolveItem_Update
+{
+    private static void Prefix(EvolveItem __instance)
+    {
+        if (!CheatState.QuickEvolve) return;
+        try
+        {
+            __instance.m_TimeToEvolveGameDays = 0f;
+            __instance.m_TimeSpentEvolvingGameHours = 1f;
+        }
+        catch { }
+    }
+}
+
+// —— 篝火温度 300℃ CT:HeatSource.Update 设 m_MaxTempIncrease=300 ——
+[HarmonyPatch(typeof(HeatSource), "Update")]
+internal static class Patch_HeatSource_Update
+{
+    private static void Prefix(HeatSource __instance)
+    {
+        if (!CheatState.FireTemp300) return;
+        try { __instance.m_MaxTempIncrease = 300f; } catch { }
+    }
+}
+
+// —— 篝火永不熄灭 CT:Fire.Update 设某字段 INF ——
+// TLD 2.55 Fire 字段 m_BurnMinutesIfLit 是燃烧剩余时间,设无穷
+[HarmonyPatch(typeof(Fire), "Update")]
+internal static class Patch_Fire_Update_NeverDie
+{
+    private static void Prefix(Fire __instance)
+    {
+        if (!CheatState.FireNeverDie) return;
+        try { __instance.m_BurnMinutesIfLit = 99999f; } catch { }
+    }
+}
+
+// —— 清除死亡惩罚 CT:CheatDeathAffliction 设为 cured ——
+[HarmonyPatch(typeof(CheatDeathAffliction), "Update")]
+internal static class Patch_CheatDeathAfflict_Update
+{
+    private static void Prefix(CheatDeathAffliction __instance)
+    {
+        if (!CheatState.ClearDeathPenalty) return;
+        try { if (__instance.HasAffliction) __instance.Cure(AfflictionOptions.None); } catch { }
+    }
+}
+

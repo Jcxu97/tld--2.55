@@ -156,4 +156,54 @@ internal class TldHacksSettings : JsonModSettings
     [Name("Quick Action(采集/修理/拆解 时间自动加速)")]
     [Description("采集尸骸 / 修理工具 / 拆解物品 时游戏内置有加速按钮,这个 toggle 自动帮你按")]
     public bool QuickAction = false;
+
+    // ——— CT 复刻 v2.7.45+ ———
+    [Section("CT 复刻 / 参照 Cheat Engine 表")]
+    [Name("秒烤肉(CookingPot 瞬完成)")]
+    public bool QuickCook = false;
+
+    [Name("秒搜索(容器/尸体搜刮 NOP TimedHold)")]
+    public bool QuickSearch = false;
+
+    [Name("秒割肉(Panel_BodyHarvest)")]
+    public bool QuickHarvest = false;
+
+    [Name("秒打碎(Panel_BreakDown)")]
+    public bool QuickBreakDown = false;
+
+    [Name("解锁保险箱/上锁门/柜子")]
+    public bool UnlockSafes = false;
+
+    [Name("防风油灯油量不减")]
+    public bool LampFuelNoDrain = false;
+
+    [Name("保温杯永不失温")]
+    public bool FlaskNoHeatLoss = false;
+
+    [Name("保温杯存放无限容量")]
+    public bool FlaskInfiniteVol = false;
+
+    [Name("保温瓶装所有茶(任意液体)")]
+    public bool FlaskAnyItem = false;
+
+    [Name("加工秒完成(风干/腌制)")]
+    public bool QuickEvolve = false;
+
+    [Name("容器无限容量")]
+    public bool InfiniteContainer = false;
+
+    [Name("篝火温度 300℃")]
+    public bool FireTemp300 = false;
+
+    [Name("篝火永不熄灭")]
+    public bool FireNeverDie = false;
+
+    [Name("治愈永久冻伤")]
+    public bool CureFrostbite = false;
+
+    [Name("清除死亡惩罚")]
+    public bool ClearDeathPenalty = false;
+
+    [Name("钓鱼 100% 成功")]
+    public bool QuickFishing = false;
 }

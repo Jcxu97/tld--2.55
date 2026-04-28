@@ -57,6 +57,23 @@ internal static class CheatState
     public static bool QuickFire;          // 生火 100% 成功
     public static bool QuickClimb;         // 爬绳速度 ×5
     public static bool QuickAction;        // 采集 / 修理 / 拆解 自动时间加速
+    // CT 复刻 v2.7.45+
+    public static bool QuickCook;          // 秒烤肉
+    public static bool QuickSearch;        // 秒搜索
+    public static bool QuickHarvest;       // 秒割肉
+    public static bool QuickBreakDown;     // 秒打碎
+    public static bool UnlockSafes;        // 解锁保险箱/门/柜子
+    public static bool LampFuelNoDrain;    // 防风油灯油不减
+    public static bool FlaskNoHeatLoss;    // 保温杯永不失温
+    public static bool FlaskInfiniteVol;   // 保温杯存放无限
+    public static bool FlaskAnyItem;       // 保温瓶装任意
+    public static bool QuickEvolve;        // 加工秒完成
+    public static bool InfiniteContainer;  // 容器无限
+    public static bool FireTemp300;        // 篝火 300℃
+    public static bool FireNeverDie;       // 篝火永不熄
+    public static bool CureFrostbite;      // 治愈永久冻伤
+    public static bool ClearDeathPenalty;  // 清除死亡惩罚
+    public static bool QuickFishing;       // 钓鱼 100%
     // Display
     public static string PositionText = "";
     // v2.7.29:LastActionLog 截断到 200 字符避免 UI 溢出
