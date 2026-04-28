@@ -1,5 +1,50 @@
 # TldHacks — 交接文档
 
+## 🎯 明天第一件事要测 (v2.7.48)
+
+1. **采集玫瑰果等地上作物** — v2.7.48 把 DefaultHoldTime=0.001 + Timer=99999,应该完全看不到读条(之前"能看到一点点读条")
+2. **秒烤肉** — v2.7.47 改成直接设 m_PercentCooked=1 + m_PercentRuined=0 + m_MinutesUntilRuined=99999,应该**刚熟不烤糊**(之前烤糊)
+3. **篝火永不熄灭** — v2.7.47 改成 m_IsPerpetual=true + m_MaxOnTODSeconds=Infinity,应该真永不灭
+4. **进出门** — 确认没被秒搜索 patch 破坏(v2.7.47 改成只 patch HarvestableInteraction 子类,不碰 TimedHoldInteraction base)
+
+## 📝 本次 session 全量功能 (v2.7.43 → v2.7.48)
+
+### CT 方案复刻 16 项(全部在菜单里有 toggle)
+
+**列 1 速度类(CT)**
+- 秒烤肉 (CookingPotItem.UpdateCookingTimeAndState Postfix 设 PercentCooked=1/Ruined=0)
+- 秒搜刮/采玫瑰果 (HarvestableInteraction.InitializeInteraction+BeginHold 设 DefaultHoldTime=0.001/Timer=99999)
+- 秒割肉 (Panel_BodyHarvest.Refresh 设 HarvestTimeSeconds=Total + Minutes=0 / BodyHarvest.MaybeFreeze 设 PercentFrozen=0)
+- 秒打碎 (Panel_BreakDown.UpdateDurationLabel 设 SecondsToBreakDown=0.2 / BreakDown.TimeCostHours=0)
+- 加工秒完成 风干(EvolveItem.Update 设 TimeToEvolveGameDays=0/TimeSpentEvolvingGameHours=1)
+
+**列 2 装备/锁(CT)**
+- 解锁保险箱 (SafeCracking.Update → 自动 UnlockSafe() / LockedInteraction.IsLocked → false)
+- 油灯不耗油 (Il2CppTLD.Gear.KeroseneLampItem.ReduceFuel → skip)
+- 保温杯不失温 (Il2CppTLD.Gear.InsulatedFlask.CalculateHeatLoss → skip)
+- 保温杯无限容量 (InsulatedFlask.UpdateVolume → skip)
+- 保温瓶装任意液体 (IsItemCompatibleWithFlask Postfix → true)
+
+**列 3 篝火/治疗(CT)**
+- 篝火 300℃ (HeatSource.Update 设 m_MaxTempIncrease=300)
+- 篝火永不熄灭 (Fire.Update 设 m_IsPerpetual=true + m_MaxOnTODSeconds=Infinity)
+- 容器无限 **NYI** (Container 无 m_Capacity 字段,待反编译)
+- 治愈永久冻伤 **NYI** (Condition.GetMaxHPModifier 待 patch)
+- 清除死亡惩罚 (CheatDeathAffliction.Update → Cure())
+- 钓鱼 100% **NYI** (未查 Fishing 类)
+
+### 快速制作重点修复 (v2.7.43/44)
+
+**最终方案**(用户给的思路 + CT 映射):
+- `HarmonyPatch(CraftingOperation, "Update")` Prefix
+- 设 `m_RealTimeDuration=0.2f` + `m_HoursToSpendCrafting=100f`
+- 返回 true 让原 Update 跑,游戏读大 hours 推 percent 瞬满
+- 不碰 TOD/timescale/accelerate → 真实时间和游戏时间都几乎不动
+- `CraftingEnd` Postfix 调 `CameraFade.FadeIn(0,0,null)` 修完成后残留暗屏
+
+**v2.7.20-40 期间失败 8 次原因**:
+都在改 TOD/Accelerate/TODLocked/DayScale/HoursPlayed,都破坏了 Panel_Crafting percent 推进依赖的 TOD 流逝。CT 方案不碰 TOD,直接让 CraftingOperation.Update 内部的 HoursToSpend=100 → 游戏自己算 percent 瞬满。
+
 ## ⚠️ 未解决 bug (v2.7.35 session)
 
 ### T1: 容器/背包页 hover 堆叠显示变 1

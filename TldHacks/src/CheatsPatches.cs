@@ -1079,17 +1079,31 @@ internal static class Patch_CookingPot_Update
     }
 }
 
-// —— 秒采集地上作物 v2.7.47 修 ——
-//   v2.7.46 patch 了 TimedHoldInteraction base,影响所有 TimedHold 子类,包括进门 → 卡场景切换
-//   修:改 patch HarvestableInteraction(玫瑰果等地上作物的 TimedHold 子类)的 BeginHold
-//   不碰 base class,门/场景切换用的 TimedHold 不受影响
+// —— 秒采集地上作物 v2.7.48 —— 读条再短一点
+//   v2.7.47 BeginHold 设 Timer=DefaultHoldTime,还有 1 帧读条可见
+//   修:InitializeInteraction 把 DefaultHoldTime 降到 0.001s + BeginHold Timer 推到超大
+[HarmonyPatch(typeof(HarvestableInteraction), "InitializeInteraction")]
+internal static class Patch_HarvestableInteraction_Init
+{
+    private static void Postfix(HarvestableInteraction __instance)
+    {
+        if (!CheatState.QuickSearch) return;
+        try { __instance.m_DefaultHoldTime = 0.001f; } catch { }
+    }
+}
+
 [HarmonyPatch(typeof(HarvestableInteraction), "BeginHold")]
 internal static class Patch_HarvestableInteraction_BeginHold
 {
     private static void Postfix(HarvestableInteraction __instance)
     {
         if (!CheatState.QuickSearch) return;
-        try { __instance.m_Timer = __instance.m_DefaultHoldTime; } catch { }
+        try
+        {
+            __instance.m_DefaultHoldTime = 0.001f;
+            __instance.m_Timer = 99999f;  // 一帧内就满
+        }
+        catch { }
     }
 }
 
