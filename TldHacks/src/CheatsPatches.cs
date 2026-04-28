@@ -139,6 +139,43 @@ internal static class Patch_Repair_Accelerate
     private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
 
+// Panel_Repair StartRepair Postfix:零化计时字段 + 直接调 RepairSuccessful/Finished 完成
+[HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
+internal static class Patch_Repair_StartRepair
+{
+    private static void Postfix(Panel_Repair __instance)
+    {
+        if (!CheatState.QuickAction) return;
+        try
+        {
+            __instance.m_RepairTimeSeconds = 0f;
+            __instance.m_ProgressBarTimeSeconds = 0f;
+            __instance.m_ElapsedProgressBarSeconds = 999f; // 立刻完成
+            __instance.m_TimeAccelerated = true;
+            __instance.RepairSuccessful();
+            __instance.RepairFinished();
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickRepair] {ex.Message}"); }
+    }
+}
+
+// Panel_BreakDown.OnBreakDown Postfix 直接调 BreakDownFinished 完成
+[HarmonyPatch(typeof(Panel_BreakDown), "OnBreakDown")]
+internal static class Patch_BreakDown_OnBreakDown
+{
+    private static void Postfix(Panel_BreakDown __instance)
+    {
+        if (!CheatState.QuickAction) return;
+        try
+        {
+            __instance.m_TimeSpentBreakingDown = 999f;
+            __instance.m_TimeIsAccelerated = true;
+            __instance.BreakDownFinished();
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickBreakDown] {ex.Message}"); }
+    }
+}
+
 // 黑屏/时间流逝 overlay —— TLD 用 CameraFade.FadeOut 让画面变黑。强制 time=0 让过场瞬完。
 // 副作用:场景转换也瞬切。
 [HarmonyPatch(typeof(CameraFade), "FadeOut", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
