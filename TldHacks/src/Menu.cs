@@ -13,7 +13,8 @@ internal static class Menu
     private const float H = 720f;
     // v2.7.28 ContentH 动态:tab0 主 cheat + uConsole 1400,tab1 spawner 只到 850
     //   之前固定 2200 → tab1 底部有 ~1300 空白可滚但无内容
-    private const float ContentH_Main = 1400f;
+    // v2.7.46:CT 复刻加了 16 toggle 分布三列,列最长 ~900 + Console 区 ~500 → 1600f 防截断
+    private const float ContentH_Main = 1600f;
     private const float ContentH_Spawner = 850f;
     private static Vector2 _mainScroll;
     private static Rect _window = new Rect(30f, 30f, W, H);
@@ -94,7 +95,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.45");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.46");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -230,6 +231,27 @@ internal static class Menu
         if (GUI.Button(R(c1, y1, 180f, ROW_H), "全部满级")) Skills.SetAllMax();
         y1 += ROW_ADV + SECTION_END_ADV;
 
+        // v2.7.46 CT 复刻速度类 —— 秒烤/秒搜/秒割/秒打碎/加工秒完成
+        y1 = Section(c1, y1, "速度类(CT)");
+        bool qcook = GUI.Toggle(R(c1, y1, 160f, ROW_H), s.QuickCook, " 秒烤肉");
+        bool qsrch = GUI.Toggle(R(c1 + 170f, y1, 180f, ROW_H), s.QuickSearch, " 秒搜刮/采玫瑰果");
+        y1 += ROW_ADV;
+        bool qhv   = GUI.Toggle(R(c1, y1, 160f, ROW_H), s.QuickHarvest, " 秒割肉");
+        bool qbd   = GUI.Toggle(R(c1 + 170f, y1, 160f, ROW_H), s.QuickBreakDown, " 秒打碎");
+        y1 += ROW_ADV;
+        bool qev   = GUI.Toggle(R(c1, y1, 200f, ROW_H), s.QuickEvolve, " 加工秒完成(风干)");
+        y1 += ROW_ADV + SECTION_END_ADV;
+        if (qcook != s.QuickCook || qsrch != s.QuickSearch || qhv != s.QuickHarvest
+            || qbd != s.QuickBreakDown || qev != s.QuickEvolve)
+        {
+            s.QuickCook = qcook; s.QuickSearch = qsrch; s.QuickHarvest = qhv;
+            s.QuickBreakDown = qbd; s.QuickEvolve = qev;
+            CheatState.QuickCook = qcook; CheatState.QuickSearch = qsrch;
+            CheatState.QuickHarvest = qhv; CheatState.QuickBreakDown = qbd;
+            CheatState.QuickEvolve = qev;
+            s.Save();
+        }
+
         // ========== 第二列 ==========
         y2 = Section(c2, y2, "动物");
         bool kill = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.InstantKillAnimals, " 一击必杀");
@@ -308,6 +330,26 @@ internal static class Menu
             s.Save();
         }
 
+        // v2.7.46 CT 复刻 装备/锁类 —— 保险箱 / 灯具 / 保温杯
+        y2 = Section(c2, y2, "装备 / 锁(CT)");
+        bool usaf  = GUI.Toggle(R(c2, y2, 180f, ROW_H), s.UnlockSafes, " 解锁保险箱/门");
+        bool lamp  = GUI.Toggle(R(c2 + 180f, y2, 180f, ROW_H), s.LampFuelNoDrain, " 油灯不耗油");
+        y2 += ROW_ADV;
+        bool flsk1 = GUI.Toggle(R(c2, y2, 180f, ROW_H), s.FlaskNoHeatLoss, " 保温杯不失温");
+        bool flsk2 = GUI.Toggle(R(c2 + 180f, y2, 180f, ROW_H), s.FlaskInfiniteVol, " 保温杯无限容量");
+        y2 += ROW_ADV;
+        bool flsk3 = GUI.Toggle(R(c2, y2, 240f, ROW_H), s.FlaskAnyItem, " 保温瓶装任意液体");
+        y2 += ROW_ADV + SECTION_END_ADV;
+        if (usaf != s.UnlockSafes || lamp != s.LampFuelNoDrain
+            || flsk1 != s.FlaskNoHeatLoss || flsk2 != s.FlaskInfiniteVol || flsk3 != s.FlaskAnyItem)
+        {
+            s.UnlockSafes = usaf; s.LampFuelNoDrain = lamp;
+            s.FlaskNoHeatLoss = flsk1; s.FlaskInfiniteVol = flsk2; s.FlaskAnyItem = flsk3;
+            CheatState.UnlockSafes = usaf; CheatState.LampFuelNoDrain = lamp;
+            CheatState.FlaskNoHeatLoss = flsk1; CheatState.FlaskInfiniteVol = flsk2; CheatState.FlaskAnyItem = flsk3;
+            s.Save();
+        }
+
         // ========== 第三列 ==========
         y3 = Section(c3, y3, "制作 / 节约时间");
         bool fc = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.FreeCraft, " 免费制作");
@@ -363,6 +405,27 @@ internal static class Menu
             s.NoAimStamina = nstam; s.NoAimDOF = ndof;
             CheatState.NoAimSway = sway; CheatState.NoAimShake = shk; CheatState.NoBreathSway = brth;
             CheatState.NoAimStamina = nstam; CheatState.NoAimDOF = ndof;
+            s.Save();
+        }
+
+        // v2.7.46 CT 复刻 篝火 + 治疗 + 容器
+        y3 = Section(c3, y3, "篝火 / 治疗(CT)");
+        bool ftmp  = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.FireTemp300, " 篝火 300℃");
+        bool fnev  = GUI.Toggle(R(c3 + 170f, y3, 160f, ROW_H), s.FireNeverDie, " 篝火永不熄灭");
+        y3 += ROW_ADV;
+        bool icon  = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.InfiniteContainer, " 容器无限(NYI)");
+        bool cfro  = GUI.Toggle(R(c3 + 170f, y3, 160f, ROW_H), s.CureFrostbite, " 治愈永久冻伤(NYI)");
+        y3 += ROW_ADV;
+        bool cdp   = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.ClearDeathPenalty, " 清除死亡惩罚");
+        bool qfish = GUI.Toggle(R(c3 + 170f, y3, 160f, ROW_H), s.QuickFishing, " 钓鱼 100%(NYI)");
+        y3 += ROW_ADV + SECTION_END_ADV;
+        if (ftmp != s.FireTemp300 || fnev != s.FireNeverDie || icon != s.InfiniteContainer
+            || cfro != s.CureFrostbite || cdp != s.ClearDeathPenalty || qfish != s.QuickFishing)
+        {
+            s.FireTemp300 = ftmp; s.FireNeverDie = fnev; s.InfiniteContainer = icon;
+            s.CureFrostbite = cfro; s.ClearDeathPenalty = cdp; s.QuickFishing = qfish;
+            CheatState.FireTemp300 = ftmp; CheatState.FireNeverDie = fnev; CheatState.InfiniteContainer = icon;
+            CheatState.CureFrostbite = cfro; CheatState.ClearDeathPenalty = cdp; CheatState.QuickFishing = qfish;
             s.Save();
         }
 
