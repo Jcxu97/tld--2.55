@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.24", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.25", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -32,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.24 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.25 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -120,11 +120,14 @@ public class ModMain : MelonMod
             if ((_frame % 300) == 30)
                 CheatsTick.TickAnimalsFull();
 
-            // 以下各 sub-tick 错开 phase,每 180 帧一次(3s),任一帧最多 1 个
+            // v2.7.25 TickStatus 从 180 帧 → 60 帧(1s)—— 取代 5 个被删的每帧 Update Postfix
+            // 饥/渴/累/寒 1s 内几乎不可能出现异常上升,TickStatus 60 帧重置一次够用
+            if ((_frame % 60) == 10)   CheatsTick.TickStatus();
+
+            // 其余 sub-tick 每 180 帧一次(3s),错开 phase
             if ((_frame % 180) == 15)  CheatsTick.TickGuns();
             if ((_frame % 180) == 45)  CheatsTick.TickClothingWetness();
             if ((_frame % 180) == 75)  CheatsTick.TickClimbRope();
-            if ((_frame % 180) == 105) CheatsTick.TickStatus();
             if ((_frame % 180) == 135) CheatsTick.TickLocks();
             if ((_frame % 180) == 165) CheatsTick.TickQuickActions();
 

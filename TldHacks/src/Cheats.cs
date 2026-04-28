@@ -503,61 +503,15 @@ internal static class Cheats
 
 // —————————————— Harmony patches ——————————————
 
-[HarmonyPatch(typeof(Condition), "Update")]
-internal static class Patch_Condition_Update
-{
-    private static void Postfix(Condition __instance)
-    {
-        if (!CheatState.GodMode) return;
-        try { __instance.m_CurrentHP = __instance.m_MaxHP; } catch { }
-    }
-}
-
-[HarmonyPatch(typeof(Fatigue), "Update")]
-internal static class Patch_Fatigue_Update
-{
-    private static void Postfix(Fatigue __instance)
-    {
-        if (!(CheatState.GodMode || CheatState.NoFatigue)) return;
-        try { __instance.m_CurrentFatigue = 0f; } catch { }
-    }
-}
-
-[HarmonyPatch(typeof(Hunger), "Update")]
-internal static class Patch_Hunger_Update
-{
-    private static void Postfix(Hunger __instance)
-    {
-        if (!(CheatState.GodMode || CheatState.NoHunger)) return;
-        try { __instance.m_CurrentReserveCalories = __instance.m_MaxReserveCalories; } catch { }
-    }
-}
+// v2.7.25 FPS 修:删了 Condition/Fatigue/Hunger/Thirst/Freezing 的每帧 Update Postfix
+// 这些本是主要 FPS 杀手 —— 每帧 5 次 Harmony detour(native→managed→native 跳转)
+// 现在改成 TickStats() 每 60 帧(1s)统一 tick 写一次字段,配合 Condition.AddHealth Prefix 拦负 HP 无遗漏
+// 保留 Hunger.UpdateCalorieReserves Prefix(低频方法)和 PlayerManager.MaybeFlushPlayerDamage 等
 
 [HarmonyPatch(typeof(Hunger), "UpdateCalorieReserves")]
 internal static class Patch_Hunger_UpdateCalorieReserves
 {
     private static bool Prefix() => !(CheatState.GodMode || CheatState.NoHunger);
-}
-
-[HarmonyPatch(typeof(Thirst), "Update")]
-internal static class Patch_Thirst_Update
-{
-    private static void Postfix(Thirst __instance)
-    {
-        if (!(CheatState.GodMode || CheatState.NoThirst)) return;
-        try { __instance.m_CurrentThirst = 0f; } catch { }
-    }
-}
-
-[HarmonyPatch(typeof(Freezing), "Update")]
-internal static class Patch_Freezing_Update
-{
-    private static bool Prefix() => !(CheatState.GodMode || CheatState.AlwaysWarm);
-    private static void Postfix(Freezing __instance)
-    {
-        if (!(CheatState.GodMode || CheatState.AlwaysWarm)) return;
-        try { __instance.m_CurrentFreezing = 0f; } catch { }
-    }
 }
 
 [HarmonyPatch(typeof(PlayerManager), "MaybeFlushPlayerDamage")]
