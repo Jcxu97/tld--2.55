@@ -1,16 +1,21 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using Il2CppInterop.Runtime;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(ModSettingsQuickNav.ModMain), "ModSettingsQuickNav", "1.0.0", "user")]
+[assembly: MelonInfo(typeof(ModSettingsQuickNav.ModMain), "ModSettingsQuickNav", "1.1.0", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
 namespace ModSettingsQuickNav;
 
+// v1.1.0 完全去掉 Harmony patch —— 前一版 patch internal [RegisterTypeInIl2Cpp] 类的
+// OnEnable/OnDisable 引发游戏启动卡死(Il2CppInterop 下对 Il2Cpp 注册类的 patch 不稳)。
+// 改纯轮询:OnUpdate 每帧/每 30 帧查一次当前是否在 Options 面板,backquote 切换浮层。
 public class ModMain : MelonMod
 {
     internal static MelonLogger.Instance Log;
@@ -18,60 +23,40 @@ public class ModMain : MelonMod
     public override void OnInitializeMelon()
     {
         Log = LoggerInstance;
-        Log.Msg("ModSettingsQuickNav v1.0.0 loaded — press ` (backquote) in ModSettings tab to open mod jump list");
+        Log.Msg("ModSettingsQuickNav v1.1.0 loaded (polling mode, no Harmony) — press ` in ModSettings tab");
+    }
+
+    private int _poll = 0;
+    public override void OnUpdate()
+    {
+        // 30 帧查一次面板状态,避免每帧反射
+        if (++_poll >= 30)
+        {
+            _poll = 0;
+            NavOverlay.RefreshPanelState();
+        }
+        if (NavOverlay.IsActive && Input.GetKeyDown(KeyCode.BackQuote))
+            NavOverlay.Visible = !NavOverlay.Visible;
     }
 
     public override void OnGUI()
     {
         NavOverlay.Draw();
     }
-
-    public override void OnUpdate()
-    {
-        if (NavOverlay.IsModSettingsActive && Input.GetKeyDown(KeyCode.BackQuote))
-            NavOverlay.Visible = !NavOverlay.Visible;
-    }
 }
 
-// ———————————————————————————————————————————————————————————————
-// Harmony patches — 反射定位 internal ModSettings.ModSettingsGUI 的 OnEnable/OnDisable
-// ———————————————————————————————————————————————————————————————
-[HarmonyPatch]
-internal static class Patch_OnEnable
-{
-    private static MethodBase TargetMethod()
-    {
-        var t = AccessTools.TypeByName("ModSettings.ModSettingsGUI");
-        return t?.GetMethod("OnEnable", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-    }
-    private static bool Prepare() => AccessTools.TypeByName("ModSettings.ModSettingsGUI") != null;
-    private static void Postfix(object __instance) => NavOverlay.Bind(__instance);
-}
-
-[HarmonyPatch]
-internal static class Patch_OnDisable
-{
-    private static MethodBase TargetMethod()
-    {
-        var t = AccessTools.TypeByName("ModSettings.ModSettingsGUI");
-        return t?.GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-    }
-    private static bool Prepare() => AccessTools.TypeByName("ModSettings.ModSettingsGUI") != null;
-    private static void Postfix() => NavOverlay.Unbind();
-}
-
-
-// ———————————————————————————————————————————————————————————————
-// NavOverlay — IMGUI 浮层:列出所有 mod,点击跳转
-// ———————————————————————————————————————————————————————————————
 internal static class NavOverlay
 {
-    public static bool IsModSettingsActive;
-    public static bool Visible;
+    public static bool IsActive;   // ModSettingsGUI MonoBehaviour 当前 enabled
+    public static bool Visible;    // 用户按 ` 显示列表
 
-    private static object _gui;                 // ModSettingsGUI 实例(internal 类,用 object)
-    private static MethodInfo _selectMod;       // ModSettingsGUI.SelectMod(string)
-    private static FieldInfo _modTabsField;     // ModSettingsGUI.modTabs Dictionary<string, ModTab>
+    private static object _gui;                     // ModSettingsGUI 实例
+    private static Type _guiType;
+    private static Type _menuType;                  // ModSettingsMenu (static)
+    private static MethodInfo _selectMod;           // ModSettingsGUI.SelectMod(string)
+    private static FieldInfo _modTabsField;         // ModSettingsGUI.modTabs (instance)
+    private static FieldInfo _settingsByNameField;  // ModSettingsMenu.settingsByModName (static)
+    private static bool _typesResolved = false;
 
     private static Vector2 _scroll;
     private static Rect _win = new Rect(20f, 80f, 320f, 560f);
@@ -80,31 +65,58 @@ internal static class NavOverlay
     private static string _filter = "";
     private static readonly char[] AlphaLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
 
-    public static void Bind(object gui)
+    private static void ResolveTypes()
     {
-        _gui = gui;
-        IsModSettingsActive = true;
+        if (_typesResolved) return;
         try
         {
-            var t = gui.GetType();
-            _selectMod    = t.GetMethod("SelectMod", BindingFlags.Instance | BindingFlags.NonPublic);
-            _modTabsField = t.GetField("modTabs",    BindingFlags.Instance | BindingFlags.NonPublic);
+            _guiType  = AccessTools.TypeByName("ModSettings.ModSettingsGUI");
+            _menuType = AccessTools.TypeByName("ModSettings.ModSettingsMenu");
+            if (_guiType != null)
+            {
+                _selectMod    = _guiType.GetMethod("SelectMod", BindingFlags.Instance | BindingFlags.NonPublic);
+                _modTabsField = _guiType.GetField("modTabs",    BindingFlags.Instance | BindingFlags.NonPublic);
+            }
+            if (_menuType != null)
+            {
+                _settingsByNameField = _menuType.GetField("settingsByModName", BindingFlags.Static | BindingFlags.NonPublic);
+            }
+            _typesResolved = true;
         }
-        catch (Exception ex) { ModMain.Log?.Warning($"[Bind] {ex.Message}"); }
+        catch (Exception ex) { ModMain.Log?.Warning($"[ResolveTypes] {ex.Message}"); _typesResolved = true; }
     }
 
-    public static void Unbind()
+    // 轮询当前是否有 ModSettingsGUI 实例处于 enabled 状态 —— 等价于"用户在 Options 的 Mod Settings tab"
+    public static void RefreshPanelState()
     {
-        IsModSettingsActive = false;
-        Visible = false;
-        _gui = null;
+        try
+        {
+            ResolveTypes();
+            if (_guiType == null) { IsActive = false; _gui = null; return; }
+
+            var all = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(_guiType));
+            _gui = null;
+            IsActive = false;
+            if (all == null) return;
+            foreach (var obj in all)
+            {
+                if (obj == null) continue;
+                var comp = obj as Component;
+                if (comp == null) continue;
+                if (!comp.gameObject.activeInHierarchy) continue;
+                _gui = obj;
+                IsActive = true;
+                break;
+            }
+            if (!IsActive) Visible = false;
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[Refresh] {ex.Message}"); IsActive = false; Visible = false; }
     }
 
     public static void Draw()
     {
-        if (!IsModSettingsActive) return;
+        if (!IsActive) return;
 
-        // 右上角小按钮:提示 + 切换
         var hintRect = new Rect(Screen.width - 280f, 10f, 270f, 24f);
         string hint = Visible ? "Mod 跳转 [点关闭] ( ` 切换)" : "Mod 跳转列表 [ ` 键打开]";
         if (GUI.Button(hintRect, hint)) Visible = !Visible;
@@ -120,7 +132,7 @@ internal static class NavOverlay
             var modNames = GetModNames();
             if (modNames == null || modNames.Count == 0)
             {
-                GUI.Label(new Rect(12f, 30f, 280f, 22f), "(modTabs 没取到 / 列表空)");
+                GUI.Label(new Rect(12f, 30f, 280f, 22f), "(mod 列表取不到,重开 options 面板试试)");
                 GUI.DragWindow(new Rect(0, 0, 10000, 24));
                 return;
             }
@@ -131,7 +143,7 @@ internal static class NavOverlay
                 return;
             }
 
-            // 字母跳段按钮栏(每行 13 个,两行 A-Z)
+            // A-Z 跳段 13×2
             float y = 28f;
             float bw = 22f, bh = 18f;
             for (int i = 0; i < AlphaLetters.Length; i++)
@@ -156,7 +168,6 @@ internal static class NavOverlay
             }
             y += 26f;
 
-            // 过滤
             var displayList = new List<string>(modNames.Count);
             foreach (var n in modNames)
             {
@@ -165,11 +176,9 @@ internal static class NavOverlay
                     displayList.Add(n);
             }
 
-            // 计数
             GUI.Label(new Rect(8f, y, 300f, 18f), $"共 {modNames.Count} 个 mod,当前显示 {displayList.Count}");
             y += 20f;
 
-            // 滚动列表
             var listRect = new Rect(8f, y, _win.width - 16f, _win.height - y - 12f);
             var contentH = displayList.Count * 24f + 4f;
             var contentRect = new Rect(0, 0, listRect.width - 18f, contentH);
@@ -188,32 +197,49 @@ internal static class NavOverlay
 
             GUI.DragWindow(new Rect(0, 0, 10000, 24));
         }
-        catch (Exception ex)
-        {
-            ModMain.Log?.Error($"[DrawWindow] {ex}");
-        }
+        catch (Exception ex) { ModMain.Log?.Error($"[DrawWindow] {ex}"); }
     }
 
+    // 优先从当前 GUI 实例的 modTabs dict 取;拿不到就从 ModSettingsMenu.settingsByModName 静态表取
     private static List<string> GetModNames()
     {
         try
         {
-            if (_gui == null || _modTabsField == null) return null;
-            var modTabs = _modTabsField.GetValue(_gui);
-            if (modTabs == null) return null;
+            ResolveTypes();
 
-            // modTabs 是 System.Collections.Generic.Dictionary<string, ModTab>,走反射拿 Keys
-            var dictType = modTabs.GetType();
-            var keysProp = dictType.GetProperty("Keys");
-            var keys = keysProp?.GetValue(modTabs) as System.Collections.IEnumerable;
-            if (keys == null) return null;
+            // 1) 实例层:ModSettingsGUI.modTabs
+            if (_gui != null && _modTabsField != null)
+            {
+                var modTabs = _modTabsField.GetValue(_gui);
+                if (modTabs != null)
+                {
+                    var keys = modTabs.GetType().GetProperty("Keys")?.GetValue(modTabs) as IEnumerable;
+                    if (keys != null)
+                    {
+                        var list = new List<string>();
+                        foreach (var k in keys) if (k is string s) list.Add(s);
+                        list.Sort(StringComparer.OrdinalIgnoreCase);
+                        if (list.Count > 0) return list;
+                    }
+                }
+            }
 
-            var list = new List<string>();
-            foreach (var k in keys) if (k is string s) list.Add(s);
-            list.Sort(StringComparer.OrdinalIgnoreCase);
-            return list;
+            // 2) 静态 fallback:ModSettingsMenu.settingsByModName
+            if (_settingsByNameField != null)
+            {
+                var dict = _settingsByNameField.GetValue(null);
+                var keys = dict?.GetType().GetProperty("Keys")?.GetValue(dict) as IEnumerable;
+                if (keys != null)
+                {
+                    var list = new List<string>();
+                    foreach (var k in keys) if (k is string s) list.Add(s);
+                    list.Sort(StringComparer.OrdinalIgnoreCase);
+                    return list;
+                }
+            }
         }
-        catch (Exception ex) { ModMain.Log?.Warning($"[GetModNames] {ex.Message}"); return null; }
+        catch (Exception ex) { ModMain.Log?.Warning($"[GetModNames] {ex.Message}"); }
+        return null;
     }
 
     private static void JumpTo(string modName)
