@@ -16,6 +16,9 @@
 ├── TldHacks/               ← 我原创的综合修改器,合并了 FoodStackable 堆叠 + 完整 CT 作弊功能
 │   ├── TldHacks.dll            编译好的,直接丢 Mods/ 就行(装 v2.7.0 就不用装 FoodStackable)
 │   └── src/                    C# 源码(13 文件)+ HANDOFF.md 详细开发日志
+├── ModSettingsQuickNav/    ← 我原创的 mod,给 ModSettings.dll 加"快速跳转"列表
+│   ├── ModSettingsQuickNav.dll
+│   └── src/
 ├── configs/                ← 所有 mod 的配置快照(203 个文件)
 │   ├── Mods/                   Mods/ 下所有 *.json / *.txt(不含 .dll)
 │   └── UserData/               MelonLoader 全局偏好
@@ -104,6 +107,18 @@
 
 **版本**:v2.7.0 —— 合并 FoodStackable + 全 15 region 传送 + 所有原 TODO 后端实装。
 
+## ModSettingsQuickNav — 自制 ModSettings 扩展
+
+**解决什么问题**:装了 50+ mod 后,`ModSettings.dll` 的 mod 设置面板只能点箭头一个一个翻,找特定 mod 要戳几十下。
+
+**做法**:Harmony patch `ModSettings.ModSettingsGUI.OnEnable/OnDisable`(都是 internal 类,靠 `AccessTools.TypeByName` + 反射 bypass)。当 ModSettings tab 激活时,屏幕右上角出现一个 IMGUI 切换按钮 + 按 `` ` ``(backquote)快捷键打开浮层:
+- A-Z 字母跳段(13×2 栅格按钮)
+- 清除筛选
+- 滚动列表显示所有 mod,点一下直接跳
+- 内部通过反射调 ModSettingsGUI 的 private `SelectMod(string)` 完成切换
+
+主菜单 / 游戏内暂停菜单都能用。不碰 TldHacks,独立工作。
+
 ## 快速换机恢复
 
 ```powershell
@@ -116,6 +131,7 @@ cp -r tld-自用改造2.55/configs/Mods/*       <TLD>/Mods/
 cp -r tld-自用改造2.55/configs/UserData/*   <TLD>/UserData/
 cp    tld-自用改造2.55/BunkerDefaults/BunkerDefaults.dll <TLD>/Mods/
 cp    tld-自用改造2.55/TldHacks/TldHacks.dll             <TLD>/Mods/
+cp    tld-自用改造2.55/ModSettingsQuickNav/ModSettingsQuickNav.dll <TLD>/Mods/
 # 装了 TldHacks v2.7+ 就别装 FoodStackable,功能已内置
 ```
 

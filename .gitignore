@@ -4,6 +4,8 @@ FoodStackable/src/bin/
 FoodStackable/src/obj/
 TldHacks/src/bin/
 TldHacks/src/obj/
+ModSettingsQuickNav/src/bin/
+ModSettingsQuickNav/src/obj/
 *.moddata
 *.backup_*
 *.log
