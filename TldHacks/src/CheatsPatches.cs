@@ -335,16 +335,7 @@ internal static class Patch_Craft_CanCraft
 //   craft 完成瞬间 TOD 拉回 → 用户看不到跳
 // GetFinalCraftingTime / GetAdjustedCraftingTime 不再 patch,游戏看到正常 craft 时长
 
-// v2.7.43 QuickCraft 完整复刻 CT 方案 —— 在 CraftingOperation.Update 开头设字段
-//   CT 脚本:
-//     MonoMethodInit(TLD.Gear.CraftingOperation.Update)
-//       push rcx
-//       mov [rcx+m_RealTimeDuration], (float)0.2
-//       mov [rcx+m_HoursToSpendCrafting], (float)100
-//       pop rcx
-//       jmp original_TLD.Gear.CraftingOperation.Update
-//   映射成 Harmony:CraftingOperation.Update Prefix 设两个字段,返回 true 让原 Update 跑
-//   Il2CppTLD.Gear.CraftingOperation 就是 CT 的 TLD.Gear.CraftingOperation(namespace 前缀 Il2Cpp)
+// v2.7.43/44 QuickCraft 完整复刻 CT 方案 —— 在 CraftingOperation.Update 开头设字段
 [HarmonyPatch(typeof(CraftingOperation), "Update")]
 internal static class Patch_CraftingOp_Update
 {
@@ -355,8 +346,25 @@ internal static class Patch_CraftingOp_Update
         {
             __instance.m_RealTimeDuration = 0.2f;
             __instance.m_HoursToSpendCrafting = 100f;
+            FadeSuppressionWindow.Arm(1f);  // v2.7.44 craft 期间吃 fade
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
+    }
+}
+
+// v2.7.44 —— 修 "做完屏幕暗一点" 残留 fade
+//   craft 完成后 CameraFade 可能留在 alpha > 0,强制 FadeIn(0,0) 瞬亮
+[HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
+internal static class Patch_Craft_End_ForceBright
+{
+    private static void Postfix()
+    {
+        if (!CheatState.QuickCraft) return;
+        try
+        {
+            CameraFade.FadeIn(0f, 0f, null);  // 瞬 fade in,强制亮
+        }
+        catch { }
     }
 }
 
