@@ -15,14 +15,12 @@ internal static class CheatState
     // Life / 生命
     public static bool GodMode;
     public static bool NoFallDamage;
-    // Status / 状态
-    public static bool InfiniteStamina;
+    // Status / 状态(注:InfiniteStamina 去掉 —— UniversalTweaks / 其他 mod 已覆盖)
     public static bool AlwaysWarm;
     public static bool NoHunger;
     public static bool NoThirst;
     public static bool NoFatigue;
-    // Movement / 移动
-    public static bool InfiniteCarry;
+    // Movement / 移动(注:InfiniteCarry 去掉 —— 其他 mod 已覆盖)
     public static float SpeedMultiplier = 1f;
     // Animals / 动物
     public static bool InstantKillAnimals;
@@ -386,8 +384,7 @@ internal static class Patch_Fatigue_Update
 {
     private static void Postfix(Fatigue __instance)
     {
-        // 冲刺消耗的就是 Fatigue,所以 InfiniteStamina 也走这条路径
-        if (!(CheatState.GodMode || CheatState.NoFatigue || CheatState.InfiniteStamina)) return;
+        if (!(CheatState.GodMode || CheatState.NoFatigue)) return;
         try { __instance.m_CurrentFatigue = 0f; } catch { }
     }
 }
@@ -433,24 +430,6 @@ internal static class Patch_Freezing_Update
 internal static class Patch_PM_FlushDamage
 {
     private static bool Prefix() => !CheatState.GodMode;
-}
-
-[HarmonyPatch(typeof(PlayerManager), "PlayerCanSprint")]
-internal static class Patch_PM_CanSprint
-{
-    private static void Postfix(ref bool __result)
-    {
-        if (CheatState.InfiniteStamina) __result = true;
-    }
-}
-
-[HarmonyPatch(typeof(PlayerManager), "PlayerCantSprintBecauseOfInjury")]
-internal static class Patch_PM_CantSprintInjury
-{
-    private static void Postfix(ref bool __result)
-    {
-        if (CheatState.InfiniteStamina) __result = false;
-    }
 }
 
 [HarmonyPatch(typeof(Hypothermia), "HypothermiaStart")]
@@ -501,22 +480,4 @@ internal static class Patch_GearItem_Awake
     }
 }
 
-[HarmonyPatch(typeof(Inventory), "MaybeAdd")]
-internal static class Patch_Inventory_MaybeAdd
-{
-    private static void Postfix(Inventory __instance)
-    {
-        if (!CheatState.InfiniteCarry) return;
-        try { __instance.m_ForceOverrideWeight = true; } catch { }
-    }
-}
-
-[HarmonyPatch(typeof(Inventory), "AddGear")]
-internal static class Patch_Inventory_AddGear
-{
-    private static void Postfix(Inventory __instance)
-    {
-        if (!CheatState.InfiniteCarry) return;
-        try { __instance.m_ForceOverrideWeight = true; } catch { }
-    }
-}
+// Patch_Inventory_MaybeAdd / Patch_Inventory_AddGear 已去除(InfiniteCarry 功能交给其他 mod)

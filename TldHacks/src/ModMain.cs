@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.4", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.5", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -30,7 +30,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.4 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.5 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -39,8 +39,6 @@ public class ModMain : MelonMod
     {
         CheatState.GodMode = Settings.GodMode;
         CheatState.NoFallDamage = Settings.NoFallDamage;
-        CheatState.InfiniteCarry = Settings.InfiniteCarry;
-        CheatState.InfiniteStamina = Settings.InfiniteStamina;
         CheatState.AlwaysWarm = Settings.AlwaysWarm;
         CheatState.NoHunger = Settings.NoHunger;
         CheatState.NoThirst = Settings.NoThirst;
@@ -95,12 +93,7 @@ public class ModMain : MelonMod
             if (CheatState.SpeedMultiplier > 0f && Mathf.Abs(Time.timeScale - CheatState.SpeedMultiplier) > 0.01f)
                 Time.timeScale = CheatState.SpeedMultiplier;
 
-            // Infinite carry: 除了 Harmony patch,OnUpdate 里也盖一次,保险
-            if (CheatState.InfiniteCarry)
-            {
-                var inv = GameManager.m_Inventory;
-                if (inv != null) inv.m_ForceOverrideWeight = true;
-            }
+            // (InfiniteCarry 已去除,由其他 mod 覆盖)
 
             // 所有 tick 都降频:避免 FindObjectsOfType 高频扫场景导致掉帧
             // 原 30/60 帧太猛;大部分 cheat 状态刷 1-5 秒一次足够

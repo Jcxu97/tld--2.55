@@ -137,9 +137,7 @@ internal static class Patch_BaseAi_ScanForSmells
     private static bool Prefix() => !CheatState.Stealth;
 }
 
-// ——— v2.7.4 注释掉:下面 8 条 patch 是 v2.7.1 新加的,疑似导致启动卡死 ———
-// 注释保留代码以便日后逐个重启测试。需要 debug 时取消对应块的注释重新 build。
-/*
+// v2.7.5 —— Stealth 恢复 3 层拦截(v2.7.4 切掉后不够用,实测失效)
 [HarmonyPatch(typeof(BaseAi), "ScanForNewTarget")]
 internal static class Patch_BaseAi_ScanForNewTarget
 {
@@ -160,9 +158,8 @@ internal static class Patch_BaseAi_DoOnDetection
 {
     private static bool Prefix() => !CheatState.Stealth;
 }
-*/
 
-// ——— 忽略上锁(v2.7.0 原有 IsLocked)———
+// ——— 忽略上锁(只保留 IsLocked,其余 patch 去掉 —— 2.7.1 启动卡死嫌疑)———
 [HarmonyPatch(typeof(Lock), "IsLocked")]
 internal static class Patch_Lock_IsLocked
 {
@@ -171,53 +168,9 @@ internal static class Patch_Lock_IsLocked
         if (CheatState.IgnoreLock) __result = false;
     }
 }
-
-/*
-[HarmonyPatch(typeof(Lock), "RequiresToolToUnlock")]
-internal static class Patch_Lock_RequiresTool
-{
-    private static void Postfix(ref bool __result)
-    {
-        if (CheatState.IgnoreLock) __result = false;
-    }
-}
-
-[HarmonyPatch(typeof(Lock), "PlayerHasRequiredToolToUnlock")]
-internal static class Patch_Lock_PlayerHasTool
-{
-    private static void Postfix(ref bool __result)
-    {
-        if (CheatState.IgnoreLock) __result = true;
-    }
-}
-
-[HarmonyPatch(typeof(Breath), "GetBreathTimePercent")]
-internal static class Patch_Breath_GetPercent
-{
-    private static void Postfix(ref float __result)
-    {
-        if (CheatState.InfiniteStamina) __result = 1f;
-    }
-}
-
-[HarmonyPatch(typeof(Encumber), "IsEncumbered")]
-internal static class Patch_Encumber_IsEncumbered
-{
-    private static void Postfix(ref bool __result)
-    {
-        if (CheatState.InfiniteCarry) __result = false;
-    }
-}
-
-[HarmonyPatch(typeof(Encumber), "GetEncumbranceSlowdownMultiplier")]
-internal static class Patch_Encumber_Slowdown
-{
-    private static void Postfix(ref float __result)
-    {
-        if (CheatState.InfiniteCarry) __result = 1f;
-    }
-}
-*/
+// Lock.RequiresToolToUnlock + PlayerHasRequiredToolToUnlock, Breath.GetBreathTimePercent,
+// Encumber.IsEncumbered + GetEncumbranceSlowdownMultiplier 这 5 个 patch 去掉 ——
+// 前者因启动卡死嫌疑,后者因为对应功能(IC/IS)已去除(交给 UniversalTweaks 等 mod)
 
 // ——— 冰面不破:冰面破裂触发 / 落水 直接跳过 ———
 [HarmonyPatch(typeof(IceCrackingTrigger), "BreakIce")]
@@ -571,25 +524,16 @@ internal static class CheatsTick
         catch { }
     }
 
-    // ——— 无限体力 / 无饥饿 / 无口渴 / 无疲劳 / 始终温暖 ———
-    // Harmony 挂 MonoBehaviour.Update 在 Il2Cpp 下不生效,改 tick 直接设字段
+    // ——— 无饥饿 / 无口渴 / 无疲劳 / 始终温暖 / GodMode 兜底 ———
+    // (InfiniteStamina / InfiniteCarry 已去除,交给 UniversalTweaks 等 mod 处理)
     public static void TickStatus()
     {
-        if (!CheatState.InfiniteStamina && !CheatState.NoFatigue && !CheatState.NoHunger
+        if (!CheatState.NoFatigue && !CheatState.NoHunger
             && !CheatState.NoThirst && !CheatState.AlwaysWarm && !CheatState.GodMode) return;
 
         try
         {
-            if (CheatState.InfiniteStamina)
-            {
-                var breath = GameManager.GetBreathComponent();
-                if (breath != null)
-                {
-                    try { breath.m_BreathTime = 1f; } catch { }
-                    try { breath.m_BreathTimePercent = 1f; } catch { }
-                }
-            }
-            if (CheatState.InfiniteStamina || CheatState.NoFatigue || CheatState.GodMode)
+            if (CheatState.NoFatigue || CheatState.GodMode)
             {
                 var fat = GameManager.GetFatigueComponent();
                 if (fat != null) { try { fat.m_CurrentFatigue = 0f; } catch { } }

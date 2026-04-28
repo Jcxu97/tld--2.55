@@ -36,9 +36,6 @@ internal class TldHacksSettings : JsonModSettings
 
     // ——— Status ———
     [Section("Status / 状态")]
-    [Name("Infinite Stamina(无限体力)")]
-    public bool InfiniteStamina = false;
-
     [Name("Always Warm(始终温暖)")]
     public bool AlwaysWarm = false;
 
@@ -56,9 +53,6 @@ internal class TldHacksSettings : JsonModSettings
     [Slider(0.5f, 5f, 10)]
     [Name("Speed Multiplier(游戏速度)")]
     public float SpeedMultiplier = 1f;
-
-    [Name("Infinite Carry(无限负重)")]
-    public bool InfiniteCarry = false;
 
     // ——— Animals ———
     [Section("Animals / 动物")]
