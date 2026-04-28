@@ -31,8 +31,10 @@ internal static class Menu
     private static readonly float[] SpeedPresets = { 0.5f, 1f, 2f, 5f };
     private static readonly int[] HourPresets = { 8, 12, 18, 22 };
     private static readonly string[] HourLabels = { "晨8", "午12", "暮18", "夜22" };
-    private static readonly int[] WeatherStages = { 0, 2, 5, 8, 9, 10 };
-    private static readonly string[] WeatherLabels = { "晴", "多云", "雪", "暴雪", "雾", "极光" };
+    // 修正映射:WeatherStage enum 实际值 DenseFog=0/LightSnow=1/HeavySnow=2/PartlyCloudy=3/Clear=4/Cloudy=5
+    //                              LightFog=6/Blizzard=7/ClearAurora=8/ToxicFog=9/ElectrostaticFog=10
+    private static readonly int[] WeatherStages = { 4, 3, 5, 1, 2, 7, 6, 0, 8, 9, 10 };
+    private static readonly string[] WeatherLabels = { "晴", "局部多云", "多云", "小雪", "大雪", "暴风雪", "薄雾", "浓雾", "极光", "毒雾", "电磁雾" };
     private static List<ItemEntry> _filtered = new List<ItemEntry>();
     private static int _lastCat = -1;
 
@@ -82,7 +84,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.0");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.1");
     }
 
     // 字号随 _scale 一起缩放。IMGUI 默认 fontSize=0 用内置 12px,这里统一基础 14pt。
@@ -371,7 +373,7 @@ internal static class Menu
         for (int i = 0; i < Teleport.Destinations.Count; i++)
         {
             var d = Teleport.Destinations[i];
-            if (GUI.Button(R(10f + (i % 4) * 240f, y + (i / 4) * 26f, 230f, 22f), $"→ {d.Label} ({d.Scene})"))
+            if (GUI.Button(R(10f + (i % 4) * 240f, y + (i / 4) * 26f, 230f, 22f), $"→ {d.Label}"))
                 Teleport.TravelTo(d);
         }
         y += 26f * ((Teleport.Destinations.Count + 3) / 4) + 8f;

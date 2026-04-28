@@ -21,27 +21,27 @@ internal class Waypoint
 
 internal static class Teleport
 {
-    // 已知可用坐标(BunkerDefaults 搬来的 5 个地堡) + 全部 15 个 region 的场景名
-    // Pos == Vector3.zero 时走"只 LoadScene,不 TeleportPlayer"路径 —— 让游戏默认落点生效
+    // 已知可用坐标(BunkerDefaults 搬来的 5 个地堡) + 全部 15 个 region 的场景名。
+    // 区域名采用官方中文名(2.55 本地化),Pos == Vector3.zero 时走"只 LoadScene,不 TeleportPlayer"路径。
     public static readonly List<Waypoint> Destinations = new()
     {
-        // —— 地堡(精确坐标,PVP 的 prepper cache 隐蔽点)——
+        // —— 地堡(精确坐标,prepper cache 隐蔽点)——
         new Waypoint("神秘湖地堡",         "LakeRegion",              1029.06f,  91.99f,  -52.52f),
         new Waypoint("山间小镇地堡",       "MountainTownRegion",      1828.20f, 444.39f, 1771.27f),
         new Waypoint("荒凉水湾地堡",       "CanneryRegion",            328.37f, 344.50f,  833.16f),
-        new Waypoint("黑岩地区地堡",       "BlackrockRegion",          705.04f, 373.98f,  816.38f),
+        new Waypoint("黑岩监狱地堡",       "BlackrockRegion",          705.04f, 373.98f,  816.38f),
         new Waypoint("灰烬峡谷地堡",       "AshCanyonRegion",          -42.12f, 172.95f, -796.68f),
-        // —— 其他 region(Pos=0 走场景默认落点)——
+        // —— 其他 region(官方中文名,Pos=0 走场景默认落点)——
         new Waypoint("沿海公路",           "CoastalRegion",           0f, 0f, 0f),
         new Waypoint("宁静山谷",           "RuralRegion",             0f, 0f, 0f),
-        new Waypoint("针叶松林山",         "CrashMountainRegion",     0f, 0f, 0f),
-        new Waypoint("荒野沼泽",           "MarshRegion",             0f, 0f, 0f),
-        new Waypoint("晦暗湾",             "MiningRegion",            0f, 0f, 0f),
-        new Waypoint("被弃机场(DLC)",     "AirfieldRegion",          0f, 0f, 0f),
-        new Waypoint("捕鲸站",             "WhalingStationRegion",    0f, 0f, 0f),
+        new Waypoint("针叶狼山",           "CrashMountainRegion",     0f, 0f, 0f),
+        new Waypoint("孤寂沼泽",           "MarshRegion",             0f, 0f, 0f),
+        new Waypoint("污染区",             "MiningRegion",            0f, 0f, 0f),
+        new Waypoint("被弃机场",           "AirfieldRegion",          0f, 0f, 0f),
+        new Waypoint("晦暗湾",             "WhalingStationRegion",    0f, 0f, 0f),
         new Waypoint("废弃铁路",           "TracksRegion",            0f, 0f, 0f),
         new Waypoint("寂静河谷",           "RiverValleyRegion",       0f, 0f, 0f),
-        new Waypoint("山间隘口",           "MountainPassRegion",      0f, 0f, 0f),
+        new Waypoint("崩裂之岭",           "MountainPassRegion",      0f, 0f, 0f),
     };
 
     // 正解:PlayerManager.TeleportPlayer(Vector3, Quaternion) 是公开方法。

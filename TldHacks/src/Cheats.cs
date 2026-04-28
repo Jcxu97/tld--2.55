@@ -89,49 +89,52 @@ internal static class Cheats
 
     public static void ClearAllAfflictions()
     {
-        int n = 0;
-        // 已知签名的(硬编码)
-        try { GameManager.GetHypothermiaComponent()?.HypothermiaEnd(true); n++; } catch { }
-        try { GameManager.GetFrostbiteComponent()?.FrostbiteEnd(); n++; } catch { }
-        try { GameManager.GetCabinFeverComponent()?.CabinFeverEnd(); n++; } catch { }
-        try { GameManager.GetDysenteryComponent()?.DysenteryEnd(true); n++; } catch { }
-        try { GameManager.GetFoodPoisoningComponent()?.FoodPoisoningEnd(true); n++; } catch { }
-        try { GameManager.GetBrokenRibComponent()?.BrokenRibEnd(0, true); n++; } catch { }
-        try { GameManager.GetSprainedWristComponent()?.SprainedWristEnd(0, (AfflictionOptions)0); n++; } catch { }
-        try { GameManager.GetSprainedAnkleComponent()?.SprainedAnkleEnd(0, (AfflictionOptions)0); n++; } catch { }
-        try { GameManager.GetBloodLossComponent()?.BloodLossEnd(0, (AfflictionOptions)0); n++; } catch { }
-        try { GameManager.GetInfectionComponent()?.InfectionEnd(0); n++; } catch { }
+        int cleared = 0;
 
-        // 反射扫扩展项 —— TLD 其它 affliction 组件,签名未知,用 "无参 End" 兜底
-        foreach (var name in new[]
-        {
-            "Headache", "Scurvy", "Parasites", "Burns", "Concussion",
-            "InfectionRisk", "ChemicalPoisoning", "ElectricalShock",
-            "BearAttack", "WolfBite", "IntestinalParasites", "AnimalAttack",
-            "Inflammation", "RashA", "RashB"
-        })
+        // —— 已知签名 + HasXxx 先判定(只清真实 active 的,才叫"清了一项")——
+        try { var c = GameManager.GetHypothermiaComponent();  if (c != null && c.HasHypothermia())  { c.HypothermiaEnd(true);       cleared++; } } catch { }
+        try { var c = GameManager.GetFrostbiteComponent();    if (c != null && c.HasFrostbite())    { c.FrostbiteEnd();             cleared++; } } catch { }
+        try { var c = GameManager.GetCabinFeverComponent();   if (c != null && c.HasCabinFever())   { c.CabinFeverEnd();            cleared++; } } catch { }
+        try { var c = GameManager.GetDysenteryComponent();    if (c != null && c.HasDysentery())    { c.DysenteryEnd(true);         cleared++; } } catch { }
+        try { var c = GameManager.GetFoodPoisoningComponent();if (c != null && c.HasFoodPoisoning()){ c.FoodPoisoningEnd(true);     cleared++; } } catch { }
+        try { var c = GameManager.GetBrokenRibComponent();    if (c != null && c.HasBrokenRib())    { c.BrokenRibEnd(0, true);      cleared++; } } catch { }
+        try { var c = GameManager.GetSprainedWristComponent();if (c != null && c.HasSprainedWrist()){ c.SprainedWristEnd(0, (AfflictionOptions)0); cleared++; } } catch { }
+        try { var c = GameManager.GetSprainedAnkleComponent();if (c != null && c.HasSprainedAnkle()){ c.SprainedAnkleEnd(0, (AfflictionOptions)0); cleared++; } } catch { }
+        try { var c = GameManager.GetBloodLossComponent();    if (c != null && c.HasBloodLoss())    { c.BloodLossEnd(0, (AfflictionOptions)0);     cleared++; } } catch { }
+        try { var c = GameManager.GetInfectionComponent();    if (c != null && c.HasInfection())    { c.InfectionEnd(0);            cleared++; } } catch { }
+
+        // —— 直接设字段:某些组件没有 End 方法或签名 lookup 失败,强行 m_Active=false / m_Suppress*=true ——
+        string[] compNames = {
+            "Hypothermia","Frostbite","CabinFever","Dysentery","FoodPoisoning","BrokenRib","SprainedWrist","SprainedAnkle",
+            "BloodLoss","Infection","Headache","Scurvy","Parasites","Burns","BurnsElectric","Concussion",
+            "InfectionRisk","ChemicalPoisoning","ToxicFog","Suffocating","Fear","Anxiety","Inflammation"
+        };
+        foreach (var name in compNames)
         {
             try
             {
                 var getter = typeof(GameManager).GetMethod($"Get{name}Component", BindingFlags.Static | BindingFlags.Public);
                 var comp = getter?.Invoke(null, null);
                 if (comp == null) continue;
-                var endM = comp.GetType().GetMethod($"{name}End", BindingFlags.Instance | BindingFlags.Public)
-                        ?? comp.GetType().GetMethod("End", BindingFlags.Instance | BindingFlags.Public)
-                        ?? comp.GetType().GetMethod("Cure", BindingFlags.Instance | BindingFlags.Public);
-                if (endM == null) continue;
-                var ps = endM.GetParameters();
-                var args = new object[ps.Length];
-                for (int i = 0; i < ps.Length; i++)
-                    args[i] = ps[i].ParameterType.IsValueType ? Activator.CreateInstance(ps[i].ParameterType) : null;
-                endM.Invoke(comp, args);
-                n++;
+                var t = comp.GetType();
+
+                // 1) 强行 m_Active = false
+                var fActive = t.GetField("m_Active", BindingFlags.Instance | BindingFlags.Public);
+                if (fActive != null && fActive.FieldType == typeof(bool))
+                {
+                    var prev = (bool)fActive.GetValue(comp);
+                    if (prev) { fActive.SetValue(comp, false); cleared++; }
+                }
+                // 2) 顺带设 m_Suppress<Name> 防止立刻重新触发
+                var suppress = t.GetField($"m_Suppress{name}", BindingFlags.Instance | BindingFlags.Public);
+                if (suppress != null && suppress.FieldType == typeof(bool))
+                    suppress.SetValue(comp, true);
             }
             catch { }
         }
 
-        ModMain.Log?.Msg($"[Cheats] Cleared {n} affliction component(s)");
-        CheatState.LastActionLog = $"已清 {n} 项负面";
+        ModMain.Log?.Msg($"[Cheats] Cleared {cleared} affliction(s)");
+        CheatState.LastActionLog = $"已清 {cleared} 项负面";
     }
 
     // 真正切天气:WeatherTransition.ActivateWeatherSetImmediate(WeatherStage)
@@ -250,8 +253,7 @@ internal static class Cheats
         catch { }
     }
 
-    // 扫场景所有 BaseAi 实例(而不是所有 GameObject)。
-    // 动物都是 BaseAi 派生,实例数几十个,远少于 GameObject 几千个。
+    // 扫场景所有 BaseAi 实例直接调 DebugKill / ApplyDamage —— 比 SendMessage 可靠
     public static void ScanAndKillAnimals()
     {
         try
@@ -266,29 +268,26 @@ internal static class Cheats
                 {
                     var go = ((Component)ai).gameObject;
                     if (go == null || !go.activeInHierarchy) continue;
-                    TryKillGameObject(go);
-                    kills++;
-                    if (kills > 20) break;
+                    // 优先 DebugKill(一步到位),失败了 fallback 到 ApplyDamage 9999
+                    bool killed = false;
+                    try { ai.DebugKill(); killed = true; } catch { }
+                    if (!killed)
+                    {
+                        try { ai.ApplyDamage(9999f, 0f, DamageSource.Player, ""); killed = true; } catch { }
+                    }
+                    if (!killed)
+                    {
+                        try { ai.EnterDead(); killed = true; } catch { }
+                    }
+                    if (killed) kills++;
+                    if (kills > 30) break;
                 }
                 catch { }
             }
             if (kills > 0) ModMain.Log?.Msg($"[Cheats.Kill] killed {kills}");
+            CheatState.LastActionLog = $"已击杀 {kills} 只";
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[Cheats.Kill] {ex.Message}"); }
-    }
-
-    private static void TryKillGameObject(GameObject go)
-    {
-        if (go == null) return;
-        try
-        {
-            // 1 参版本 + 无参版本,都试。SendMessageOptions.DontRequireReceiver = 1
-            go.SendMessage("TakeDamage", 9999f, (SendMessageOptions)1);
-            go.SendMessage("ApplyDamage", 9999f, (SendMessageOptions)1);
-            go.SendMessage("Kill", (SendMessageOptions)1);
-            go.SendMessage("ForceKill", (SendMessageOptions)1);
-        }
-        catch { }
     }
 
     // 全地图揭示 —— 反射调 RegionManager 的各种 "RevealAll" 方法
@@ -427,17 +426,6 @@ internal static class Patch_Freezing_Update
     {
         if (!(CheatState.GodMode || CheatState.AlwaysWarm)) return;
         try { __instance.m_CurrentFreezing = 0f; } catch { }
-    }
-}
-
-[HarmonyPatch(typeof(Breath), "Update")]
-internal static class Patch_Breath_Update
-{
-    private static void Postfix(Breath __instance)
-    {
-        if (!CheatState.InfiniteStamina) return;
-        try { __instance.m_BreathTime = 1f; } catch { }
-        try { __instance.m_BreathTimePercent = 1f; } catch { }  // 真正体力条源
     }
 }
 

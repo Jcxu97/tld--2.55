@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.0", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.1", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -29,7 +29,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.0 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.1 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -128,6 +128,7 @@ public class ModMain : MelonMod
                 CheatsTick.TickFires();
                 CheatsTick.TickClothingWetness();
                 CheatsTick.TickClimbRope();
+                CheatsTick.TickStatus();
                 // 窗口状态类 one-shot apply:每次循环都调,内部 toggle 关时 DisableWindEffect 会被原游戏自己覆盖 —— 可以接受
                 ExtraOneShot.TickStopWind();
                 ExtraOneShot.TickSprainRisk();

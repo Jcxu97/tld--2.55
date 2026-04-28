@@ -121,7 +121,8 @@ internal static class Patch_Craft_Start_TimeAccel
     }
 }
 
-// ——— 隐身:AI 看不到玩家 ———
+// ——— 隐身:AI 完全看不到 / 不扫描玩家 ———
+// 多层拦截(单一 patch 不够彻底,游戏内 AI 逻辑有多个入口)
 [HarmonyPatch(typeof(BaseAi), "CanSeeTarget")]
 internal static class Patch_BaseAi_CanSeeTarget
 {
@@ -131,23 +132,98 @@ internal static class Patch_BaseAi_CanSeeTarget
     }
 }
 
-// 隐身额外:AI 不再扫嗅玩家气味
+// AI 不主动扫新目标 —— 最关键的一条,阻止 AI 把玩家登记为 target
+[HarmonyPatch(typeof(BaseAi), "ScanForNewTarget")]
+internal static class Patch_BaseAi_ScanForNewTarget
+{
+    private static bool Prefix() => !CheatState.Stealth;
+}
+
 [HarmonyPatch(typeof(BaseAi), "ScanForSmells")]
 internal static class Patch_BaseAi_ScanForSmells
 {
-    private static bool Prefix()
+    private static bool Prefix() => !CheatState.Stealth;
+}
+
+[HarmonyPatch(typeof(BaseAi), "IsPlayerAThreat")]
+internal static class Patch_BaseAi_IsPlayerAThreat
+{
+    private static void Postfix(ref bool __result)
     {
-        return !CheatState.Stealth;
+        if (CheatState.Stealth) __result = false;
     }
 }
 
-// ——— 忽略上锁:任何 Lock 的 IsLocked 都返回 false ———
+[HarmonyPatch(typeof(BaseAi), "DoOnDetection")]
+internal static class Patch_BaseAi_DoOnDetection
+{
+    private static bool Prefix() => !CheatState.Stealth;
+}
+
+// ——— 忽略上锁:3 层拦截,任何查锁的地方都让它看起来没锁/玩家已有工具 ———
 [HarmonyPatch(typeof(Lock), "IsLocked")]
 internal static class Patch_Lock_IsLocked
 {
     private static void Postfix(ref bool __result)
     {
         if (CheatState.IgnoreLock) __result = false;
+    }
+}
+
+[HarmonyPatch(typeof(Lock), "RequiresToolToUnlock")]
+internal static class Patch_Lock_RequiresTool
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.IgnoreLock) __result = false;
+    }
+}
+
+[HarmonyPatch(typeof(Lock), "PlayerHasRequiredToolToUnlock")]
+internal static class Patch_Lock_PlayerHasTool
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.IgnoreLock) __result = true;
+    }
+}
+
+// ——— 无限体力(InfiniteStamina)—— Breath.GetBreathTimePercent 返回 1 + tick 保持字段满 ———
+// 原 Patch_Breath_Update 挂的是 MonoBehaviour.Update,Il2Cpp 下 Harmony 钩不到 —— 所以之前无效
+[HarmonyPatch(typeof(Breath), "GetBreathTimePercent")]
+internal static class Patch_Breath_GetPercent
+{
+    private static void Postfix(ref float __result)
+    {
+        if (CheatState.InfiniteStamina) __result = 1f;
+    }
+}
+
+// ——— 无限负重:拦截 Encumber 的各层判定 ———
+[HarmonyPatch(typeof(Encumber), "IsEncumbered")]
+internal static class Patch_Encumber_IsEncumbered
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.InfiniteCarry) __result = false;
+    }
+}
+
+[HarmonyPatch(typeof(Encumber), "GetEncumbranceSlowdownMultiplier")]
+internal static class Patch_Encumber_Slowdown
+{
+    private static void Postfix(ref float __result)
+    {
+        if (CheatState.InfiniteCarry) __result = 1f; // 不减速
+    }
+}
+
+[HarmonyPatch(typeof(Encumber), "GetEffectiveCarryCapacityKG")]
+internal static class Patch_Encumber_CapacityKG
+{
+    private static void Postfix(ref float __result)
+    {
+        if (CheatState.InfiniteCarry) __result = 999f;
     }
 }
 
@@ -478,6 +554,53 @@ internal static class CheatsTick
                     }
                 }
                 catch { }
+            }
+        }
+        catch { }
+    }
+
+    // ——— 无限体力 / 无饥饿 / 无口渴 / 无疲劳 / 始终温暖 ———
+    // Harmony 挂 MonoBehaviour.Update 在 Il2Cpp 下不生效,改 tick 直接设字段
+    public static void TickStatus()
+    {
+        if (!CheatState.InfiniteStamina && !CheatState.NoFatigue && !CheatState.NoHunger
+            && !CheatState.NoThirst && !CheatState.AlwaysWarm && !CheatState.GodMode) return;
+
+        try
+        {
+            if (CheatState.InfiniteStamina)
+            {
+                var breath = GameManager.GetBreathComponent();
+                if (breath != null)
+                {
+                    try { breath.m_BreathTime = 1f; } catch { }
+                    try { breath.m_BreathTimePercent = 1f; } catch { }
+                }
+            }
+            if (CheatState.InfiniteStamina || CheatState.NoFatigue || CheatState.GodMode)
+            {
+                var fat = GameManager.GetFatigueComponent();
+                if (fat != null) { try { fat.m_CurrentFatigue = 0f; } catch { } }
+            }
+            if (CheatState.NoHunger || CheatState.GodMode)
+            {
+                var h = GameManager.GetHungerComponent();
+                if (h != null) { try { h.m_CurrentReserveCalories = h.m_MaxReserveCalories; } catch { } }
+            }
+            if (CheatState.NoThirst || CheatState.GodMode)
+            {
+                var t = GameManager.GetThirstComponent();
+                if (t != null) { try { t.m_CurrentThirst = 0f; } catch { } }
+            }
+            if (CheatState.AlwaysWarm || CheatState.GodMode)
+            {
+                var f = GameManager.GetFreezingComponent();
+                if (f != null) { try { f.m_CurrentFreezing = 0f; } catch { } }
+            }
+            if (CheatState.GodMode)
+            {
+                var c = GameManager.GetConditionComponent();
+                if (c != null) { try { c.m_CurrentHP = c.m_MaxHP; } catch { } }
             }
         }
         catch { }
