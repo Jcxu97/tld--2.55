@@ -84,26 +84,17 @@ internal static class Patch_Condition_AddHealth_Filter
     }
 }
 
-// ——— 节约时间 v2.7.15 —— 发现真正的动画计时字段 m_HarvestTimeSeconds / m_HarvestTimeMinutes
-// StartHarvest/StartQuarter Postfix 后立刻把这俩设 0.01 —— 动画几乎零时间,yield 由 BodyHarvest 决定
-// 不破坏 yield 逻辑
+// ——— 快速采集 v2.7.19:彻底换方案 —— 延迟调 HarvestSuccessful/QuarterSuccessful 跳过整个时间流逝 + fade
+// 之前 Patch_Harvest_Accelerate 把 minutes=0 → panel 等时间但时间不走 = 卡死
+// 之前 Patch_Harvest_Update 每帧强推字段 + CameraFade FinishFade = 黑屏 + 递归 = 点取消游戏都卡死
+// 现在:Postfix 只记录"2 帧后完成",由 ModMain.OnUpdate 调 QuickHarvestRunner.Tick 完成
 [HarmonyPatch(typeof(Panel_BodyHarvest), "StartHarvest", new System.Type[] { typeof(int), typeof(string) })]
 internal static class Patch_Harvest_Start
 {
     private static void Postfix(Panel_BodyHarvest __instance)
     {
         if (!CheatState.QuickAction) return;
-        try
-        {
-            __instance.m_HarvestTimeSeconds = 0f;
-            __instance.m_HarvestTimeMinutes = 0f;
-            __instance.m_TimeAccelerated = true;
-            __instance.m_IntroLerpTime = 0f;
-            __instance.m_IntroTimer = 0f;
-            __instance.m_DoingIntroLerp = false;
-            try { __instance.CleanupTimelinePlaying(); } catch { }
-        }
-        catch { }
+        QuickHarvestRunner.Queue(__instance, QuickHarvestRunner.Action.Harvest);
     }
 }
 
@@ -113,30 +104,41 @@ internal static class Patch_Harvest_StartQuarter
     private static void Postfix(Panel_BodyHarvest __instance)
     {
         if (!CheatState.QuickAction) return;
-        try
-        {
-            __instance.m_HarvestTimeSeconds = 0f;
-            __instance.m_HarvestTimeMinutes = 0f;
-            __instance.m_TimeAccelerated = true;
-            __instance.m_IntroLerpTime = 0f;
-            __instance.m_IntroTimer = 0f;
-            __instance.m_DoingIntroLerp = false;
-            try { __instance.CleanupTimelinePlaying(); } catch { }
-        }
-        catch { }
+        QuickHarvestRunner.Queue(__instance, QuickHarvestRunner.Action.Quarter);
     }
 }
 
-[HarmonyPatch(typeof(Panel_BodyHarvest), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
-internal static class Patch_Harvest_Accelerate
+// 延迟完成执行器 —— 每帧在 ModMain.OnUpdate 里 tick。
+// 分离成 runner 是因为在 StartHarvest Postfix 直接调 HarvestSuccessful,此时 panel state 还未稳定,必报错
+internal static class QuickHarvestRunner
 {
-    private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
-}
+    internal enum Action { None, Harvest, Quarter }
+    internal static Panel_BodyHarvest Instance;
+    internal static Action PendingAction = Action.None;
+    internal static int Countdown = 0;
 
-[HarmonyPatch(typeof(Panel_Repair), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
-internal static class Patch_Repair_Accelerate
-{
-    private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
+    public static void Queue(Panel_BodyHarvest inst, Action a)
+    {
+        Instance = inst; PendingAction = a; Countdown = 2;
+    }
+
+    public static void Tick()
+    {
+        if (PendingAction == Action.None) return;
+        if (Instance == null) { Reset(); return; }
+        Countdown--;
+        if (Countdown > 0) return;
+        try
+        {
+            if (PendingAction == Action.Harvest) Instance.HarvestSuccessful();
+            else if (PendingAction == Action.Quarter) Instance.QuarterSuccessful();
+            ModMain.Log?.Msg($"[QuickHarvest] {PendingAction} done");
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickHarvest] {ex.Message}"); }
+        finally { Reset(); }
+    }
+
+    private static void Reset() { PendingAction = Action.None; Instance = null; Countdown = 0; }
 }
 
 // ——— 快速修理 v2.7.18:Update Postfix 每帧强推进度,让游戏自己的 Update 逻辑自然完成 ———
@@ -178,76 +180,9 @@ internal static class Patch_BreakDown_Update
     }
 }
 
-// ——— 快速采集 v2.7.18:Update Postfix 每帧推进 ———
-[HarmonyPatch(typeof(Panel_BodyHarvest), "Update")]
-internal static class Patch_Harvest_Update
-{
-    private static void Postfix(Panel_BodyHarvest __instance)
-    {
-        if (!CheatState.QuickAction) return;
-        try
-        {
-            if (!__instance.IsHarvestingOrQuartering()) return;
-            // 推进 intro lerp + 主时间
-            __instance.m_DoingIntroLerp = false;
-            __instance.m_IntroTimer = __instance.m_IntroLerpTime + 1f;
-            __instance.m_HarvestTimeSeconds = 0.01f;
-            __instance.m_HarvestTimeMinutes = 0f;
-            __instance.m_TimeAccelerated = true;
-            // 持续拍平 CameraFade,黑屏不攒出来
-            try { if (CameraFade.IsFading) CameraFade.FinishFade(true); } catch { }
-        }
-        catch { }
-    }
-}
-
-// 黑屏 v2.7.18:4 个 fade 方法全 patch,加 UpdateCameraFade Prefix 终结正在进行的 fade
-[HarmonyPatch(typeof(CameraFade), "FadeOut", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
-internal static class Patch_CameraFade_FadeOut
-{
-    private static void Prefix(ref float time, ref float delay)
-    {
-        if (CheatState.QuickAction) { time = 0f; delay = 0f; }
-    }
-}
-
-[HarmonyPatch(typeof(CameraFade), "FadeIn", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
-internal static class Patch_CameraFade_FadeIn
-{
-    private static void Prefix(ref float time, ref float delay)
-    {
-        if (CheatState.QuickAction) { time = 0f; delay = 0f; }
-    }
-}
-
-[HarmonyPatch(typeof(CameraFade), "FadeTo", new System.Type[] { typeof(float), typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
-internal static class Patch_CameraFade_FadeTo
-{
-    private static void Prefix(ref float time, ref float delay)
-    {
-        if (CheatState.QuickAction) { time = 0f; delay = 0f; }
-    }
-}
-
-[HarmonyPatch(typeof(CameraFade), "Fade", new System.Type[] { typeof(float), typeof(float), typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
-internal static class Patch_CameraFade_Fade
-{
-    private static void Prefix(ref float time, ref float delay)
-    {
-        if (CheatState.QuickAction) { time = 0f; delay = 0f; }
-    }
-}
-
-// 正在进行的 fade:强制 FinishFade(true) 跳到尾(alpha 设为目标值),Action 仍触发 → 兼容游戏逻辑
-[HarmonyPatch(typeof(CameraFade), "UpdateCameraFade")]
-internal static class Patch_CameraFade_UpdateCameraFade
-{
-    private static void Prefix()
-    {
-        if (!CheatState.QuickAction) return;
-        try { if (CameraFade.IsFading) CameraFade.FinishFade(true); } catch { }
-    }
-}
+// v2.7.19 撤掉所有 CameraFade patch + Panel_BodyHarvest.Update Patch:
+//   前者递归风险,后者每帧强推字段让游戏状态机错乱 → 2.7.18 卡死根因
+//   新方案靠 QuickHarvestRunner 延迟完成 = 直接跳过整个 fade + time 流程,根本不让黑屏出现
 
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
 // 用户要的是"我打它一下它就死",不是"开关一开所有动物全死"
