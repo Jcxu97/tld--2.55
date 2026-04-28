@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.11", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.12", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -31,7 +31,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.11 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.12 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -48,6 +48,7 @@ public class ModMain : MelonMod
         CheatState.InstantKillAnimals = Settings.InstantKillAnimals;
         CheatState.FreezeAnimals = Settings.FreezeAnimals;
         CheatState.Stealth = Settings.Stealth;
+        CheatState.TrueInvisible = Settings.TrueInvisible;
         CheatState.ThinIceNoBreak = Settings.ThinIceNoBreak;
         CheatState.IgnoreLock = Settings.IgnoreLock;
         CheatState.QuickOpenContainer = Settings.QuickOpenContainer;

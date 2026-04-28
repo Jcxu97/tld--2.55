@@ -25,7 +25,8 @@ internal static class CheatState
     // Animals / 动物
     public static bool InstantKillAnimals;
     public static bool FreezeAnimals;
-    public static bool Stealth;
+    public static bool Stealth;         // 动物自动逃跑(Flee mode)
+    public static bool TrueInvisible;   // 真·隐身(AI 检测不到玩家,不会主动扑也不会逃)
     // World
     public static bool ThinIceNoBreak;
     public static bool IgnoreLock;

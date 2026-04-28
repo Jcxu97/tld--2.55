@@ -91,7 +91,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.11");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.12");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -243,12 +243,15 @@ internal static class Menu
         bool kill = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.InstantKillAnimals, " 一击必杀");
         bool frz  = GUI.Toggle(R(c2 + 180f, y2, 160f, ROW_H), s.FreezeAnimals, " 动物不能动");
         y2 += ROW_ADV;
-        bool stealth = GUI.Toggle(R(c2, y2, 220f, ROW_H), s.Stealth, " 动物无法发现你");
+        bool stealth = GUI.Toggle(R(c2, y2, 220f, ROW_H), s.Stealth, " 动物自动逃跑");
+        y2 += ROW_ADV;
+        bool tinv = GUI.Toggle(R(c2, y2, 260f, ROW_H), s.TrueInvisible, " 真·隐身(检测不到)");
         y2 += ROW_ADV + SECTION_END_ADV;
-        if (kill != s.InstantKillAnimals || frz != s.FreezeAnimals || stealth != s.Stealth)
+        if (kill != s.InstantKillAnimals || frz != s.FreezeAnimals || stealth != s.Stealth || tinv != s.TrueInvisible)
         {
-            s.InstantKillAnimals = kill; s.FreezeAnimals = frz; s.Stealth = stealth;
-            CheatState.InstantKillAnimals = kill; CheatState.FreezeAnimals = frz; CheatState.Stealth = stealth;
+            s.InstantKillAnimals = kill; s.FreezeAnimals = frz; s.Stealth = stealth; s.TrueInvisible = tinv;
+            CheatState.InstantKillAnimals = kill; CheatState.FreezeAnimals = frz;
+            CheatState.Stealth = stealth; CheatState.TrueInvisible = tinv;
             s.Save();
         }
 
@@ -477,8 +480,8 @@ internal static class Menu
         //  对应功能用 Tab 1 的 GodMode / Stealth / NoJam / NoSprainRisk 替代。)
         // (天气锁定 UI 也去掉,用 Tab 1 第一列"天气 / 时间"即可)
 
-        // —— 温度锁定 ——
-        y = Section(10f, y, "温度锁定 lock_temperature");
+        // —— 温度锁定 —— ⚠ 慎用 ——
+        y = Section(10f, y, "温度锁定 ⚠ 慎用(解除后温度不会回到原值,必须重载存档)");
         int[] temps = { 20, 10, 0, -10, -30 };
         float bx = 10f;
         for (int i = 0; i < temps.Length; i++)
@@ -492,7 +495,7 @@ internal static class Menu
         }
         y += ROW_ADV;
         GUI.Label(R(10f, y, W - 20f, ROW_H),
-            "提示:解除锁定依赖 unlock_temperature 命令;若不灵,点温度 preset 覆盖或重启游戏");
+            "⚠ 警告:一旦锁温度,游戏存的原始天气温度会丢,解除锁定后温度不会回原值。只用于测试,用完重载存档");
         y += ROW_ADV + SECTION_END_ADV;
 
         // —— 物品 / 动物 ——

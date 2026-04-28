@@ -62,8 +62,12 @@ internal class TldHacksSettings : JsonModSettings
     [Name("Freeze Animals(动物不能动)")]
     public bool FreezeAnimals = false;
 
-    [Name("Stealth(动物无法发现你)")]
+    [Name("Stealth(动物自动逃跑)")]
     public bool Stealth = false;
+
+    [Name("True Invisible(真·隐身,动物检测不到)")]
+    [Description("动物像看不见你一样,正常闲逛/觅食/睡觉,不扑也不逃")]
+    public bool TrueInvisible = false;
 
     // ——— World ———
     [Section("World / 世界")]

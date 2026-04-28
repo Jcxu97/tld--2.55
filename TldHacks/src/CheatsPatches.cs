@@ -149,20 +149,21 @@ internal static class Patch_Craft_Start_TimeAccel
     }
 }
 
-// ——— 隐身:AI 完全看不到 / 不扫描玩家(v2.7.0 原有 2 层)———
+// ——— 隐身:CanSeeTarget / ScanForSmells 两条路径 ———
+// Stealth(逃跑)或 TrueInvisible(真隐身)任一开启都让 AI 侦测不到玩家
 [HarmonyPatch(typeof(BaseAi), "CanSeeTarget")]
 internal static class Patch_BaseAi_CanSeeTarget
 {
     private static void Postfix(ref bool __result)
     {
-        if (CheatState.Stealth) __result = false;
+        if (CheatState.Stealth || CheatState.TrueInvisible) __result = false;
     }
 }
 
 [HarmonyPatch(typeof(BaseAi), "ScanForSmells")]
 internal static class Patch_BaseAi_ScanForSmells
 {
-    private static bool Prefix() => !CheatState.Stealth;
+    private static bool Prefix() => !(CheatState.Stealth || CheatState.TrueInvisible);
 }
 
 // v2.7.6 —— BaseAi 的 3 层 patch(ScanForNewTarget / IsPlayerAThreat / DoOnDetection)
@@ -479,17 +480,25 @@ internal static class CheatsTick
     private static System.Reflection.FieldInfo _fi_baseAi_disableScan;
     private static bool _lastTickedStealth = false;
     private static bool _lastTickedFreeze = false;
+    private static bool _lastTickedInvis = false;
 
     public static void TickAnimals()
     {
         bool runStealth = CheatState.Stealth || _lastTickedStealth;
         bool runFreeze  = CheatState.FreezeAnimals || _lastTickedFreeze;
-        if (!runStealth && !runFreeze) return;
+        bool runInvis   = CheatState.TrueInvisible || _lastTickedInvis;
+        if (!runStealth && !runFreeze && !runInvis) return;
 
         try
         {
             var ais = UnityEngine.Object.FindObjectsOfType<BaseAi>();
-            if (ais == null) { _lastTickedStealth = CheatState.Stealth; _lastTickedFreeze = CheatState.FreezeAnimals; return; }
+            if (ais == null)
+            {
+                _lastTickedStealth = CheatState.Stealth;
+                _lastTickedFreeze  = CheatState.FreezeAnimals;
+                _lastTickedInvis   = CheatState.TrueInvisible;
+                return;
+            }
 
             if (_fi_baseAi_disableScan == null)
             {
@@ -509,10 +518,10 @@ internal static class CheatsTick
                             try { ai.m_OverrideSpeed = 0f; } catch { }
                     }
 
-                    // Stealth:双向同步 m_DisableScanForTargets
-                    if (runStealth && _fi_baseAi_disableScan != null)
+                    // TrueInvisible:双向同步 m_DisableScanForTargets(AI 检测不到玩家)
+                    if (runInvis && _fi_baseAi_disableScan != null)
                     {
-                        try { _fi_baseAi_disableScan.SetValue(ai, CheatState.Stealth); } catch { }
+                        try { _fi_baseAi_disableScan.SetValue(ai, CheatState.TrueInvisible); } catch { }
                     }
 
                     // Stealth 主力:看到动物就强制切 Flee(逃跑),不管当前在什么 mode
@@ -540,6 +549,7 @@ internal static class CheatsTick
 
             _lastTickedStealth = CheatState.Stealth;
             _lastTickedFreeze  = CheatState.FreezeAnimals;
+            _lastTickedInvis   = CheatState.TrueInvisible;
         }
         catch { }
     }
