@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.17", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.18", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -16,9 +16,11 @@ public class ModMain : MelonMod
 
     private int _durabilityTick = 0;
     private int _posTick = 0;
-    private int _extraTick = 0;
     private int _camTick = 0;
-    private int _animalsTick = 0;
+    private int _animalsCheapTick = 0;
+    private int _animalsFullTick = 0;
+    // v2.7.18 —— 单调递增帧计数器,用 modulo 把 7 个 tick 摊到不同帧,消除 90 帧 1 次的集中大 spike
+    private int _frame = 0;
 
     public override void OnInitializeMelon()
     {
@@ -30,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.17 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.18 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -96,50 +98,35 @@ public class ModMain : MelonMod
 
             // (InfiniteCarry 已去除,由其他 mod 覆盖)
 
-            // 所有 tick 都降频:避免 FindObjectsOfType 高频扫场景导致掉帧
-            // 原 30/60 帧太猛;大部分 cheat 状态刷 1-5 秒一次足够
-            // Infinite durability: ~5 秒扫一次
-            if (CheatState.InfiniteDurability && ++_durabilityTick >= 300)
-            {
-                _durabilityTick = 0;
+            // v2.7.18 FPS 修:所有 tick 按 frame modulo 摊到不同帧
+            // 之前 _extraTick==90 时 7 个 sub-tick 同帧触发 = 单帧 ~50ms 巨 spike = 跳帧
+            // 现在每种 tick 有自己的 phase + period,最多 1 个 heavy tick/帧
+            _frame++;
+
+            // Infinite durability: 每 300 帧(~5s)phase 0
+            if (CheatState.InfiniteDurability && (_frame % 300) == 0)
                 Cheats.TickInfiniteDurability();
-            }
 
-            // 一击必杀改成命中伤害放大(Patch_BaseAi_ApplyDamage),不再扫场景自动 kill
-            // (Cheats.ScanAndKillAnimals 保留给一次性手动按钮 / uConsole kill_all_animals)
+            // 真隐身/Stealth:cheap 部分(只设玩家 m_AiTarget.m_IsEnabled,1 个字段)每 60 帧
+            // FindObjectsOfType<BaseAi> 放 full tick,300 帧一次
+            if ((_frame % 60) == 5)
+                CheatsTick.TickAnimalsCheap();
+            if ((_frame % 300) == 30)
+                CheatsTick.TickAnimalsFull();
 
-            // Guns / Animals / Fires ~1.5 秒。三个 tick 里部分功能要"持续保持",
-            // 降太多会手感差(如开枪时弹药回填延迟)。~90 帧是折中。
-            // 而且只有相应 toggle 开了才进入扫描(每个 tick 内部有 early return)
-            // Stealth / TrueInvisible:180 帧(~3s)—— 新 AI 生成后最多 3s 内压制;省 FPS
-            // 真隐身核心是 m_AiTarget.m_IsEnabled=false(一次设了 AI 就看不见),tick 低频 ok
-            if (++_animalsTick >= 180)
-            {
-                _animalsTick = 0;
-                CheatsTick.TickAnimals();
-            }
+            // 以下各 sub-tick 错开 phase,每 180 帧一次(3s),任一帧最多 1 个
+            if ((_frame % 180) == 15)  CheatsTick.TickGuns();
+            if ((_frame % 180) == 45)  CheatsTick.TickClothingWetness();
+            if ((_frame % 180) == 75)  CheatsTick.TickClimbRope();
+            if ((_frame % 180) == 105) CheatsTick.TickStatus();
+            if ((_frame % 180) == 135) CheatsTick.TickLocks();
+            if ((_frame % 180) == 165) CheatsTick.TickQuickActions();
 
-            if (++_extraTick >= 90)
-            {
-                _extraTick = 0;
-                CheatsTick.TickGuns();
-                CheatsTick.TickClothingWetness();
-                CheatsTick.TickClimbRope();
-                CheatsTick.TickStatus();
-                CheatsTick.TickLocks();
-                CheatsTick.TickQuickActions();
-                // 窗口状态类 one-shot apply:每次循环都调,内部 toggle 关时 DisableWindEffect 会被原游戏自己覆盖 —— 可以接受
-                ExtraOneShot.TickStopWind();
-                ExtraOneShot.TickSprainRisk();
-            }
+            // One-shot 类:状态变化时重设即可,低频 OK
+            if ((_frame % 180) == 90) { ExtraOneShot.TickStopWind(); ExtraOneShot.TickSprainRisk(); }
 
-            // 摄像机 / 武器 aim:120 帧 ≈ 2 秒。核心 bool 开关 m_DisableAim* 一次设了就生效,
-            // tick 主要是新武器切换后重新同步,2 秒延迟完全可接受
-            if (++_camTick >= 120)
-            {
-                _camTick = 0;
-                CheatsTick.TickCamera();
-            }
+            // 摄像机 / 武器 aim:120 帧 phase 20,错开上面那堆
+            if ((_frame % 120) == 20) CheatsTick.TickCamera();
 
             // 玩家位置:菜单打开时 ~1 秒刷一次
             if (Menu.Open && ++_posTick >= 60)
