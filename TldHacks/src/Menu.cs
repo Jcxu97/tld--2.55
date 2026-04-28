@@ -11,7 +11,10 @@ internal static class Menu
 
     private const float W = 1200f;   // 加宽给三列更多空间
     private const float H = 720f;
-    private const float ContentH = 2200f;  // v2.7.5 调高给高缩放 + 松行距留空间
+    // v2.7.28 ContentH 动态:tab0 主 cheat + uConsole 1400,tab1 spawner 只到 850
+    //   之前固定 2200 → tab1 底部有 ~1300 空白可滚但无内容
+    private const float ContentH_Main = 1400f;
+    private const float ContentH_Spawner = 850f;
     private static Vector2 _mainScroll;
     private static Rect _window = new Rect(30f, 30f, W, H);
     private const int WindowId = 0x71D4_AC;
@@ -25,7 +28,7 @@ internal static class Menu
     // Spawner + presets
     private static int _selectedCategory = 0;
     private static int _page = 0;
-    private const int PageSize = 6;
+    private const int PageSize = 18;  // v2.7.28: 6 → 18 (3 col × 6 row),页数从 60 → 20
     private static int _quantity = 1;
     private static readonly int[] QuantityPresets = { 1, 5, 10, 50, 100 };
     private static readonly float[] SpeedPresets = { 0.5f, 1f, 2f, 5f };
@@ -91,7 +94,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.27");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.28");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -141,10 +144,15 @@ internal static class Menu
 
         // ScrollView viewport:顶部 tabs 下(52 px)到 底部状态栏上(25 px)
         Rect viewport = R(4f, 52f, W - 8f, H - 80f);
-        Rect content  = R(0f, 0f, W - 30f, ContentH);  // 减 30 给滚动条
+        float ch = _activeTab == 0 ? ContentH_Main : ContentH_Spawner;
+        Rect content  = R(0f, 0f, W - 30f, ch);  // 减 30 给滚动条
         _mainScroll = GUI.BeginScrollView(viewport, _mainScroll, content, false, true);
 
-        if (_activeTab == 0) { DrawMainTab(s); DrawConsoleSection(s); }
+        if (_activeTab == 0)
+        {
+            float mainBottomY = DrawMainTab(s);
+            DrawConsoleSection(s, mainBottomY + 14f);
+        }
         else DrawSpawnerTab(s);
 
         GUI.EndScrollView();
@@ -157,8 +165,10 @@ internal static class Menu
     }
 
     // ————————————— Tab 1:主 cheat 面板 —————————————
-    // 三列布局,每列 ~332 宽。列起点 x:10, 350, 690
-    private static void DrawMainTab(TldHacksSettings s)
+    // v2.7.28 三列重排:天气/时间 从列 1 挪到列 3 底部,让 3 列高度更均衡
+    // 列起点 x:10, 410, 810(列宽 400,中间 10 空隙)
+    // 返回三列中最大的 y(之后 uConsole 区块从这里起)
+    private static float DrawMainTab(TldHacksSettings s)
     {
         // 列起点
         // 三列起点,列宽 400,总宽 1200-中间空隙
@@ -205,24 +215,6 @@ internal static class Menu
             if (GUI.Button(R(bx, y1, 64f, ROW_H), active ? $"[{sp:F1}x]" : $"{sp:F1}x"))
             { s.SpeedMultiplier = sp; CheatState.SpeedMultiplier = sp; s.Save(); }
             bx += 70f;
-        }
-        y1 += ROW_ADV + SECTION_END_ADV;
-
-        y1 = Section(c1, y1, "天气 / 时间");
-        bx = c1;
-        for (int i = 0; i < WeatherStages.Length; i++)
-        {
-            if (GUI.Button(R(bx, y1, 58f, ROW_H), WeatherLabels[i])) Cheats.SetWeatherStage(WeatherStages[i]);
-            bx += 62f;
-            // 每 5 个换一行(11 个天气分 3 行)
-            if ((i + 1) % 5 == 0 && i < WeatherStages.Length - 1) { bx = c1; y1 += ROW_ADV; }
-        }
-        y1 += ROW_ADV;
-        bx = c1;
-        for (int i = 0; i < HourPresets.Length; i++)
-        {
-            if (GUI.Button(R(bx, y1, 62f, ROW_H), HourLabels[i])) Cheats.SetTimeOfDay(HourPresets[i]);
-            bx += 66f;
         }
         y1 += ROW_ADV + SECTION_END_ADV;
 
@@ -371,29 +363,54 @@ internal static class Menu
             CheatState.NoAimStamina = nstam; CheatState.NoAimDOF = ndof;
             s.Save();
         }
+
+        // 天气 / 时间 —— v2.7.28 从列 1 挪到列 3 底部让三列更均衡
+        y3 = Section(c3, y3, "天气 / 时间");
+        float bx3 = c3;
+        for (int i = 0; i < WeatherStages.Length; i++)
+        {
+            if (GUI.Button(R(bx3, y3, 58f, ROW_H), WeatherLabels[i])) Cheats.SetWeatherStage(WeatherStages[i]);
+            bx3 += 62f;
+            if ((i + 1) % 5 == 0 && i < WeatherStages.Length - 1) { bx3 = c3; y3 += ROW_ADV; }
+        }
+        y3 += ROW_ADV;
+        bx3 = c3;
+        for (int i = 0; i < HourPresets.Length; i++)
+        {
+            if (GUI.Button(R(bx3, y3, 62f, ROW_H), HourLabels[i])) Cheats.SetTimeOfDay(HourPresets[i]);
+            bx3 += 66f;
+        }
+        y3 += ROW_ADV + SECTION_END_ADV;
+
+        return Mathf.Max(y1, Mathf.Max(y2, y3));
     }
 
     // ————————————— Tab 2:物品刷出 + 传送 —————————————
+    // v2.7.28 重排:15 个传送目的地改 5 列 × 3 行;Item Spawner 2 列 × 3 行(6/页)→ 3 列 × 6 行(18/页)
     private static void DrawSpawnerTab(TldHacksSettings s)
     {
         float y = 6f;
 
-        // ========== 快速传送 ==========
+        // ========== 快速传送(5 列 × 3 行,紧凑) ==========
         GUI.Label(R(10f, y, 400f, ROW_H), $"—— 快速传送({Teleport.Destinations.Count} 个目的地) ——");
         y += ROW_ADV;
+        const int teleCols = 5;
+        float teleW = (W - 30f) / teleCols;    // 每列宽度
         for (int i = 0; i < Teleport.Destinations.Count; i++)
         {
             var d = Teleport.Destinations[i];
-            if (GUI.Button(R(10f + (i % 4) * 290f, y + (i / 4) * ROW_ADV, 280f, ROW_H), $"→ {d.Label}"))
+            float tx = 10f + (i % teleCols) * teleW;
+            float ty = y + (i / teleCols) * ROW_ADV;
+            if (GUI.Button(R(tx, ty, teleW - 4f, ROW_H), $"→ {d.Label}"))
                 Teleport.TravelTo(d);
         }
-        y += ROW_ADV * ((Teleport.Destinations.Count + 3) / 4) + SECTION_END_ADV;
+        y += ROW_ADV * ((Teleport.Destinations.Count + teleCols - 1) / teleCols) + SECTION_END_ADV;
 
-        if (GUI.Button(R(10f, y, 200f, ROW_H), "打印位置"))
-            ConsoleBridge.Run("pos");
-        if (GUI.Button(R(220f, y, 200f, ROW_H), "反射刷新位置"))
-            Cheats.UpdatePlayerPosition();
-        GUI.Label(R(430f, y, 600f, ROW_H), $"当前:{(string.IsNullOrEmpty(CheatState.PositionText) ? "(未获取)" : CheatState.PositionText)}");
+        // 位置控制行
+        if (GUI.Button(R(10f, y, 180f, ROW_H), "打印位置")) ConsoleBridge.Run("pos");
+        if (GUI.Button(R(200f, y, 180f, ROW_H), "反射刷新位置")) Cheats.UpdatePlayerPosition();
+        GUI.Label(R(400f, y, W - 410f, ROW_H),
+            $"当前:{(string.IsNullOrEmpty(CheatState.PositionText) ? "(未获取)" : CheatState.PositionText)}");
         y += ROW_ADV + SECTION_END_ADV;
 
         GUI.Box(R(10f, y, W - 20f, 1f), "");
@@ -403,6 +420,7 @@ internal static class Menu
         GUI.Label(R(10f, y, 400f, ROW_H), $"Item Spawner ({ItemDatabase.All.Count} 条)");
         y += ROW_ADV;
 
+        // 类别 tabs (全 9 个平铺)
         float catW = (W - 20f) / ItemDatabase.Categories.Length;
         for (int i = 0; i < ItemDatabase.Categories.Length; i++)
         {
@@ -414,6 +432,7 @@ internal static class Menu
         }
         y += ROW_ADV + SECTION_END_ADV;
 
+        // 数量预设
         GUI.Label(R(10f, y, 60f, ROW_H), "数量:");
         float bx = 70f;
         for (int i = 0; i < QuantityPresets.Length; i++)
@@ -432,26 +451,31 @@ internal static class Menu
         int start = _page * PageSize;
         int end = Mathf.Min(start + PageSize, _filtered.Count);
 
-        const int cols = 2, rows = 3;
+        // 3 列 × 6 行 = 18 个/页,每列宽 (W-40)/3 ≈ 387
+        const int cols = 3, rows = 6;
+        float colW = (W - 40f) / cols;
+        float btnW = 56f;  // + ×N 按钮宽度缩小,留更多空间给名字
         for (int idx = start; idx < end; idx++)
         {
             int i = idx - start;
             int col = i % cols, row = i / cols;
-            float x = 10f + col * 580f;
+            float x = 10f + col * colW;
             float yy = y + row * ROW_ADV;
             var e = _filtered[idx];
-            if (GUI.Button(R(x, yy, 90f, ROW_H), $"+ ×{_quantity}"))
+            if (GUI.Button(R(x, yy, btnW, ROW_H), $"+×{_quantity}"))
                 Cheats.SpawnItem(e.PrefabName, _quantity);
-            GUI.Label(R(x + 100f, yy, 470f, ROW_H), $"{e.Name}  [{e.PrefabName}]"
-                + (e.Calories > 0 ? $"  {e.Calories}k" : ""));
+            GUI.Label(R(x + btnW + 6f, yy, colW - btnW - 14f, ROW_H),
+                $"{e.Name}" + (e.Calories > 0 ? $" {e.Calories}k" : ""));
         }
         y += ROW_ADV * rows + SECTION_END_ADV;
 
-        if (GUI.Button(R(10f, y, 100f, ROW_H), "◀ 上一页"))
-        { if (_page > 0) _page--; }
-        GUI.Label(R(120f, y, 300f, ROW_H), $"页 {_page + 1}/{totalPages}   共 {_filtered.Count} 个");
-        if (GUI.Button(R(430f, y, 100f, ROW_H), "下一页 ▶"))
-        { if (_page < totalPages - 1) _page++; }
+        // 分页控制
+        if (GUI.Button(R(10f, y, 100f, ROW_H), "◀ 上一页")) { if (_page > 0) _page--; }
+        GUI.Label(R(120f, y, 350f, ROW_H), $"页 {_page + 1}/{totalPages}   共 {_filtered.Count} 个");
+        if (GUI.Button(R(480f, y, 100f, ROW_H), "下一页 ▶")) { if (_page < totalPages - 1) _page++; }
+        // 快速跳页
+        if (GUI.Button(R(600f, y, 80f, ROW_H), "⏮ 首页")) _page = 0;
+        if (GUI.Button(R(690f, y, 80f, ROW_H), "末页 ⏭")) _page = totalPages - 1;
     }
 
     private static float Section(float x, float y, string title)
@@ -462,11 +486,9 @@ internal static class Menu
 
     // —— 合并进 Tab 1 底部的 uConsole 命令区块 ——
     // 这些功能通过 TLD 内置 uConsole 命令调用。需要 DeveloperConsole.dll 已装。
-    private static void DrawConsoleSection(TldHacksSettings s)
+    // v2.7.28:接收三列最大 y,动态起点,不再 hard-code
+    private static void DrawConsoleSection(TldHacksSettings s, float y)
     {
-        // v2.7.5 三列内容在新 spacing 下延到 y~780,Console 区推到 820 起
-        float y = 820f;
-
         // 跨列分隔线
         GUI.Box(R(10f, y, W - 20f, 1f), "");
         y += 6f;
