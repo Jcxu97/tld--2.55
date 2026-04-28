@@ -8,16 +8,14 @@ using Il2CppInterop.Runtime;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(ModSettingsQuickNav.ModMain), "ModSettingsQuickNav", "1.2.0", "user")]
+[assembly: MelonInfo(typeof(ModSettingsQuickNav.ModMain), "ModSettingsQuickNav", "1.2.1", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
 namespace ModSettingsQuickNav;
 
-// v1.2.0:
-//  - 自动显示,不用热键 —— ModSettings tab 一激活就出浮层
-//  - +/- 按钮调 UI 缩放(字体跟着变),4K 显示器用
-//  - 缩放值存 Mods/ModSettingsQuickNav.json,重启保留
+// v1.2.1:F2 手动切换(用户改 backquote) + 保留打开 ModSettings tab 自动显示
+// v1.2.0:自动显示 + +/- 缩放 + 存 json
 // v1.1.0:去 Harmony,纯轮询 FindObjectsOfType(ModSettingsGUI)
 public class ModMain : MelonMod
 {
@@ -27,10 +25,12 @@ public class ModMain : MelonMod
     {
         Log = LoggerInstance;
         NavOverlay.LoadConfig();
-        Log.Msg($"ModSettingsQuickNav v1.2.0 loaded — auto-show on ModSettings panel, scale={NavOverlay.Scale:F1}");
+        Log.Msg($"ModSettingsQuickNav v1.2.1 loaded — auto-show on ModSettings tab, {NavOverlay.Hotkey} toggles, scale={NavOverlay.Scale:F1}");
     }
 
     private int _poll = 0;
+    private bool _wasActive = false;
+
     public override void OnUpdate()
     {
         if (++_poll >= 30)
@@ -38,6 +38,15 @@ public class ModMain : MelonMod
             _poll = 0;
             NavOverlay.RefreshPanelState();
         }
+
+        // ModSettings tab 激活时,热键(默认 F2)切换浮层显隐
+        if (NavOverlay.IsActive && NavOverlay.Hotkey != KeyCode.None && Input.GetKeyDown(NavOverlay.Hotkey))
+            NavOverlay.Hidden = !NavOverlay.Hidden;
+
+        // 边沿触发:ModSettings tab 从关到开时重置 Hidden = false(让浮层自动出现)
+        if (NavOverlay.IsActive && !_wasActive)
+            NavOverlay.Hidden = false;
+        _wasActive = NavOverlay.IsActive;
     }
 
     public override void OnGUI()
@@ -49,6 +58,8 @@ public class ModMain : MelonMod
 internal static class NavOverlay
 {
     public static bool IsActive;
+    public static bool Hidden;           // 用户按热键手动隐藏;下次进 ModSettings tab 会重置
+    public static KeyCode Hotkey = KeyCode.F2;
 
     private static object _gui;
     private static Type _guiType;
@@ -80,11 +91,14 @@ internal static class NavOverlay
         {
             if (!File.Exists(ConfigPath)) { SaveConfig(); return; }
             var text = File.ReadAllText(ConfigPath);
-            // 简单 regex 式解析,避免拖 json 库
-            var m = System.Text.RegularExpressions.Regex.Match(text, "\"Scale\"\\s*:\\s*(\\d+(?:\\.\\d+)?)");
-            if (m.Success && float.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Float,
+            var mScale = System.Text.RegularExpressions.Regex.Match(text, "\"Scale\"\\s*:\\s*(\\d+(?:\\.\\d+)?)");
+            if (mScale.Success && float.TryParse(mScale.Groups[1].Value, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float s))
                 Scale = Mathf.Clamp(s, ScaleMin, ScaleMax);
+
+            var mKey = System.Text.RegularExpressions.Regex.Match(text, "\"Hotkey\"\\s*:\\s*\"([A-Za-z0-9]+)\"");
+            if (mKey.Success && Enum.TryParse<KeyCode>(mKey.Groups[1].Value, true, out var k))
+                Hotkey = k;
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[LoadConfig] {ex.Message}"); }
     }
@@ -94,7 +108,10 @@ internal static class NavOverlay
         try
         {
             File.WriteAllText(ConfigPath,
-                $"{{\n  \"Scale\": {Scale.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}\n}}\n");
+                $"{{\n" +
+                $"  \"Scale\": {Scale.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},\n" +
+                $"  \"Hotkey\": \"{Hotkey}\"\n" +
+                $"}}\n");
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[SaveConfig] {ex.Message}"); }
     }
@@ -147,7 +164,7 @@ internal static class NavOverlay
 
     public static void Draw()
     {
-        if (!IsActive) return;
+        if (!IsActive || Hidden) return;
 
         // 窗口大小随 Scale 变
         _win.width  = 320f * Scale;
@@ -183,10 +200,10 @@ internal static class NavOverlay
             float w = _win.width / Scale;  // 内部用逻辑坐标,R() 负责乘 Scale
 
             // —— 顶栏:× 关闭 + 缩放 +/- ——
-            // 关闭做成本帧暂时隐藏;实际只要 ModSettings tab 还在就会下一帧自动回来
+            // × 关闭整次会话,按热键 (Hotkey,默认 F2) 或离开再进 ModSettings tab 会再现
             if (GUI.Button(new Rect((w - 30f) * Scale, 4f * Scale, 24f * Scale, 18f * Scale), "×"))
             {
-                IsActive = false;  // 手动隐藏本帧,下次 RefreshPanelState 会重置
+                Hidden = true;
                 return;
             }
             // + / - 按钮:调 UI scale
