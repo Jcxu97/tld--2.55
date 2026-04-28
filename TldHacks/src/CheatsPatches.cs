@@ -184,6 +184,35 @@ internal static class Patch_BreakDown_Update
 //   前者递归风险,后者每帧强推字段让游戏状态机错乱 → 2.7.18 卡死根因
 //   新方案靠 QuickHarvestRunner 延迟完成 = 直接跳过整个 fade + time 流程,根本不让黑屏出现
 
+// ——— 快速操作 v2.7.20 终极方案 ———
+// 所有"制作/修理/拆解/采集"都调 TimeOfDay.Accelerate(realTimeSec, gameTimeHours, doFadeToBlack)
+// 拦它一条就同时解决:
+//   1. 黑屏 (doFadeToBlack=false)
+//   2. 等 8 小时真实时间 (realTimeSeconds=0)
+//   3. 游戏内时间仍正常流逝 (gameTimeHours 保留,不破坏制作/采集必要的时间消耗)
+[HarmonyPatch(typeof(TimeOfDay), "Accelerate",
+    new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
+internal static class Patch_TimeOfDay_Accelerate
+{
+    private static void Prefix(ref float realTimeSeconds, ref bool doFadeToBlack)
+    {
+        if (!CheatState.QuickCraft && !CheatState.QuickAction) return;
+        realTimeSeconds = 0.01f;
+        doFadeToBlack = false;
+    }
+}
+
+[HarmonyPatch(typeof(TimeOfDay), "AccelerateTime",
+    new System.Type[] { typeof(float), typeof(float) })]
+internal static class Patch_TimeOfDay_AccelerateTime
+{
+    private static void Prefix(ref float realtimeDurationSeconds)
+    {
+        if (!CheatState.QuickCraft && !CheatState.QuickAction) return;
+        realtimeDurationSeconds = 0.01f;
+    }
+}
+
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
 // 用户要的是"我打它一下它就死",不是"开关一开所有动物全死"
 // 4 参虚方法 ApplyDamage(damage, bleedOutMinutes, DamageSource, collider) 指定签名避免歧义
