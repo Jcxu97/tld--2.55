@@ -278,14 +278,25 @@ internal static class Patch_CameraFade_Fade
     }
 }
 
-// v2.7.27 撤销 Patch_TimeOfDay_Accelerate + Patch_TimeOfDay_AccelerateTime
-//   问题 1:AccelerateTime(float minutes, float realtimeDurationSeconds) 的参数我之前搞错
-//     把第 1 个当成 realtimeDurationSeconds(实际是 minutes)→ 游戏内时间被错误设为 0.01 分钟
-//     把第 2 个当成 gameTimeHours(实际是 realtimeDurationSeconds)→ 参数名字全错
-//   问题 2:QuickAction 条件误伤制作流程 —— 关了 QuickCraft 但 QuickAction 开着,
-//     制作的 Accelerate 也被吃掉 gameTimeHours=0 = "关了快速制作也不消耗时间"
-//   新方案:完全撤销这俩 Prefix,改走 GetFinalCraftingTime Postfix=0 路径(见下方)
-//     采集/修理/拆解都各自通过 Panel_*.Update Postfix 推进字段 + 调完成方法,不依赖 Accelerate patch
+// v2.7.30 重新加回 TimeOfDay.Accelerate Prefix,但只在 QuickCraft 开时改 gameTimeHours=0
+//   根因:v2.7.29 只把 craft time=1 秒,但 Accelerate 的 gameTimeHours 原值 8h 仍推进游戏时钟
+//   现在 QuickCraft 时 gameTimeHours=0,配合 craft time=1 秒(GetFinalCraftingTime Postfix)
+//   → 单个制作 1 秒真实时间完成,游戏时钟不跳,不黑屏
+//   batch 不受影响 —— Panel_Crafting.Update 按 craft time 推进 percent,不依赖 gameTimeHours
+// 注意:QuickAction(采集/修理/拆解) 不吃 Accelerate,避免 v2.7.26 "关了 QuickCraft 还不消耗时间"的误伤
+[HarmonyPatch(typeof(TimeOfDay), "Accelerate",
+    new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
+internal static class Patch_TimeOfDay_Accelerate_Craft
+{
+    private static void Prefix(ref float gameTimeHours, ref bool doFadeToBlack)
+    {
+        if (CheatState.QuickCraft)
+        {
+            gameTimeHours = 0f;
+            doFadeToBlack = false;
+        }
+    }
+}
 
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
 // 用户要的是"我打它一下它就死",不是"开关一开所有动物全死"

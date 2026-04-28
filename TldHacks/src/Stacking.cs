@@ -268,6 +268,55 @@ internal static class Patch_RefreshDataItem
     }
 }
 
+// t1 bug v2.7.30 修 —— 容器页 hover/click 一个堆叠 item 会让 label 变 "1",要等转移才恢复
+// 根因:OnHover / ToggleSelection / UpdateConditionDisplay 等路径不经 RefreshDataItem
+//   游戏把 m_StackLabel 重置 → 用户看 "1" 直到 OnLateUpdate 4 帧后 reapply
+// 修法:patch OnHover + ToggleSelection Postfix,从 SeenItems 缓存里的 dataItem reapply
+[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.OnHover))]
+internal static class Patch_InventoryGridItem_OnHover
+{
+    private static void Postfix(InventoryGridItem __instance)
+    {
+        try
+        {
+            if (__instance == null) return;
+            if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
+                LabelFix.Reapply(__instance, seen.di);
+        }
+        catch { }
+    }
+}
+
+[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.ToggleSelection))]
+internal static class Patch_InventoryGridItem_ToggleSelection
+{
+    private static void Postfix(InventoryGridItem __instance)
+    {
+        try
+        {
+            if (__instance == null) return;
+            if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
+                LabelFix.Reapply(__instance, seen.di);
+        }
+        catch { }
+    }
+}
+
+[HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.UpdateConditionDisplay))]
+internal static class Patch_InventoryGridItem_UpdateCondition
+{
+    private static void Postfix(InventoryGridItem __instance)
+    {
+        try
+        {
+            if (__instance == null) return;
+            if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
+                LabelFix.Reapply(__instance, seen.di);
+        }
+        catch { }
+    }
+}
+
 // Refresh(GearItem, int) 是另一个 cell-bind 路径(跳过 dataItem 直接绑 gi)——
 // 一些 panel (slot / equipment) 走这条。我们从 CountsByGi 拿 count。
 [HarmonyPatch(typeof(InventoryGridItem), nameof(InventoryGridItem.Refresh))]
