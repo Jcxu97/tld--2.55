@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.25", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.26", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -32,7 +32,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.25 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.26 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -113,11 +113,13 @@ public class ModMain : MelonMod
             if (CheatState.InfiniteDurability && (_frame % 300) == 0)
                 Cheats.TickInfiniteDurability();
 
-            // 真隐身/Stealth:cheap 部分(只设玩家 m_AiTarget.m_IsEnabled,1 个字段)每 60 帧
-            // FindObjectsOfType<BaseAi> 放 full tick,300 帧一次
+            // v2.7.26 FPS 优化:
+            //   TrueInvisible 字段设置从 tick 扫 FindObjects 改成 BaseAi.Start Postfix(新 AI 出生时自动设)
+            //   TickAnimalsFull 降到 600 帧(10s)仅做兜底,Stealth 的 SetAiMode(Flee) 也仍走这里
+            //   TickAnimalsCheap(1s,只设玩家 m_AiTarget.m_IsEnabled 1 字段)保留
             if ((_frame % 60) == 5)
                 CheatsTick.TickAnimalsCheap();
-            if ((_frame % 300) == 30)
+            if ((_frame % 600) == 30)
                 CheatsTick.TickAnimalsFull();
 
             // v2.7.25 TickStatus 从 180 帧 → 60 帧(1s)—— 取代 5 个被删的每帧 Update Postfix

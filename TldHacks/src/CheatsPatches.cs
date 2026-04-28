@@ -246,22 +246,29 @@ internal static class Patch_CameraFade_Fade
     }
 }
 
-// ——— 快速操作 v2.7.22 终极方案 ———
-// 所有"制作/修理/拆解/采集"都调 TimeOfDay.Accelerate(realTimeSec, gameTimeHours, doFadeToBlack)
-// v2.7.22 —— 用户反馈"时间没被冻结",把 gameTimeHours 也置 0,游戏内时钟不再前进
-//   副作用分析:制作 buff 不受影响(v2.7.17 的 Panel_Crafting.CraftingStart Postfix 直接调 OnCraftingSuccess)
-//   快速采集直接调 HarvestSuccessful,不走时间消耗
-//   唯一残留:如果用户关掉"快速制作/快速采集"toggle,time 参数原样传回 → 正常行为
+// ——— 快速操作 v2.7.26 ———
+// TimeOfDay.Accelerate(realTimeSec, gameTimeHours, doFadeToBlack):
+//   QuickCraft: 只设 realTimeSeconds=0.01 + doFadeToBlack=false,gameTimeHours 保留
+//     —— v2.7.22 设 gameTimeHours=0 导致批量 batch 剩余项时间不走,只完成 1 个 = 50%
+//   QuickAction: 全 3 个都设(采集/修理/拆解走这条),时间不跳
 [HarmonyPatch(typeof(TimeOfDay), "Accelerate",
     new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
 internal static class Patch_TimeOfDay_Accelerate
 {
     private static void Prefix(ref float realTimeSeconds, ref float gameTimeHours, ref bool doFadeToBlack)
     {
-        if (!CheatState.QuickCraft && !CheatState.QuickAction) return;
-        realTimeSeconds = 0.01f;
-        gameTimeHours = 0f;
-        doFadeToBlack = false;
+        if (CheatState.QuickAction)
+        {
+            realTimeSeconds = 0.01f;
+            gameTimeHours = 0f;
+            doFadeToBlack = false;
+        }
+        else if (CheatState.QuickCraft)
+        {
+            realTimeSeconds = 0.01f;
+            // gameTimeHours 保留 —— 批量制作剩余项靠时间推进启动
+            doFadeToBlack = false;
+        }
     }
 }
 
@@ -271,9 +278,15 @@ internal static class Patch_TimeOfDay_AccelerateTime
 {
     private static void Prefix(ref float realtimeDurationSeconds, ref float gameTimeHours)
     {
-        if (!CheatState.QuickCraft && !CheatState.QuickAction) return;
-        realtimeDurationSeconds = 0.01f;
-        gameTimeHours = 0f;
+        if (CheatState.QuickAction)
+        {
+            realtimeDurationSeconds = 0.01f;
+            gameTimeHours = 0f;
+        }
+        else if (CheatState.QuickCraft)
+        {
+            realtimeDurationSeconds = 0.01f;
+        }
     }
 }
 
@@ -345,10 +358,31 @@ internal static class Patch_BaseAi_ScanForSmells
     private static bool Prefix() => !(CheatState.Stealth || CheatState.TrueInvisible);
 }
 
-// v2.7.6 —— BaseAi 的 3 层 patch(ScanForNewTarget / IsPlayerAThreat / DoOnDetection)
-// 实测是启动卡死的罪魁,切掉。保留 v2.7.0 原有的 2 层(CanSeeTarget + ScanForSmells)。
-// Stealth 功能不会 100% 完美(可能狼仍能看见你),但游戏能启动优先。
-// 未来修法:要么改 tick 每帧清 target 字段,要么 patch 具体的感知方法(不是泛用的)。
+// v2.7.26 —— BaseAi.Start Postfix:新 AI 出生时一次性设 TrueInvisible 字段
+//   替代 TickAnimalsFull 每 5s 扫 FindObjectsOfType<BaseAi> + 写 10 字段/AI 的高开销
+//   AI 一般稳定,新生出少,这条 patch 几乎零开销 + tick 降到 10s 兜底
+[HarmonyPatch(typeof(BaseAi), "Start")]
+internal static class Patch_BaseAi_Start_Invis
+{
+    private static void Postfix(BaseAi __instance)
+    {
+        if (!CheatState.TrueInvisible) return;
+        try
+        {
+            __instance.m_DisableScanForTargets = true;
+            __instance.m_DetectionRange = 0f;
+            __instance.m_DetectionFOV = 0f;
+            __instance.m_HearFootstepsRange = 0f;
+            __instance.m_HearRifleRange = 0f;
+            __instance.m_HearCarAlarmRange = 0f;
+            __instance.m_SmellRange = 0f;
+            __instance.m_DetectionRangeWhileFeeding = 0f;
+            __instance.m_HearFootstepsRangeWhileFeeding = 0f;
+            __instance.m_HearFootstepsRangeWhileSleeping = 0f;
+        }
+        catch { }
+    }
+}
 
 // ——— 忽略上锁(只保留 IsLocked,其余 patch 去掉 —— 2.7.1 启动卡死嫌疑)———
 [HarmonyPatch(typeof(Lock), "IsLocked")]
