@@ -95,9 +95,13 @@ internal static class Patch_Harvest_Start
         if (!CheatState.QuickAction) return;
         try
         {
-            __instance.m_HarvestTimeSeconds = 0.01f;
+            __instance.m_HarvestTimeSeconds = 0f;
             __instance.m_HarvestTimeMinutes = 0f;
             __instance.m_TimeAccelerated = true;
+            __instance.m_IntroLerpTime = 0f;
+            __instance.m_IntroTimer = 0f;
+            __instance.m_DoingIntroLerp = false;
+            try { __instance.CleanupTimelinePlaying(); } catch { }
         }
         catch { }
     }
@@ -111,9 +115,13 @@ internal static class Patch_Harvest_StartQuarter
         if (!CheatState.QuickAction) return;
         try
         {
-            __instance.m_HarvestTimeSeconds = 0.01f;
+            __instance.m_HarvestTimeSeconds = 0f;
             __instance.m_HarvestTimeMinutes = 0f;
             __instance.m_TimeAccelerated = true;
+            __instance.m_IntroLerpTime = 0f;
+            __instance.m_IntroTimer = 0f;
+            __instance.m_DoingIntroLerp = false;
+            try { __instance.CleanupTimelinePlaying(); } catch { }
         }
         catch { }
     }
@@ -183,19 +191,18 @@ internal static class Patch_Craft_CanCraft
     }
 }
 
-// ——— 快速制作:CraftingStart 后游戏内时间狂飙,让 crafting 瞬间完成 ———
+// ——— 快速制作 v2.7.17 改:直接调 Panel_Crafting.OnCraftingSuccess 完成,跳过 time accel ———
+// 原方案 Accelerate 1000x 30s = 8 小时游戏时长,19 小时 craft 只做一半 —— 不够彻底
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_Start_TimeAccel
+internal static class Patch_Craft_Start_Instant
 {
-    private static void Postfix()
+    private static void Postfix(Panel_Crafting __instance)
     {
         if (!CheatState.QuickCraft) return;
         try
         {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod == null) return;
-            tod.Accelerate(1000f, 30f, false);
-            ModMain.Log?.Msg("[QuickCraft] time accelerated 1000x for 30s");
+            __instance.OnCraftingSuccess();
+            ModMain.Log?.Msg("[QuickCraft] instant complete");
         }
         catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
     }
@@ -236,7 +243,7 @@ internal static class Patch_Lock_IsLocked
 // Encumber.IsEncumbered + GetEncumbranceSlowdownMultiplier 这 5 个 patch 去掉 ——
 // 前者因启动卡死嫌疑,后者因为对应功能(IC/IS)已去除(交给 UniversalTweaks 等 mod)
 
-// ——— 衣物不潮湿:拦源头 IncreaseWetnessPercent 和 MaybeGetWetOnGround ———
+// ——— 衣物不潮湿:拦源头 IncreaseWetnessPercent 和 MaybeGetWetOnGround + Update 兜底 ———
 [HarmonyPatch(typeof(ClothingItem), "IncreaseWetnessPercent", new System.Type[] { typeof(float) })]
 internal static class Patch_Clothing_IncreaseWet
 {
@@ -247,6 +254,17 @@ internal static class Patch_Clothing_IncreaseWet
 internal static class Patch_Clothing_GetWetOnGround
 {
     private static bool Prefix() => !CheatState.NoWetClothes;
+}
+
+// Update Postfix 兜底 —— 每帧把正在穿的衣服 wetness 拉回 0(只在 toggle 开时写,零开销早退)
+[HarmonyPatch(typeof(ClothingItem), "Update")]
+internal static class Patch_Clothing_Update
+{
+    private static void Postfix(ClothingItem __instance)
+    {
+        if (!CheatState.NoWetClothes) return;
+        try { if (__instance.m_PercentWet > 0f) __instance.m_PercentWet = 0f; } catch { }
+    }
 }
 
 // ——— 冰面不破:冰面破裂触发 / 落水 直接跳过 ———
