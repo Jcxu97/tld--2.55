@@ -14,12 +14,13 @@
 | `ReducedLoot.dll` | 未装 |
 | `TheLongMood.dll` | 未装 |
 
-## 额外装的 mod(5 个)
+## 额外装的 mod(6 个)
 
 | DLL | 来源 / 用途 |
 |---|---|
 | `BunkerDefaults.dll` | **本仓库原创** —— 给每个存档预填 9 个地堡 FastTravel 传送点 |
-| `FoodStackable.dll` | **本仓库原创** —— 背包里同类食物视觉堆叠成一格 ×N,不改底层物品 |
+| `FoodStackable.dll` | **本仓库原创**(v0.4.9,已并入 TldHacks v2.7.0)—— 背包里同类食物视觉堆叠成一格 ×N,不改底层物品 |
+| `TldHacks.dll` | **本仓库原创**(v2.7.0)—— 综合修改器。替代 FoodStackable(含其全部功能)+ 移植 Cheat Engine 表 ~60 个 cheat:无敌/免疫/无限体力/瞄准稳定/无后坐力/快速制作/生火 100%/爬绳 ×5/15 region 传送/358 条物品刷出/技能满级/解锁壮举·蓝图·地图 等 |
 | `AudioCore.dll` | 某个 mod 的依赖 |
 | `ImprovedTrader.dll` | 优化商人交互 |
 | `RecipeRequirements.dll` | 食谱需求调整 |

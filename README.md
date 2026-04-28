@@ -10,9 +10,12 @@
 ├── BunkerDefaults/         ← 我原创的 mod,可自由使用/修改
 │   ├── BunkerDefaults.dll      编译好的,直接丢 Mods/ 就行
 │   └── src/                    C# 源码 + 工程,dotnet build 即可
-├── FoodStackable/          ← 我原创的 mod,可自由使用/修改
+├── FoodStackable/          ← 我原创的 mod,已并入 TldHacks(这里保留历史版本)
 │   ├── FoodStackable.dll       编译好的,直接丢 Mods/ 就行
 │   └── src/                    C# 源码 + 工程,dotnet build 即可
+├── TldHacks/               ← 我原创的综合修改器,合并了 FoodStackable 堆叠 + 完整 CT 作弊功能
+│   ├── TldHacks.dll            编译好的,直接丢 Mods/ 就行(装 v2.7.0 就不用装 FoodStackable)
+│   └── src/                    C# 源码(13 文件)+ HANDOFF.md 详细开发日志
 ├── configs/                ← 所有 mod 的配置快照(203 个文件)
 │   ├── Mods/                   Mods/ 下所有 *.json / *.txt(不含 .dll)
 │   └── UserData/               MelonLoader 全局偏好
@@ -85,6 +88,21 @@
 - `v0.4.7` (2026-04-27) v0.4.6 的 OnClick/ToggleSelection 只盖到部分清 label 路径(用户报 bug 减轻但未彻底)。改成 hook `InventoryGridItem.Update()` 的 Postfix 每帧兜底 — **但在 Il2CppInterop 下 Harmony hook 不到 Unity 引擎隐式调用的 MonoBehaviour.Update,`CallerCount(0)` 确认无游戏代码调用,这个 hook 实际没生效**
 - `v0.4.8` (2026-04-27) 彻底修 v0.4.7 未解的 bug。改用 `MelonMod.OnUpdate()`(Melon 框架自己每帧可靠调用)+ `StackState.SeenItems` dict 记录所有刷新过的 `InventoryGridItem`,每帧遍历 reapply label。Panel_Container 不暴露 grid item 数组不是问题,SeenItems 自动收集所有 panel 的 items
 - `v0.4.9` (2026-04-27) 点击角标丢失 + 拖动后重量变单份。`OnUpdate` 跑在 Unity `MonoBehaviour.Update` 之前,被游戏之后的 Update 覆盖。改用 `OnLateUpdate`(所有 Update 之后跑);SeenItems 存 `(item, dataItem)` pair — reapply 用 dataItem.Pointer 查 Counts 更稳;同时恢复 weight label N 倍显示(不仅是 stack label)
+- `v2.7.0` (2026-04-28) **并入 TldHacks**。cell 复用 bug 修法:`SeenItems` 改存 `(item, di, giPtr)`,每帧 verify `item.m_GearItem.Pointer == giPtr` —— 不匹配说明 cell 已被滚动/切分类重绑到别的 gear,skip 本次 reapply 等 `RefreshDataItem.Postfix` 重新登记。旧 FoodStackable.dll 保留作历史,新装直接用 `TldHacks.dll`
+
+## TldHacks — 自制综合修改器
+
+**做什么**:把 Cheat Engine `The Long Dark.CT` 表里大部分功能,用 MelonMod + Harmony patch 方式重写成内置修改器。按 Tab(可改)呼出三标签页菜单(主要 / uConsole / 物品&传送),~60 个 toggle 覆盖无敌、无限体力、各种免疫、武器增强、瞄准稳定、制作/生火快捷、15 个地图区域传送、358 条物品刷出、技能满级、解锁壮举/蓝图/地图。
+
+**关键点**:
+- **Il2CppInterop 下 GUILayout 全被 strip**,只能用 `GUI.Xxx(Rect, ...)` —— 菜单代码手写所有坐标,不是 GUILayout 风格
+- **瞄准/武器用游戏内建 `m_DisableAim*` bool 字段**(vp_FPSWeapon / vp_FPSCamera.m_DisableAmbientSway)—— 比 patch getter 可靠,toggle 可双向同步
+- **uConsole 大部分命令在 release build 里 no-op**,只 spawn 系稳;关键 cheat 自己 Harmony patch
+- **堆叠按 cell-bind 时机挂 `RefreshDataItem.Postfix`**,不是点击症状层;`OnLateUpdate` 用 giPtr verify 防 cell-reuse 写 stale 数据
+
+**完整设计 / 实现细节 / 踩坑记录** 见 `TldHacks/src/HANDOFF.md`(400+ 行)。
+
+**版本**:v2.7.0 —— 合并 FoodStackable + 全 15 region 传送 + 所有原 TODO 后端实装。
 
 ## 快速换机恢复
 
@@ -97,7 +115,8 @@ git clone https://github.com/Jcxu97/tld-自用改造2.55.git
 cp -r tld-自用改造2.55/configs/Mods/*       <TLD>/Mods/
 cp -r tld-自用改造2.55/configs/UserData/*   <TLD>/UserData/
 cp    tld-自用改造2.55/BunkerDefaults/BunkerDefaults.dll <TLD>/Mods/
-cp    tld-自用改造2.55/FoodStackable/FoodStackable.dll   <TLD>/Mods/
+cp    tld-自用改造2.55/TldHacks/TldHacks.dll             <TLD>/Mods/
+# 装了 TldHacks v2.7+ 就别装 FoodStackable,功能已内置
 ```
 
 ## 已知问题
@@ -108,5 +127,5 @@ cp    tld-自用改造2.55/FoodStackable/FoodStackable.dll   <TLD>/Mods/
 
 ## License
 
-- `BunkerDefaults/` 和 `FoodStackable/` 下面我写的一切:MIT(见 `LICENSE`)
+- `BunkerDefaults/` / `FoodStackable/` / `TldHacks/` 下面我写的一切:MIT(见 `LICENSE`)
 - `configs/` 下面的是我的设置快照 —— 各 mod 配置格式归原作者,这些只是"我填了什么值"。你随便拿去改。
