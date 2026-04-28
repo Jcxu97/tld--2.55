@@ -208,6 +208,16 @@ internal static class LabelFix
             if (!StackState.Counts.TryGetValue(di.Pointer, out int count)) return;
             if (count <= 1) return;
 
+            // v2.7.35 t1 修:UnitLabel/UnitSprite 是"stackable m_Units 显示" ——
+            //   hover 时游戏刷新这俩显示 m_Units=1(因为我们 Dedupe 的是 m_Units=1 的虚拟堆叠)
+            //   会压住 StackLabel 显示 "1"。force 隐藏掉
+            var unitLabel = item.m_UnitLabel;
+            if (unitLabel != null && unitLabel.gameObject != null && unitLabel.gameObject.activeSelf)
+                unitLabel.gameObject.SetActive(false);
+            var unitSprite = item.m_UnitSprite;
+            if (unitSprite != null && unitSprite.gameObject != null && unitSprite.gameObject.activeSelf)
+                unitSprite.gameObject.SetActive(false);
+
             // stack label —— 只在需要变化时写 text(避免每帧字符串分配)
             var label = item.m_StackLabel;
             if (label != null)
@@ -218,13 +228,11 @@ internal static class LabelFix
                     label.gameObject.SetActive(true);
             }
 
-            // weight label —— 只在 text 不是已经是预期值时重算(避免每帧算 ItemWeight 乘法)
+            // weight label —— 只在 text 不是已经是预期值时重算
             var weightLabel = item.m_WeightLabel;
             if (weightLabel != null)
             {
                 string cur = weightLabel.text;
-                // 粗判:如果 label 已经有 "(N)" 或 stack 后缀暗示已处理,skip
-                // 简化:用 cached compare,只在游戏改了 weight label 时才 recompute
                 bool imperial = cur != null && cur.Contains("lb");
                 ItemWeight total = di.GetItemWeight(false) * count;
                 string want = imperial ? total.ToStringImperial(2u) : total.ToStringMetric(2u);
@@ -287,9 +295,9 @@ internal static class Patch_Panel_Container_HoverItem
 
 // Panel_Inventory 没有 HoverItem 方法,只 patch Panel_Container + InventoryGridItem.Update
 
-// InventoryGridItem.Update Postfix —— 保险兜底:每帧如果 cell 正在 hover 就 reapply
-// 虽然 v2.7.25 教训是避免每帧 Update Postfix,但 InventoryGridItem 只在 panel 打开时 active
-// 几十个 cell 每帧 label 比较,开销可接受(panel 关时 cell 被 disable,Unity 不调 Update)
+// v2.7.35:InventoryGridItem.Update Postfix 无条件 reapply(去掉 m_IsInHoverState 限制)
+//   hover 闪 1 的真根因是 m_UnitLabel 覆盖显示,只在 hover 时跑不够(必须每帧拍平)
+//   panel 关时 cell disable 不触发 Update,只在 panel 开时有开销
 [HarmonyPatch(typeof(InventoryGridItem), "Update")]
 internal static class Patch_InventoryGridItem_Update
 {
@@ -297,7 +305,7 @@ internal static class Patch_InventoryGridItem_Update
     {
         try
         {
-            if (__instance == null || !__instance.m_IsInHoverState) return;  // 只对 hover 中的 cell 跑
+            if (__instance == null) return;
             if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
                 LabelFix.Reapply(__instance, seen.di);
         }

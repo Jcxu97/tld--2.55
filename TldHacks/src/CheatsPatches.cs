@@ -347,7 +347,43 @@ internal static class Patch_Craft_GetAdjustedTime
     }
 }
 
-// v2.7.33:用 TimeOfDay.SetTODLocked 锁时间 + 保留 fade 窗口 Arm
+// v2.7.35:改用 SetDayLengthScale 放大 1e9 倍,游戏时间推进 ~0
+// 之前 SetTODLocked 只锁 TOD value 显示,不冻结时间推进
+// 新方案:craft 开始 DayLengthScale *= 1e9,craft 结束恢复
+//   m_DayLengthScale 控制"真实秒 → 游戏时长"比例,放大后 10 秒 craft = 10/1e9 游戏秒 = 0 可见
+internal static class TimeScaleGuard
+{
+    public static float OriginalScale = 0f;
+    public static bool Scaled = false;
+    public static float HugeScale = 1_000_000_000f;
+
+    public static void ScaleUp()
+    {
+        if (Scaled) return;
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod == null) return;
+            OriginalScale = tod.GetDayLengthScale();
+            tod.SetDayLengthScale(HugeScale);
+            Scaled = true;
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[TimeScale.Up] {ex.Message}"); }
+    }
+
+    public static void Restore()
+    {
+        if (!Scaled) return;
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod != null) tod.SetDayLengthScale(OriginalScale > 0 ? OriginalScale : 1f);
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[TimeScale.Restore] {ex.Message}"); }
+        finally { Scaled = false; }
+    }
+}
+
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
 internal static class Patch_Craft_Start_LockTime
 {
@@ -355,28 +391,22 @@ internal static class Patch_Craft_Start_LockTime
     {
         if (!CheatState.QuickCraft) return;
         FadeSuppressionWindow.Arm(3f);
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null) tod.SetTODLocked(true);
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft.Lock] {ex.Message}"); }
+        TimeScaleGuard.ScaleUp();
     }
 }
 
-// CraftingEnd 在整个 batch 完全结束时调一次,此时解锁安全
+// CraftingEnd 在整个 batch 完全结束时调一次,此时恢复
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
 internal static class Patch_Craft_End_UnlockTime
 {
-    private static void Postfix()
-    {
-        try
-        {
-            var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null) tod.SetTODLocked(false);
-        }
-        catch { }
-    }
+    private static void Postfix() => TimeScaleGuard.Restore();
+}
+
+// 玩家中途取消:OnCraftingInterrupted 也要恢复
+[HarmonyPatch(typeof(Panel_Crafting), "OnCraftingInterrupted")]
+internal static class Patch_Craft_Interrupted_UnlockTime
+{
+    private static void Postfix() => TimeScaleGuard.Restore();
 }
 
 // OnCraftingSuccess 每个 item 完成时调,继续 Arm fade 但不解锁(batch 里还有剩余)
