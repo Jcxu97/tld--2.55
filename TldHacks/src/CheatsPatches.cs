@@ -484,12 +484,14 @@ internal static class Patch_IceBreak_FallInWater
 }
 
 // ——— 生火 100% 成功 ———
+// v2.7.31 修:CalculateFireStartSuccess 返回的是 0-100 的 percent(不是 0-1 概率)
+//   之前设 1f 实际 = 1% 成功率 —— 用户报告 "开 toggle 只有 1% 概率"
 [HarmonyPatch(typeof(FireManager), "CalculateFireStartSuccess")]
 internal static class Patch_FireMgr_Success
 {
     private static void Postfix(ref float __result)
     {
-        if (CheatState.QuickFire) __result = 1f;
+        if (CheatState.QuickFire) __result = 100f;
     }
 }
 
