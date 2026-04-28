@@ -347,84 +347,62 @@ internal static class Patch_Craft_GetAdjustedTime
     }
 }
 
-// v2.7.36 QuickCraft 时钟冻结 —— 暴力方案:CraftingStart 到 End 之间 TimeOfDay.Update Prefix return false
-//   历次 v2.7.20/22/29/30/32/33/35 试了:Accelerate Prefix / AccelerateTime / SetTODLocked / DayLengthScale 全没生效
-//   说明 Panel_Crafting 不走 TimeOfDay.Accelerate,游戏可能通过其他路径推进时间(Update 内部累加)
-//   最后一招:拦 TimeOfDay.Update 整个 return false,craft 期间连 Update 都不跑 → 真正冻结
+// v2.7.38 QuickCraft 时钟冻结 —— 正确方案:快照 + Postfix 拉回
+//   v2.7.37 return-false TimeOfDay.Update 副作用:deltaTime=0 导致 Panel_Crafting percent 不推进(卡 1%)
+//   新策略:
+//     1. CraftingStart 记录 _savedHours = GetHoursPlayedNotPaused()
+//     2. TimeOfDay.Update 正常跑(deltaTime 有效 → percent 推进 → batch 完成)
+//     3. TimeOfDay.Update Postfix 里把 HoursPlayed 强拉回 _savedHours
+//     4. CraftingEnd/Interrupted → Active=false 停止覆盖
+//   效果:craft 期间 deltaTime 正常(batch 可完成),同时时钟每帧被拉回 = 用户看不到跳
 internal static class CraftingTimeFreeze
 {
     public static bool Active = false;
+    public static float SavedHours = 0f;
 }
 
 [HarmonyPatch(typeof(TimeOfDay), "Update")]
-internal static class Patch_TimeOfDay_Update_Freeze
+internal static class Patch_TimeOfDay_Update_Restore
 {
-    private static bool Prefix()
+    private static void Postfix(TimeOfDay __instance)
     {
-        // 返 false = 跳过原 Update。Active 期间整个 TimeOfDay 不跑
-        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
-    }
-}
-
-// v2.7.37 —— 拦 craft 时间跳跃的直接路径
-//   Panel_Crafting 可能直接调 SetHoursPlayedNotPaused(+craftTime) 瞬跳时钟
-//   Active 期间拦下这个调用
-[HarmonyPatch(typeof(TimeOfDay), "SetHoursPlayedNotPaused")]
-internal static class Patch_TimeOfDay_SetHoursPlayed_Freeze
-{
-    private static bool Prefix()
-    {
-        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
-    }
-}
-
-[HarmonyPatch(typeof(TimeOfDay), "SetNormalizedTime", new System.Type[] { typeof(float) })]
-internal static class Patch_TimeOfDay_SetNormalizedTime_Freeze
-{
-    private static bool Prefix()
-    {
-        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
-    }
-}
-
-[HarmonyPatch(typeof(TimeOfDay), "SetNormalizedTime", new System.Type[] { typeof(float), typeof(bool) })]
-internal static class Patch_TimeOfDay_SetNormalizedTime2_Freeze
-{
-    private static bool Prefix()
-    {
-        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
-    }
-}
-
-// TimeLapseBegin/End 是 craft/sleep 等用的"时间流逝"状态,也要拦
-[HarmonyPatch(typeof(TimeOfDay), "TimeLapseBegin")]
-internal static class Patch_TimeOfDay_TimeLapseBegin
-{
-    private static bool Prefix()
-    {
-        return !(CheatState.QuickCraft && CraftingTimeFreeze.Active);
+        if (!CraftingTimeFreeze.Active || !CheatState.QuickCraft) return;
+        try
+        {
+            __instance.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
+        }
+        catch { }
     }
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
-internal static class Patch_Craft_Start_FreezeTime
+internal static class Patch_Craft_Start_SnapshotTime
 {
     private static void Postfix()
     {
         if (!CheatState.QuickCraft) return;
         FadeSuppressionWindow.Arm(3f);
-        CraftingTimeFreeze.Active = true;
+        try
+        {
+            var tod = GameManager.GetTimeOfDayComponent();
+            if (tod != null)
+            {
+                CraftingTimeFreeze.SavedHours = tod.GetHoursPlayedNotPaused();
+                CraftingTimeFreeze.Active = true;
+            }
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft.Snap] {ex.Message}"); }
     }
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingEnd")]
-internal static class Patch_Craft_End_UnfreezeTime
+internal static class Patch_Craft_End_StopRestore
 {
     private static void Postfix() => CraftingTimeFreeze.Active = false;
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "OnCraftingInterrupted")]
-internal static class Patch_Craft_Interrupted_UnfreezeTime
+internal static class Patch_Craft_Interrupted_StopRestore
 {
     private static void Postfix() => CraftingTimeFreeze.Active = false;
 }
