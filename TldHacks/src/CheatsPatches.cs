@@ -329,23 +329,10 @@ internal static class Patch_Craft_CanCraft
 //   → 游戏 Update 读 craftTime=1 → 第 1 个 1 秒完成 → 自动跑第 2 个 1 秒 → ...
 //   batch 10 个 = 10 秒,无黑屏,游戏时钟跳动极少
 // 不再 patch CraftingStart Postfix —— 让游戏流程自洽推进
-[HarmonyPatch(typeof(Panel_Crafting), "GetFinalCraftingTimeWithAllModifiers")]
-internal static class Patch_Craft_GetFinalTime
-{
-    private static void Postfix(ref int __result)
-    {
-        if (CheatState.QuickCraft) __result = 1;
-    }
-}
-
-[HarmonyPatch(typeof(Panel_Crafting), "GetAdjustedCraftingTime")]
-internal static class Patch_Craft_GetAdjustedTime
-{
-    private static void Postfix(ref int __result)
-    {
-        if (CheatState.QuickCraft) __result = 1;
-    }
-}
+// v2.7.40 按用户思路重写:撤销 craft time=1 (那让进度卡 3%)
+//   保留原 craft time (比如 10h),但加速 TOD 流速让真实秒走几小时游戏时间
+//   craft 完成瞬间 TOD 拉回 → 用户看不到跳
+// GetFinalCraftingTime / GetAdjustedCraftingTime 不再 patch,游戏看到正常 craft 时长
 
 // v2.7.39 QuickCraft 时钟冻结 —— 最终方案:让时钟跳,结束时拉回
 //   核心洞察(用户测试 v2.7.38 反馈):Panel_Crafting percent 推进依赖 TOD HoursPlayed 流逝
@@ -364,6 +351,11 @@ internal static class CraftingTimeFreeze
 {
     public static bool Active = false;
     public static float SavedHours = 0f;
+    public static float SavedScale = 0f;  // v2.7.40 保存原 DayLengthScale
+    // 真实 1 秒 → 游戏 N 小时。scale 越小 TOD 走越快。
+    // 默认 1 day = 24 游戏分钟真实时间 scale=1,我们设 0.001 → 真实 1 秒 ~ 16 游戏小时
+    // craft 10h 物品需要 10/16 ≈ 0.6 真实秒完成
+    public const float FastScale = 0.001f;
 }
 
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
@@ -381,6 +373,8 @@ internal static class Patch_Craft_Start_SnapshotTime
             if (!CraftingTimeFreeze.Active)
             {
                 CraftingTimeFreeze.SavedHours = tod.GetHoursPlayedNotPaused();
+                CraftingTimeFreeze.SavedScale = tod.GetDayLengthScale();
+                tod.SetDayLengthScale(CraftingTimeFreeze.FastScale);  // v2.7.40 加速 TOD
                 CraftingTimeFreeze.Active = true;
             }
         }
@@ -397,8 +391,12 @@ internal static class Patch_Craft_End_RestoreTime
         try
         {
             var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null) tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
-            ModMain.Log?.Msg($"[QuickCraft] time rolled back to {CraftingTimeFreeze.SavedHours:F2}h");
+            if (tod != null)
+            {
+                tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
+                tod.SetDayLengthScale(CraftingTimeFreeze.SavedScale > 0 ? CraftingTimeFreeze.SavedScale : 1f);  // v2.7.40 恢复原 scale
+            }
+            ModMain.Log?.Msg($"[QuickCraft] time rolled back to {CraftingTimeFreeze.SavedHours:F2}h, scale restored");
         }
         catch { }
         finally { CraftingTimeFreeze.Active = false; }
@@ -414,7 +412,11 @@ internal static class Patch_Craft_Interrupted_RestoreTime
         try
         {
             var tod = GameManager.GetTimeOfDayComponent();
-            if (tod != null) tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
+            if (tod != null)
+            {
+                tod.SetHoursPlayedNotPaused(CraftingTimeFreeze.SavedHours);
+                tod.SetDayLengthScale(CraftingTimeFreeze.SavedScale > 0 ? CraftingTimeFreeze.SavedScale : 1f);
+            }
         }
         catch { }
         finally { CraftingTimeFreeze.Active = false; }
