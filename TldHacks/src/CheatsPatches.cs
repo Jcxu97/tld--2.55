@@ -1060,23 +1060,33 @@ internal static class CheatsTick
 //   v2.7.45 CT 复刻 —— 从 CT 脚本直接映射的 Harmony patches
 // ═══════════════════════════════════════════════════════════════════
 
-// —— 秒烤肉 CT:CookingPotItem.UpdateCookingTimeAndState 设 m_CookingElapsedHours=10 ——
+// —— 秒烤肉 v2.7.47 修 CT:CT 还 NOP 了 Ruined 判断,防止过度烤糊
+//   我之前只设 m_CookingElapsedHours=10 但没禁烤糊 → 用户说"烤糊了"
+//   正确做法:直接设 m_PercentCooked=1.0(熟了) + m_PercentRuined=0(不糊)
 [HarmonyPatch(typeof(CookingPotItem), "UpdateCookingTimeAndState")]
 internal static class Patch_CookingPot_Update
 {
-    private static void Prefix(CookingPotItem __instance)
+    private static void Postfix(CookingPotItem __instance)
     {
         if (!CheatState.QuickCook) return;
-        try { __instance.m_CookingElapsedHours = 10f; } catch { }
+        try
+        {
+            __instance.m_PercentCooked = 1f;
+            __instance.m_PercentRuined = 0f;
+            __instance.m_MinutesUntilRuined = 99999f;
+        }
+        catch { }
     }
 }
 
-// —— 秒搜索/秒采集地上作物 CT:NOP 某字节让 TimedHold 瞬过 ——
-// 映射:UpdateHoldInteraction Prefix 强推 m_Timer = m_DefaultHoldTime 让 progress 瞬满
-[HarmonyPatch(typeof(Il2CppTLD.Interactions.TimedHoldInteraction), "UpdateHoldInteraction")]
-internal static class Patch_TimedHold_Update
+// —— 秒采集地上作物 v2.7.47 修 ——
+//   v2.7.46 patch 了 TimedHoldInteraction base,影响所有 TimedHold 子类,包括进门 → 卡场景切换
+//   修:改 patch HarvestableInteraction(玫瑰果等地上作物的 TimedHold 子类)的 BeginHold
+//   不碰 base class,门/场景切换用的 TimedHold 不受影响
+[HarmonyPatch(typeof(HarvestableInteraction), "BeginHold")]
+internal static class Patch_HarvestableInteraction_BeginHold
 {
-    private static void Prefix(Il2CppTLD.Interactions.TimedHoldInteraction __instance)
+    private static void Postfix(HarvestableInteraction __instance)
     {
         if (!CheatState.QuickSearch) return;
         try { __instance.m_Timer = __instance.m_DefaultHoldTime; } catch { }
@@ -1206,15 +1216,26 @@ internal static class Patch_HeatSource_Update
     }
 }
 
-// —— 篝火永不熄灭 CT:Fire.Update 设某字段 INF ——
-// TLD 2.55 Fire 字段 m_BurnMinutesIfLit 是燃烧剩余时间,设无穷
+// —— 篝火永不熄灭 CT v2.7.47 真修:改正字段名
+//   CT 改 offset +D4(INF) / +CC(0) / +A0(6):
+//     +D4 = m_MaxOnTODSeconds = INF
+//     +CC = m_ElapsedOnTODSeconds = 0 (重置已燃烧时间)
+//     +A0 = m_NumStartingCharcoalPieces = 6
+//   更直接:m_IsPerpetual=true 直接让游戏认为这是永久火堆
 [HarmonyPatch(typeof(Fire), "Update")]
 internal static class Patch_Fire_Update_NeverDie
 {
     private static void Prefix(Fire __instance)
     {
         if (!CheatState.FireNeverDie) return;
-        try { __instance.m_BurnMinutesIfLit = 99999f; } catch { }
+        try
+        {
+            __instance.m_IsPerpetual = true;               // 永久燃烧标记
+            __instance.m_MaxOnTODSeconds = float.PositiveInfinity;
+            __instance.m_ElapsedOnTODSeconds = 0f;          // 已燃烧时间清零
+            __instance.m_BurnMinutesIfLit = 99999f;
+        }
+        catch { }
     }
 }
 
