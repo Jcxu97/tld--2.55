@@ -338,137 +338,156 @@ internal static class CheatsTick
     }
 
     // ——— 摄像机:NoRecoil / NoAimSway / NoAimShake / NoBreathSway / NoAimStamina ———
-    // 游戏内建 bool 开关 m_DisableAim* / m_DisableAmbientSway 双向同步(toggle 关也能恢复);
-    // 浮点字段(ShakeAmplitude / BobAmplitude 等)一旦归零无法从运行时拿回原值 ——
-    // 这些字段只在 toggle ON 时写入,关闭后需要场景重载才能完全复原。
+    // v2.7.2 优化:(1) 所有 FieldInfo lazy 缓存到 static,不再每次 GetField;
+    //             (2) 有任一 toggle ON 才跑 full path,全关且上次也关 → 早退 0 开销;
+    //             (3) 从每帧改成 ModMain 里调用 —— 调用频率由 ModMain 决定(30 帧 = 0.5s)
+    private static bool _lastAnyAimToggle = false;
+    // Cached reflection members (lazy init on first call)
+    private static FieldInfo _fi_currentWeapon, _fi_recoilSpring;
+    private static FieldInfo[] _fi_camFloats;   // 对应 ShakeAmplitude / BobAmplitude 等
+    private static FieldInfo[] _fi_camSwayFloats; // sway 特有的几个
+    private static FieldInfo _fi_rsCur, _fi_rsTgt, _fi_rsVel;
+    private static FieldInfo _fi_weapShake, _fi_weapCold, _fi_weapRandom, _fi_weapBob;
+    private static FieldInfo _fi_weapSwayLim, _fi_weapSwayMax, _fi_weapSwayStart;
+    private static FieldInfo _fi_weapDisSway, _fi_weapDisShake, _fi_weapDisBreath, _fi_weapDisStam;
+    private static bool _reflectionInited = false;
+
+    private static void EnsureReflectionInited(object weapon)
+    {
+        if (_reflectionInited && weapon == null) return;
+        var camT = typeof(vp_FPSCamera);
+        _fi_currentWeapon = _fi_currentWeapon ?? camT.GetField("m_CurrentWeapon", BindingFlags.Instance | BindingFlags.Public);
+        _fi_recoilSpring  = _fi_recoilSpring  ?? camT.GetField("m_RecoilSpring",  BindingFlags.Instance | BindingFlags.Public);
+        _fi_camFloats ??= new[] {
+            camT.GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("ShakeSpeed",     BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("BobAmplitude",   BindingFlags.Instance | BindingFlags.Public),
+        };
+        _fi_camSwayFloats ??= new[] {
+            camT.GetField("m_MaxAmbientSwayAngleDegreesA",        BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("m_MaxAmbientAimingSwayAngleDegreesA",  BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("m_AmbientSwaySpeedA",                   BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("m_AmbientAimingSwaySpeedA",             BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("m_CurrentMaxAmbientSwayAngle",          BindingFlags.Instance | BindingFlags.Public),
+            camT.GetField("m_CurrentAmbientSwaySpeed",             BindingFlags.Instance | BindingFlags.Public),
+        };
+        // RecoilSpring struct 字段
+        if (_fi_recoilSpring != null)
+        {
+            var rsT = _fi_recoilSpring.FieldType;
+            _fi_rsCur = _fi_rsCur ?? rsT.GetField("m_Current",  BindingFlags.Instance | BindingFlags.Public);
+            _fi_rsTgt = _fi_rsTgt ?? rsT.GetField("m_Target",   BindingFlags.Instance | BindingFlags.Public);
+            _fi_rsVel = _fi_rsVel ?? rsT.GetField("m_Velocity", BindingFlags.Instance | BindingFlags.Public);
+        }
+        // 武器字段(需要一个 weapon 实例才能拿 Type)
+        if (weapon != null && _fi_weapDisSway == null)
+        {
+            var wt = weapon.GetType();
+            _fi_weapDisSway   = wt.GetField("m_DisableAimSway",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapDisShake  = wt.GetField("m_DisableAimShake",     BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapDisBreath = wt.GetField("m_DisableAimBreathing", BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapDisStam   = wt.GetField("m_DisableAimStamina",   BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapShake     = wt.GetField("ShakeAmplitude",        BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapCold      = wt.GetField("m_ColdShakeAngle",      BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapRandom    = wt.GetField("m_RandomShakeAngle",    BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapBob       = wt.GetField("BobAmplitude",          BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayLim   = wt.GetField("SwayLimits",            BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayMax   = wt.GetField("SwayMaxFatigue",        BindingFlags.Instance | BindingFlags.Public);
+            _fi_weapSwayStart = wt.GetField("SwayStartFatigue",      BindingFlags.Instance | BindingFlags.Public);
+        }
+        _reflectionInited = true;
+    }
+
+    private static void SetFloatIfNotNull(FieldInfo f, object inst, float v)
+    {
+        if (f == null || inst == null) return;
+        try { f.SetValue(inst, v); } catch { }
+    }
+    private static void SetBoolIfNotNull(FieldInfo f, object inst, bool v)
+    {
+        if (f == null || inst == null) return;
+        try { f.SetValue(inst, v); } catch { }
+    }
+
     public static void TickCamera()
     {
+        bool anyOn = CheatState.NoAimSway || CheatState.NoAimShake || CheatState.NoBreathSway
+                  || CheatState.NoAimStamina || CheatState.NoRecoil;
+        // 全关 AND 上次也全关 → 零开销早退
+        if (!anyOn && !_lastAnyAimToggle) return;
+
         try
         {
             var cam = GameManager.GetVpFPSCamera();
             if (cam == null) return;
 
-            // —— bool 开关始终同步(支持 toggle 关后恢复)——
+            object weapon = null;
+            EnsureReflectionInited(null);
+            if (_fi_currentWeapon != null) { try { weapon = _fi_currentWeapon.GetValue(cam); } catch { } }
+            if (weapon != null) EnsureReflectionInited(weapon);
+
+            // bool 开关双向同步(包括 toggle 关后恢复)
             try { vp_FPSCamera.m_DisableAmbientSway = CheatState.NoAimSway; } catch { }
+            SetBoolIfNotNull(_fi_weapDisSway,   weapon, CheatState.NoAimSway);
+            SetBoolIfNotNull(_fi_weapDisShake,  weapon, CheatState.NoAimShake);
+            SetBoolIfNotNull(_fi_weapDisBreath, weapon, CheatState.NoBreathSway);
+            SetBoolIfNotNull(_fi_weapDisStam,   weapon, CheatState.NoAimStamina);
 
-            try
+            // 浮点字段:只在 toggle 开时归零(关掉后不可逆)
+            if (!anyOn)
             {
-                var wField = typeof(vp_FPSCamera).GetField("m_CurrentWeapon", BindingFlags.Instance | BindingFlags.Public);
-                var weapon = wField?.GetValue(cam);
-                if (weapon != null)
-                {
-                    var wt = weapon.GetType();
-                    TrySetFieldBool(wt, weapon, "m_DisableAimSway",      CheatState.NoAimSway);
-                    TrySetFieldBool(wt, weapon, "m_DisableAimShake",     CheatState.NoAimShake);
-                    TrySetFieldBool(wt, weapon, "m_DisableAimBreathing", CheatState.NoBreathSway);
-                    TrySetFieldBool(wt, weapon, "m_DisableAimStamina",   CheatState.NoAimStamina);
-                }
-            }
-            catch { }
-
-            // —— 以下只在 toggle 开时写入(归零不可逆,关掉后等场景重载)——
-            if (!CheatState.NoRecoil && !CheatState.NoAimSway && !CheatState.NoAimShake && !CheatState.NoBreathSway)
+                _lastAnyAimToggle = false;
                 return;
+            }
 
             if (CheatState.NoAimSway)
             {
-                TrySetFieldFloat(cam, "m_MaxAmbientSwayAngleDegreesA", 0f);
-                TrySetFieldFloat(cam, "m_MaxAmbientAimingSwayAngleDegreesA", 0f);
-                TrySetFieldFloat(cam, "m_AmbientSwaySpeedA", 0f);
-                TrySetFieldFloat(cam, "m_AmbientAimingSwaySpeedA", 0f);
-                TrySetFieldFloat(cam, "m_CurrentMaxAmbientSwayAngle", 0f);
-                TrySetFieldFloat(cam, "m_CurrentAmbientSwaySpeed", 0f);
+                // m_Max* / m_Ambient* 6 个 sway 字段
+                for (int i = 0; i < _fi_camSwayFloats.Length; i++)
+                    SetFloatIfNotNull(_fi_camSwayFloats[i], cam, 0f);
+                SetFloatIfNotNull(_fi_weapSwayLim,   weapon, 0f);
+                SetFloatIfNotNull(_fi_weapSwayMax,   weapon, 0f);
+                SetFloatIfNotNull(_fi_weapSwayStart, weapon, 0f);
             }
             if (CheatState.NoAimShake)
             {
-                TrySetFieldFloat(cam, "ShakeAmplitude", 0f);
-                TrySetFieldFloat(cam, "ShakeSpeed", 0f);
+                // ShakeAmplitude[0] / ShakeSpeed[1]
+                SetFloatIfNotNull(_fi_camFloats[0], cam, 0f);
+                SetFloatIfNotNull(_fi_camFloats[1], cam, 0f);
+                SetFloatIfNotNull(_fi_weapShake,  weapon, 0f);
+                SetFloatIfNotNull(_fi_weapCold,   weapon, 0f);
+                SetFloatIfNotNull(_fi_weapRandom, weapon, 0f);
             }
             if (CheatState.NoBreathSway)
             {
-                TrySetFieldFloat(cam, "BobAmplitude", 0f);
+                // BobAmplitude[2]
+                SetFloatIfNotNull(_fi_camFloats[2], cam, 0f);
+                SetFloatIfNotNull(_fi_weapBob, weapon, 0f);
             }
 
-            // RecoilSpring 是 struct,反射归零 m_Current/m_Target/m_Velocity
-            if (CheatState.NoRecoil)
+            if (CheatState.NoRecoil && _fi_recoilSpring != null)
             {
                 try
                 {
-                    var rsField = typeof(vp_FPSCamera).GetField("m_RecoilSpring", BindingFlags.Instance | BindingFlags.Public);
-                    if (rsField != null)
+                    var rs = _fi_recoilSpring.GetValue(cam);
+                    if (rs != null)
                     {
-                        var rs = rsField.GetValue(cam);
-                        if (rs != null)
-                        {
-                            SetStructFieldFloat(rs, "m_Current", 0f);
-                            SetStructFieldFloat(rs, "m_Target",  0f);
-                            SetStructFieldFloat(rs, "m_Velocity",0f);
-                            rsField.SetValue(cam, rs); // struct 复制回去
-                        }
+                        SetFloatIfNotNull(_fi_rsCur, rs, 0f);
+                        SetFloatIfNotNull(_fi_rsTgt, rs, 0f);
+                        SetFloatIfNotNull(_fi_rsVel, rs, 0f);
+                        _fi_recoilSpring.SetValue(cam, rs); // struct 复制回去
                     }
                 }
                 catch { }
             }
 
-            // 武器实例侧的浮点归零
-            try
-            {
-                var wField2 = typeof(vp_FPSCamera).GetField("m_CurrentWeapon", BindingFlags.Instance | BindingFlags.Public);
-                var weapon2 = wField2?.GetValue(cam);
-                if (weapon2 != null)
-                {
-                    if (CheatState.NoAimShake)
-                    {
-                        TrySetFieldFloat(weapon2, "ShakeAmplitude", 0f);
-                        TrySetFieldFloat(weapon2, "m_ColdShakeAngle", 0f);
-                        TrySetFieldFloat(weapon2, "m_RandomShakeAngle", 0f);
-                    }
-                    if (CheatState.NoBreathSway)
-                    {
-                        TrySetFieldFloat(weapon2, "BobAmplitude", 0f);
-                    }
-                    if (CheatState.NoAimSway)
-                    {
-                        TrySetFieldFloat(weapon2, "SwayLimits", 0f);
-                        TrySetFieldFloat(weapon2, "SwayMaxFatigue", 0f);
-                        TrySetFieldFloat(weapon2, "SwayStartFatigue", 0f);
-                    }
-                }
-            }
-            catch { }
+            _lastAnyAimToggle = true;
         }
         catch { }
     }
 
-    private static void TrySetFieldFloat(object inst, string name, float value)
-    {
-        try
-        {
-            var f = inst.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public);
-            if (f != null && f.FieldType == typeof(float)) f.SetValue(inst, value);
-        }
-        catch { }
-    }
-
-    private static void TrySetFieldBool(Type t, object inst, string name, bool value)
-    {
-        try
-        {
-            var f = t.GetField(name, BindingFlags.Instance | BindingFlags.Public);
-            if (f != null && f.FieldType == typeof(bool)) f.SetValue(inst, value);
-        }
-        catch { }
-    }
-
-    private static void SetStructFieldFloat(object boxedStruct, string name, float value)
-    {
-        try
-        {
-            var f = boxedStruct.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public);
-            if (f != null && f.FieldType == typeof(float)) f.SetValue(boxedStruct, value);
-        }
-        catch { }
-    }
+    // (旧的 TrySetFieldFloat / TrySetFieldBool / SetStructFieldFloat helper 已被缓存版
+    //  FieldInfo 替换,删除。)
 
     // ——— 动物不能动 / 隐身补丁 ———
     public static void TickAnimals()

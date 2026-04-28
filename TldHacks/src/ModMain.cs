@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.1", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.2", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -18,6 +18,7 @@ public class ModMain : MelonMod
     private int _killTick = 0;
     private int _posTick = 0;
     private int _extraTick = 0;
+    private int _camTick = 0;
 
     public override void OnInitializeMelon()
     {
@@ -29,7 +30,7 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.1 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            Log.Msg($"TldHacks v2.7.2 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -134,8 +135,13 @@ public class ModMain : MelonMod
                 ExtraOneShot.TickSprainRisk();
             }
 
-            // 摄像机 / 武器 aim 相关需要每帧刷,游戏内部会每帧重置这些字段
-            CheatsTick.TickCamera();
+            // 摄像机 / 武器 aim 相关:30 帧 ≈ 0.5 秒一次,缓存 FieldInfo 单次开销极小
+            // 全关 AND 上次也全关 → 函数内部零开销早退
+            if (++_camTick >= 30)
+            {
+                _camTick = 0;
+                CheatsTick.TickCamera();
+            }
 
             // 玩家位置:菜单打开时 ~1 秒刷一次
             if (Menu.Open && ++_posTick >= 60)
