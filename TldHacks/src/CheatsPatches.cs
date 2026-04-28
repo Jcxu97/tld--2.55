@@ -84,72 +84,39 @@ internal static class Patch_Condition_AddHealth_Filter
     }
 }
 
-// ——— 节约时间 v2.7.13 新方法:直接跳到 "已完成" 状态,彻底跳过动画 + 黑屏 ———
-// 用户参照 CT 文件:点一下就采完,没动画没黑屏
-// 策略:patch StartHarvest/StartQuarter 的 Prefix —— 直接调 BodyHarvest.OnHarvestActionSuccess()
-// 给 yield,调 ExitBodyHarvestPanel 关面板,return false 跳过原方法(不启动动画计时器)
-[HarmonyPatch(typeof(Panel_BodyHarvest), "StartHarvest", new System.Type[] { typeof(int), typeof(string) })]
-internal static class Patch_Harvest_StartInstant
-{
-    private static bool Prefix(Panel_BodyHarvest __instance)
-    {
-        if (!CheatState.QuickAction) return true; // 正常流程
-        try
-        {
-            var bh = __instance.m_BodyHarvest;
-            if (bh != null) bh.OnHarvestActionSuccess();
-            __instance.ExitBodyHarvestPanel();
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickHarvest] {ex.Message}"); }
-        return false; // skip 原 StartHarvest —— 无动画,无 TOD 推进,无黑屏
-    }
-}
-
-[HarmonyPatch(typeof(Panel_BodyHarvest), "StartQuarter", new System.Type[] { typeof(int), typeof(string) })]
-internal static class Patch_Harvest_StartQuarterInstant
-{
-    private static bool Prefix(Panel_BodyHarvest __instance)
-    {
-        if (!CheatState.QuickAction) return true;
-        try
-        {
-            var bh = __instance.m_BodyHarvest;
-            if (bh != null) bh.OnHarvestActionSuccess();
-            __instance.ExitBodyHarvestPanel();
-        }
-        catch { }
-        return false;
-    }
-}
-
-// ——— 修理:直接调 RepairSuccessful() 跳过动画 ———
-[HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
-internal static class Patch_Repair_StartInstant
-{
-    private static bool Prefix(Panel_Repair __instance)
-    {
-        if (!CheatState.QuickAction) return true;
-        try
-        {
-            __instance.RepairSuccessful();
-            __instance.RepairFinished();
-        }
-        catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickRepair] {ex.Message}"); }
-        return false;
-    }
-}
-
-// AccelerateTimeOfDay 兜底(防万一动画启动了,仍然让 TOD 不推进)
+// ——— 节约时间 v2.7.14:回到 v2.7.11 可行方案 —— AccelerateTimeOfDay=0 保 yield,
+// 额外拦 CameraFade.FadeOut 把黑屏秒过(time=0 = 无黑屏)
 [HarmonyPatch(typeof(Panel_BodyHarvest), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
-internal static class Patch_Harvest_Accelerate_Fallback
+internal static class Patch_Harvest_Accelerate
 {
     private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
 }
 
 [HarmonyPatch(typeof(Panel_Repair), "AccelerateTimeOfDay", new System.Type[] { typeof(int) })]
-internal static class Patch_Repair_Accelerate_Fallback
+internal static class Patch_Repair_Accelerate
 {
     private static void Prefix(ref int minutes) { if (CheatState.QuickAction) minutes = 0; }
+}
+
+// 黑屏拦截:游戏在 accelerate time 时会 CameraFade.FadeOut 让画面变黑。
+// QuickAction 开时把 time 强制 0 —— fade 瞬完,看不到黑屏。副作用:场景转换也瞬切。
+// 用户没反馈过场景转换问题,暂且接受。
+[HarmonyPatch(typeof(CameraFade), "FadeOut", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
+internal static class Patch_CameraFade_FadeOut
+{
+    private static void Prefix(ref float time, ref float delay)
+    {
+        if (CheatState.QuickAction) { time = 0f; delay = 0f; }
+    }
+}
+
+[HarmonyPatch(typeof(CameraFade), "FadeIn", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
+internal static class Patch_CameraFade_FadeIn
+{
+    private static void Prefix(ref float time, ref float delay)
+    {
+        if (CheatState.QuickAction) { time = 0f; delay = 0f; }
+    }
 }
 
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———

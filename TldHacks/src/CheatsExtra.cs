@@ -325,21 +325,33 @@ internal static class QuickActions
     // 一键修复所有背包物品耐久到满
     public static void RepairAllInventory()
     {
+        int ok = 0, fail = 0, total = 0;
         try
         {
             var inv = GameManager.m_Inventory;
-            if (inv == null) { Log("[Repair] no inventory"); return; }
-            int n = 0;
+            if (inv == null) { CheatState.LastActionLog = "[修复背包] 没有背包?"; return; }
             var list = inv.m_Items;
-            if (list == null) return;
-            for (int i = 0; i < list.Count; i++)
+            if (list == null) { CheatState.LastActionLog = "[修复背包] m_Items=null"; return; }
+            total = list.Count;
+            for (int i = 0; i < total; i++)
             {
-                var gi = list[i]?.m_GearItem;
-                if (gi != null) { Cheats.RestoreDurability(gi); n++; }
+                try
+                {
+                    var obj = list[i];
+                    if (obj == null) continue;
+                    var gi = obj.m_GearItem;
+                    if (gi != null) { if (Cheats.RestoreDurability(gi)) ok++; else fail++; }
+                }
+                catch { fail++; }
             }
-            Log($"[Repair] 修复 {n} 件背包物品");
+            CheatState.LastActionLog = $"[修复背包] 成功 {ok} / 总 {total} (失败 {fail})";
+            ModMain.Log?.Msg($"[Repair] ok={ok} fail={fail} total={total}");
         }
-        catch (Exception ex) { Log($"[Repair] {ex.Message}"); }
+        catch (Exception ex)
+        {
+            CheatState.LastActionLog = $"[修复背包异常] {ex.Message}";
+            ModMain.Log?.Warning($"[Repair] {ex.Message}");
+        }
     }
 
     // 解锁蓝图 —— 反射找 BlueprintManager / BluePrintItem,设它们的 IsKnown / m_RequiresResearch

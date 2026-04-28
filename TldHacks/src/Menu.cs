@@ -91,7 +91,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.13");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.14");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -290,7 +290,7 @@ internal static class Menu
         y2 = Section(c2, y2, "一次性操作");
         if (GUI.Button(R(c2, y2, 260f, ROW_H), "清除所有负面")) Cheats.ClearAllAfflictions();
         y2 += ROW_ADV;
-        if (GUI.Button(R(c2, y2, 170f, ROW_H), "恢复全部耐久")) Cheats.TickInfiniteDurability();
+        if (GUI.Button(R(c2, y2, 170f, ROW_H), "恢复全部耐久")) Cheats.RestoreAllSceneGear();
         if (GUI.Button(R(c2 + 180f, y2, 170f, ROW_H), "修复背包物品")) QuickActions.RepairAllInventory();
         y2 += ROW_ADV;
         if (GUI.Button(R(c2, y2, 260f, ROW_H), "修复手持物品")) Cheats.RepairItemInHands();

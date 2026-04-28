@@ -240,8 +240,8 @@ internal static class Cheats
         catch (Exception ex) { ModMain.Log?.Error($"[Cheats.Time] {ex.Message}"); }
     }
 
-    // 每 60 帧扫一次 GearItem 刷耐久。代价大,只在 InfiniteDurability 开时跑。
-    // TldItemSpawner 同款做法
+    // 每 300 帧扫一次 GearItem 刷耐久(需要 InfiniteDurability toggle on 才走 tick)
+    // 手动按钮不调这个,改调 RestoreAllSceneGear 并记录 count 到 LastActionLog
     public static void TickInfiniteDurability()
     {
         try
@@ -253,15 +253,56 @@ internal static class Cheats
         catch { }
     }
 
-    internal static void RestoreDurability(GearItem gear)
+    // 手动按钮:恢复场景所有 GearItem + 背包内所有 + 结果写 LastActionLog
+    public static void RestoreAllSceneGear()
     {
-        if (gear == null) return;
+        int scene = 0, bag = 0, fail = 0;
         try
         {
-            // v2.7.10:衣服也一视同仁 —— m_CurrentHP 对 Clothing / Tool / Weapon / Food 都是 0-100
-            if (gear.m_CurrentHP < 100f) gear.m_CurrentHP = 100f;
+            var gears = UnityEngine.Object.FindObjectsOfType<GearItem>();
+            if (gears != null)
+                foreach (var g in gears) { if (RestoreDurability(g)) scene++; else fail++; }
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[RestoreAll.Scene] {ex.Message}"); }
+
+        try
+        {
+            var inv = GameManager.m_Inventory;
+            if (inv?.m_Items != null)
+            {
+                for (int i = 0; i < inv.m_Items.Count; i++)
+                {
+                    try
+                    {
+                        var obj = inv.m_Items[i];
+                        if (obj == null) continue;
+                        var gi = obj.m_GearItem;
+                        if (gi != null) { if (RestoreDurability(gi)) bag++; else fail++; }
+                    }
+                    catch { fail++; }
+                }
+            }
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[RestoreAll.Bag] {ex.Message}"); }
+
+        string msg = $"场景 {scene} 件 + 背包 {bag} 件 恢复满 (失败 {fail})";
+        CheatState.LastActionLog = msg;
+        ModMain.Log?.Msg($"[RestoreAll] {msg}");
+    }
+
+    // v2.7.14:用游戏官方 SetNormalizedHP(1f) 替代直接写 m_CurrentHP —— 更可靠
+    internal static bool RestoreDurability(GearItem gear)
+    {
+        if (gear == null) return false;
+        try
+        {
+            gear.SetNormalizedHP(1f, true);
+            return true;
         }
         catch { }
+        // fallback 直接字段
+        try { gear.m_CurrentHP = 100f; return true; } catch { }
+        return false;
     }
 
     // 修复玩家当前手持物品 —— 一键
@@ -273,11 +314,15 @@ internal static class Cheats
             if (pm == null) { CheatState.LastActionLog = "[修复手持] no PM"; return; }
             var item = pm.m_ItemInHands;
             if (item == null) { CheatState.LastActionLog = "[修复手持] 手上没东西"; return; }
-            RestoreDurability(item);
-            CheatState.LastActionLog = $"[修复手持] {item.name} → 100%";
-            ModMain.Log?.Msg($"[Repair.Hands] {item.name}");
+            bool ok = RestoreDurability(item);
+            CheatState.LastActionLog = ok ? $"[修复手持] {item.name} → 100%" : $"[修复手持失败] {item.name}";
+            ModMain.Log?.Msg($"[Repair.Hands] {item.name} ok={ok}");
         }
-        catch (Exception ex) { ModMain.Log?.Warning($"[Repair.Hands] {ex.Message}"); }
+        catch (Exception ex)
+        {
+            CheatState.LastActionLog = $"[修复手持异常] {ex.Message}";
+            ModMain.Log?.Warning($"[Repair.Hands] {ex.Message}");
+        }
     }
 
     internal static void RestoreClothingDurability(object clothing)
