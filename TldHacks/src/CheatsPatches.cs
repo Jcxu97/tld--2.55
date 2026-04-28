@@ -246,49 +246,14 @@ internal static class Patch_CameraFade_Fade
     }
 }
 
-// ——— 快速操作 v2.7.26 ———
-// TimeOfDay.Accelerate(realTimeSec, gameTimeHours, doFadeToBlack):
-//   QuickCraft: 只设 realTimeSeconds=0.01 + doFadeToBlack=false,gameTimeHours 保留
-//     —— v2.7.22 设 gameTimeHours=0 导致批量 batch 剩余项时间不走,只完成 1 个 = 50%
-//   QuickAction: 全 3 个都设(采集/修理/拆解走这条),时间不跳
-[HarmonyPatch(typeof(TimeOfDay), "Accelerate",
-    new System.Type[] { typeof(float), typeof(float), typeof(bool) })]
-internal static class Patch_TimeOfDay_Accelerate
-{
-    private static void Prefix(ref float realTimeSeconds, ref float gameTimeHours, ref bool doFadeToBlack)
-    {
-        if (CheatState.QuickAction)
-        {
-            realTimeSeconds = 0.01f;
-            gameTimeHours = 0f;
-            doFadeToBlack = false;
-        }
-        else if (CheatState.QuickCraft)
-        {
-            realTimeSeconds = 0.01f;
-            // gameTimeHours 保留 —— 批量制作剩余项靠时间推进启动
-            doFadeToBlack = false;
-        }
-    }
-}
-
-[HarmonyPatch(typeof(TimeOfDay), "AccelerateTime",
-    new System.Type[] { typeof(float), typeof(float) })]
-internal static class Patch_TimeOfDay_AccelerateTime
-{
-    private static void Prefix(ref float realtimeDurationSeconds, ref float gameTimeHours)
-    {
-        if (CheatState.QuickAction)
-        {
-            realtimeDurationSeconds = 0.01f;
-            gameTimeHours = 0f;
-        }
-        else if (CheatState.QuickCraft)
-        {
-            realtimeDurationSeconds = 0.01f;
-        }
-    }
-}
+// v2.7.27 撤销 Patch_TimeOfDay_Accelerate + Patch_TimeOfDay_AccelerateTime
+//   问题 1:AccelerateTime(float minutes, float realtimeDurationSeconds) 的参数我之前搞错
+//     把第 1 个当成 realtimeDurationSeconds(实际是 minutes)→ 游戏内时间被错误设为 0.01 分钟
+//     把第 2 个当成 gameTimeHours(实际是 realtimeDurationSeconds)→ 参数名字全错
+//   问题 2:QuickAction 条件误伤制作流程 —— 关了 QuickCraft 但 QuickAction 开着,
+//     制作的 Accelerate 也被吃掉 gameTimeHours=0 = "关了快速制作也不消耗时间"
+//   新方案:完全撤销这俩 Prefix,改走 GetFinalCraftingTime Postfix=0 路径(见下方)
+//     采集/修理/拆解都各自通过 Panel_*.Update Postfix 推进字段 + 调完成方法,不依赖 Accelerate patch
 
 // ——— 一击必杀:任何命中动物的伤害都放大到 9999 ———
 // 用户要的是"我打它一下它就死",不是"开关一开所有动物全死"
@@ -322,20 +287,54 @@ internal static class Patch_Craft_CanCraft
     }
 }
 
-// ——— 快速制作 v2.7.17 改:直接调 Panel_Crafting.OnCraftingSuccess 完成,跳过 time accel ———
-// 原方案 Accelerate 1000x 30s = 8 小时游戏时长,19 小时 craft 只做一半 —— 不够彻底
+// ——— 快速制作 v2.7.27:三段式,batch 完整 + 不跳时间 + 无黑屏 ———
+//   1. GetFinalCraftingTimeWithAllModifiers / GetAdjustedCraftingTime Postfix = 1(秒)
+//      让游戏认为每个制作 1 秒真实时间 → Update 每帧推进 deltaTime/1 = 瞬满
+//      (为什么不设 0:0 会除零 crash)
+//   2. CraftingStart Postfix 循环调 OnCraftingSuccess —— batch 里所有 item 一次性完成
+//   3. 因为 craft time=1 秒,游戏调 Accelerate(realSec=1, gameHours=tiny)时钟推进极少 → 看不出跳时间
+[HarmonyPatch(typeof(Panel_Crafting), "GetFinalCraftingTimeWithAllModifiers")]
+internal static class Patch_Craft_GetFinalTime
+{
+    private static void Postfix(ref int __result)
+    {
+        if (CheatState.QuickCraft) __result = 1;
+    }
+}
+
+[HarmonyPatch(typeof(Panel_Crafting), "GetAdjustedCraftingTime")]
+internal static class Patch_Craft_GetAdjustedTime
+{
+    private static void Postfix(ref int __result)
+    {
+        if (CheatState.QuickCraft) __result = 1;
+    }
+}
+
 [HarmonyPatch(typeof(Panel_Crafting), "CraftingStart")]
 internal static class Patch_Craft_Start_Instant
 {
+    // 防递归:OnCraftingSuccess 内部可能重调 CraftingStart 启动 batch 下一个 item
+    private static bool _busy = false;
+
     private static void Postfix(Panel_Crafting __instance)
     {
         if (!CheatState.QuickCraft) return;
+        if (_busy) return;
+        _busy = true;
         try
         {
-            __instance.OnCraftingSuccess();
-            ModMain.Log?.Msg("[QuickCraft] instant complete");
+            // 循环调完成,batch 有几个做几个;已完成/材料耗尽时内部 throw → break
+            int done = 0;
+            for (int i = 0; i < 100; i++)
+            {
+                try { __instance.OnCraftingSuccess(); done++; }
+                catch { break; }
+            }
+            ModMain.Log?.Msg($"[QuickCraft] {done} completed");
         }
         catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickCraft] {ex.Message}"); }
+        finally { _busy = false; }
     }
 }
 
