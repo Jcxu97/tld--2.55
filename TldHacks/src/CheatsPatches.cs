@@ -207,6 +207,45 @@ internal static class Patch_BreakDown_Update
 //   前者递归风险,后者每帧强推字段让游戏状态机错乱 → 2.7.18 卡死根因
 //   新方案靠 QuickHarvestRunner 延迟完成 = 直接跳过整个 fade + time 流程,根本不让黑屏出现
 
+// v2.7.24 加回 CameraFade 4 个 Prefix —— 用户反馈采集/制作仍有黑屏
+//   只设 time=0 delay=0 让 fade 瞬完,不调 FinishFade/UpdateCameraFade(那是 v2.7.18 卡死根因)
+//   Action 仍会触发,游戏逻辑不断,只是视觉上不黑
+[HarmonyPatch(typeof(CameraFade), "FadeOut", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
+internal static class Patch_CameraFade_FadeOut
+{
+    private static void Prefix(ref float time, ref float delay)
+    {
+        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+    }
+}
+
+[HarmonyPatch(typeof(CameraFade), "FadeIn", new System.Type[] { typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
+internal static class Patch_CameraFade_FadeIn
+{
+    private static void Prefix(ref float time, ref float delay)
+    {
+        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+    }
+}
+
+[HarmonyPatch(typeof(CameraFade), "FadeTo", new System.Type[] { typeof(float), typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
+internal static class Patch_CameraFade_FadeTo
+{
+    private static void Prefix(ref float time, ref float delay)
+    {
+        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+    }
+}
+
+[HarmonyPatch(typeof(CameraFade), "Fade", new System.Type[] { typeof(float), typeof(float), typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
+internal static class Patch_CameraFade_Fade
+{
+    private static void Prefix(ref float time, ref float delay)
+    {
+        if (CheatState.QuickAction || CheatState.QuickCraft) { time = 0f; delay = 0f; }
+    }
+}
+
 // ——— 快速操作 v2.7.22 终极方案 ———
 // 所有"制作/修理/拆解/采集"都调 TimeOfDay.Accelerate(realTimeSec, gameTimeHours, doFadeToBlack)
 // v2.7.22 —— 用户反馈"时间没被冻结",把 gameTimeHours 也置 0,游戏内时钟不再前进
@@ -653,9 +692,8 @@ internal static class CheatsTick
     private static bool _lastTickedFreeze = false;
     private static bool _lastTickedInvis = false;
 
-    // v2.7.23 TrueInvisible cheap:每 1s 设玩家自己的 m_AiTarget.m_IsEnabled
-    //   关掉 AiTarget 后,AI 的世界查询 FindAiTargets 里根本拿不到玩家 → 所有动物当玩家不存在
-    //   1 个字段访问,零 FindObjects 开销
+    // v2.7.24 TrueInvisible cheap:每 1s 设玩家 AiTarget.m_IsEnabled + ClearTarget 所有 AI
+    //   关玩家 AiTarget 让世界查询 FindAiTargets 拿不到玩家;清 AI 现有 target 避免已 target 的残留
     public static void TickAnimalsCheap()
     {
         if (!CheatState.TrueInvisible && !_lastTickedInvis) return;
@@ -689,18 +727,6 @@ internal static class CheatsTick
                 return;
             }
 
-            // 缓存 FieldInfo (v2.7.15 做法)
-            if (_fi_baseAi_disableScan == null)
-            {
-                var t = typeof(BaseAi);
-                _fi_baseAi_disableScan        = t.GetField("m_DisableScanForTargets",      System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                _fi_baseAi_detectRange        = t.GetField("m_DetectionRange",             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                _fi_baseAi_detectFOV          = t.GetField("m_DetectionFOV",               System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                _fi_baseAi_hearFootsteps      = t.GetField("m_HearFootstepsRange",         System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                _fi_baseAi_hearRifle          = t.GetField("m_HearRifleRange",             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                _fi_baseAi_detectRangeFeeding = t.GetField("m_DetectionRangeWhileFeeding", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-            }
-
             foreach (var ai in ais)
             {
                 if (ai == null) continue;
@@ -713,18 +739,23 @@ internal static class CheatsTick
                             try { ai.m_OverrideSpeed = 0f; } catch { }
                     }
 
-                    // TrueInvisible:切断所有感知通道 —— AI 像瞎子聋子,闻不到看不见听不见
+                    // v2.7.24 TrueInvisible 核心修:用强类型属性直接访问(Il2CppInterop 下 m_X 是 property 不是 field,反射无效)
+                    // 切断所有感知通道 —— AI 像瞎子聋子,闻不到看不见听不见,加清现有 target 踢出残留
                     if (runInvis)
                     {
-                        try { _fi_baseAi_disableScan?.SetValue(ai, CheatState.TrueInvisible); } catch { }
+                        try { ai.m_DisableScanForTargets = CheatState.TrueInvisible; } catch { }
                         if (CheatState.TrueInvisible)
                         {
                             try { ai.ClearTarget(); } catch { }
-                            try { _fi_baseAi_detectRange?.SetValue(ai, 0f); } catch { }
-                            try { _fi_baseAi_detectFOV?.SetValue(ai, 0f); } catch { }
-                            try { _fi_baseAi_hearFootsteps?.SetValue(ai, 0f); } catch { }
-                            try { _fi_baseAi_hearRifle?.SetValue(ai, 0f); } catch { }
-                            try { _fi_baseAi_detectRangeFeeding?.SetValue(ai, 0f); } catch { }
+                            try { ai.m_DetectionRange = 0f; } catch { }
+                            try { ai.m_DetectionFOV = 0f; } catch { }
+                            try { ai.m_HearFootstepsRange = 0f; } catch { }
+                            try { ai.m_HearRifleRange = 0f; } catch { }
+                            try { ai.m_HearCarAlarmRange = 0f; } catch { }
+                            try { ai.m_SmellRange = 0f; } catch { }
+                            try { ai.m_DetectionRangeWhileFeeding = 0f; } catch { }
+                            try { ai.m_HearFootstepsRangeWhileFeeding = 0f; } catch { }
+                            try { ai.m_HearFootstepsRangeWhileSleeping = 0f; } catch { }
                         }
                     }
 
