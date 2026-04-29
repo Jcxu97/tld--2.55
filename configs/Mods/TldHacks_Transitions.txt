@@ -1,0 +1,32 @@
+# TldHacks transition snapshots — each row = target scene's last seen SceneTransitionData
+# SceneName|FromSaveId|ToSaveId|LastOutdoor|LocIDOverride|SpawnPoint|SpawnAudio|ForceNextTrigger|Px|Py|Pz
+MainMenu_DLC01|MainMenu_DLC01|||||||0.00|0.00|0.00
+AshCanyonRegion|AshCanyonRegion|AshCanyonRegion|AshCanyonRegion|||||-42.12|172.95|-796.68
+AshCanyonRegion_CentralPeak|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_EastRidge|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_LowerValley|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_MineEntrance|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_NorthRidge|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_UpperValley|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_WestPassage|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_WestRidge|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_SANDBOX|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_SANDBOX_WILDLIFE|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_VFX|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AshCanyonRegion_DLC01|AshCanyonRegion||AshCanyonRegion|||||0.00|0.00|0.00
+AirfieldRegion|AirfieldRegion|AirfieldRegion|AirfieldRegion|||||81.90|160.30|-455.30
+CoastalRegion|CoastalRegion|CoastalRegion|CoastalRegion|||||760.51|24.00|645.93
+RiverValleyRegion|RiverValleyRegion|RiverValleyRegion|RiverValleyRegion|||||171.97|126.65|731.10
+LakeRegion|LakeRegion|LakeRegion|LakeRegion|||||1029.06|91.99|-52.52
+MountainTownRegion|MountainTownRegion|MountainTownRegion|MountainTownRegion|||Play_MetalHatchDoorClose1||1828.36|443.50|1771.29
+PrepperCacheB_da09749d-64ae-49b9-ad66-d74722bedfe3|PrepperCacheB_da09749d-64ae-49b9-ad66-d74722bedfe3|PrepperCacheB_da09749d-64ae-49b9-ad66-d74722bedfe3|MountainTownRegion||||MountainTownRegion|1828.36|443.50|1771.29
+CanneryRegion|CanneryRegion|CanneryRegion|CanneryRegion|||||328.37|344.50|833.16
+BlackrockRegion|BlackrockRegion|BlackrockRegion|BlackrockRegion|||||705.04|373.98|816.38
+RuralRegion|MainMenu_DLC01|RuralRegion|RuralRegion|||||423.89|177.93|1458.51
+MarshRegion|MarshRegion|MarshRegion|MarshRegion|||||1116.10|-130.60|969.10
+MiningRegion|MiningRegion|MiningRegion|MiningRegion|||||-169.20|201.80|231.70
+WhalingStationRegion|WhalingStationRegion|WhalingStationRegion|WhalingStationRegion|||||728.00|46.80|766.60
+TracksRegion|TracksRegion|TracksRegion|TracksRegion|||||588.20|199.00|565.50
+MountainPassRegion|MountainPassRegion|MountainPassRegion|MountainPassRegion|||||532.10|592.10|-601.20
+PrepperCacheB_19f4454f-6ce3-4462-87ff-4925dba034e4|BlackrockRegion|PrepperCacheB_19f4454f-6ce3-4462-87ff-4925dba034e4|BlackrockRegion||PrepperCacheEnterPoint|Play_SndActionLadderDown2|BlackrockRegion|705.17|373.09|816.34
+PrepperCacheB|MainMenu_DLC01|PrepperCacheB|BlackrockRegion|||||705.17|373.09|816.34
