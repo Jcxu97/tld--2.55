@@ -92,8 +92,10 @@ internal static class CheatState
         set => _lastActionLog = (value != null && value.Length > 200) ? value.Substring(0, 200) : (value ?? "");
     }
 
-    // v2.7.60 删除:5 个 C* (CInvulnerable/CInvisible/CNoJamConsole/CNoSprain/CFly)
+    // v2.7.60 删除:4 个 C* (CInvulnerable/CInvisible/CNoJamConsole/CNoSprain)
     //   都是 uConsole-based,release build 不 work,字段永远 false 且无人读 —— 死代码
+    // ⚠ CFly 保留:`fly` 命令在用户的游戏里实际 work(F1 切换)—— 删除会误伤
+    public static bool CFly;
 
     // Fast fire(tick 类,持久化)
     public static bool FastFire;

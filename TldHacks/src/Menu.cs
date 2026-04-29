@@ -105,7 +105,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.60");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.61");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -343,6 +343,19 @@ internal static class Menu
             CheatState.CougarInstantActivate = cia;
             s.Save();
         }
+
+        // 商人 uConsole 命令(v2.7.61 从原 uConsole 区合并过来)
+        // CT toggle 不覆盖的功能:刷新清单 / 解锁对话/交易/改进 —— 每按一次
+        y2 = Section(c2, y2, "商人 uConsole 命令");
+        const float cbw = 120f, cgap = 5f;
+        if (GUI.Button(R(c2,                       y2, cbw, ROW_H), "秒完成交易")) ConsoleBridge.Run("trader_trade_force_completed");
+        if (GUI.Button(R(c2 + cbw + cgap,          y2, cbw, ROW_H), "刷新清单"))   ConsoleBridge.Run("trader_reset_drawn_exchanges");
+        if (GUI.Button(R(c2 + 2*(cbw + cgap),      y2, cbw, ROW_H), "信任 +100")) ConsoleBridge.Run("trader_trust_add 100");
+        y2 += ROW_ADV;
+        if (GUI.Button(R(c2,                       y2, cbw, ROW_H), "解锁对话"))   ConsoleBridge.Run("trader_unlock_conversation_all");
+        if (GUI.Button(R(c2 + cbw + cgap,          y2, cbw, ROW_H), "解锁交易"))   ConsoleBridge.Run("trader_unlock_exchange_all");
+        if (GUI.Button(R(c2 + 2*(cbw + cgap),      y2, cbw, ROW_H), "解锁改进"))   ConsoleBridge.Run("trader_unlock_improvement_all");
+        y2 += ROW_ADV + SECTION_END_ADV;
 
         // ═════════ 列 3:物品 & 武器 ═════════
         y3 = Section(c3, y3, "快速操作(CT 复刻)");
@@ -620,16 +633,6 @@ internal static class Menu
         }
         y += ROW_ADV + SECTION_END_ADV;
 
-        // —— 商人 ——
-        y = Section(10f, y, "商人 Trader");
-        if (GUI.Button(R(10f, y, 200f, ROW_H), "秒完成交易")) ConsoleBridge.Run("trader_trade_force_completed");
-        if (GUI.Button(R(220f, y, 200f, ROW_H), "刷新交易清单")) ConsoleBridge.Run("trader_reset_drawn_exchanges");
-        if (GUI.Button(R(430f, y, 200f, ROW_H), "信任 +100")) ConsoleBridge.Run("trader_trust_add 100");
-        y += ROW_ADV;
-        if (GUI.Button(R(10f, y, 200f, ROW_H), "解锁所有对话")) ConsoleBridge.Run("trader_unlock_conversation_all");
-        if (GUI.Button(R(220f, y, 200f, ROW_H), "解锁所有交易")) ConsoleBridge.Run("trader_unlock_exchange_all");
-        if (GUI.Button(R(430f, y, 200f, ROW_H), "解锁所有改进")) ConsoleBridge.Run("trader_unlock_improvement_all");
-        y += ROW_ADV + SECTION_END_ADV;
     }
 
     private static void RebuildFilter()

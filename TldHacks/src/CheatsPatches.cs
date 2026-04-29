@@ -202,12 +202,14 @@ internal static class Patch_Repair_StartRepair
 }
 
 // ——— 快速拆解 v2.7.29:改 OnBreakDown Postfix 一次 set,删 Update Postfix ———
+// v2.7.61 扩展条件:QuickAction UI 已删(和 QuickBreakDown 重复),所以加 QuickBreakDown 分支
+//   — 否则 OnBreakDown 永远不触发,v2.7.59 为此加的 Update_ForceFinish 路径缺 Fade.Arm 导致留黑屏
 [HarmonyPatch(typeof(Panel_BreakDown), "OnBreakDown")]
 internal static class Patch_BreakDown_OnBreakDown
 {
     private static void Postfix(Panel_BreakDown __instance)
     {
-        if (!CheatState.QuickAction) return;
+        if (!CheatState.QuickAction && !CheatState.QuickBreakDown) return;
         FadeSuppressionWindow.Arm();
         try
         {
@@ -1172,43 +1174,41 @@ internal static class Patch_BodyHarvest_MaybeFreeze
 }
 
 // —— 秒打碎/回收 CT:Panel_BreakDown.UpdateDurationLabel 设 SecondsToBreakDown=0.2, BreakDown.TimeCostHours=0 ——
-//   v2.7.59 加强:UpdateDurationLabel 是 private 只在 UI 打开时调一次 → 回收衣服可能漏触发
-//              加 Panel_BreakDown.Update 每帧兜底:既改 SecondsToBreakDown 又推 TimeSpentBreakingDown 过线
+//   v2.7.61 加 snapshot+restore —— toggle off 时恢复 BreakDown.m_TimeCostHours,否则"UI 还是 0 min"
+//           key 用 m_BreakDown.Pointer(每个物品的 BreakDown 组件独立)
 [HarmonyPatch(typeof(Panel_BreakDown), "UpdateDurationLabel")]
 internal static class Patch_BreakDown_UpdateDuration
 {
+    internal static readonly System.Collections.Generic.Dictionary<System.IntPtr, float> Snapshots
+        = new System.Collections.Generic.Dictionary<System.IntPtr, float>();
+
     private static void Prefix(Panel_BreakDown __instance)
     {
-        if (!CheatState.QuickBreakDown) return;
         try
         {
-            __instance.m_SecondsToBreakDown = 0.2f;
-            if (__instance.m_BreakDown != null)
-                __instance.m_BreakDown.m_TimeCostHours = 0f;
+            var bd = __instance.m_BreakDown;
+            if (bd == null) return;
+            var ptr = bd.Pointer;
+            if (CheatState.QuickBreakDown)
+            {
+                if (!Snapshots.ContainsKey(ptr))
+                    Snapshots[ptr] = bd.m_TimeCostHours;    // 首次 toggle on → 存原值
+                __instance.m_SecondsToBreakDown = 0.2f;
+                bd.m_TimeCostHours = 0f;
+            }
+            else if (Snapshots.TryGetValue(ptr, out var origH))
+            {
+                bd.m_TimeCostHours = origH;                 // toggle off → 恢复
+                Snapshots.Remove(ptr);
+                // m_SecondsToBreakDown 不用我们写,原方法会根据 TimeCostHours 重算
+            }
         }
         catch { }
     }
 }
 
-[HarmonyPatch(typeof(Panel_BreakDown), "Update")]
-internal static class Patch_BreakDown_Update_ForceFinish
-{
-    private static void Prefix(Panel_BreakDown __instance)
-    {
-        if (!CheatState.QuickBreakDown) return;
-        try
-        {
-            // 只有在正在拆解过程中才干预(避免影响 UI 开启前的状态)
-            if (!__instance.IsBreakingDown()) return;
-            __instance.m_SecondsToBreakDown = 0.2f;
-            // 直接推时间过线 —— 游戏会在下一帧判定完成
-            __instance.m_TimeSpentBreakingDown = 1f;
-            if (__instance.m_BreakDown != null)
-                __instance.m_BreakDown.m_TimeCostHours = 0f;
-        }
-        catch { }
-    }
-}
+// v2.7.61 删除 Patch_BreakDown_Update_ForceFinish —— 每帧强推 m_TimeSpentBreakingDown 但没 Fade.Arm,
+//   拆完留黑屏。改由 Patch_BreakDown_OnBreakDown 响应 QuickBreakDown 即可(原路径已带 Fade.Arm)
 
 // —— 解锁保险箱 CT:SafeCracking.Update 直接 jmp UnlockSafe ——
 [HarmonyPatch(typeof(SafeCracking), "Update")]
