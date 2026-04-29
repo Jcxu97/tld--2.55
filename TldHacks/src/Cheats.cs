@@ -537,11 +537,8 @@ internal static class Cheats
 // 现在改成 TickStats() 每 60 帧(1s)统一 tick 写一次字段,配合 Condition.AddHealth Prefix 拦负 HP 无遗漏
 // 保留 Hunger.UpdateCalorieReserves Prefix(低频方法)和 PlayerManager.MaybeFlushPlayerDamage 等
 
-[HarmonyPatch(typeof(Hunger), "UpdateCalorieReserves")]
-internal static class Patch_Hunger_UpdateCalorieReserves
-{
-    private static bool Prefix() => !(CheatState.GodMode || CheatState.NoHunger);
-}
+// v2.7.62 删除 Patch_Hunger_UpdateCalorieReserves 的 Prefix return false —— 会让整个 Hunger 循环
+//   跳过,吃东西的 AddCalorieReserve 累加、UI 显示都受影响。改走 TickStatus 压值方案(见 TickStatus)
 
 [HarmonyPatch(typeof(PlayerManager), "MaybeFlushPlayerDamage")]
 internal static class Patch_PM_FlushDamage

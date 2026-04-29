@@ -982,7 +982,12 @@ internal static class CheatsTick
     }
 
     // ——— 无饥饿 / 无口渴 / 无疲劳 / 始终温暖 / GodMode 兜底 ———
-    // (InfiniteStamina / InfiniteCarry 已去除,交给 UniversalTweaks 等 mod 处理)
+    // v2.7.62 仿 CT:设"合理低值"而非"max/0",让游戏的吃喝睡 UI 认为还有空间,交互可用
+    //   - Fatigue: 10(CT 原值)—— 玩家仍能触发睡觉(0 时游戏可能不让睡)
+    //   - Hunger: 2450 cal(CT 原值,≈ 1 day starting reserve)—— 玩家仍能吃东西
+    //   - Thirst: 0 —— UI 显示不渴即可,喝水仍能触发(游戏不 check "thirst > 0 才能喝")
+    //   - Freezing: 0 —— 同上
+    //   - GodMode 走 max HP 路径(玩家不会死,与吃喝睡 UI 无关)
     public static void TickStatus()
     {
         if (!CheatState.NoFatigue && !CheatState.NoHunger
@@ -993,12 +998,12 @@ internal static class CheatsTick
             if (CheatState.NoFatigue || CheatState.GodMode)
             {
                 var fat = GameManager.GetFatigueComponent();
-                if (fat != null) { try { fat.m_CurrentFatigue = 0f; } catch { } }
+                if (fat != null) { try { fat.m_CurrentFatigue = 10f; } catch { } }
             }
             if (CheatState.NoHunger || CheatState.GodMode)
             {
                 var h = GameManager.GetHungerComponent();
-                if (h != null) { try { h.m_CurrentReserveCalories = h.m_MaxReserveCalories; } catch { } }
+                if (h != null) { try { h.m_CurrentReserveCalories = 2450f; } catch { } }
             }
             if (CheatState.NoThirst || CheatState.GodMode)
             {
