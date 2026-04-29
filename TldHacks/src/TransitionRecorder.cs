@@ -112,11 +112,12 @@ internal static class TransitionRecorder
             // 只记入"真·跨场景"的 transition(两端都有 save id)
             if (string.IsNullOrEmpty(snap.FromSaveId) && string.IsNullOrEmpty(snap.ToSaveId)) return;
 
-            // key 用目标 scene Unity 名;如果 ToSaveId 存在就更可靠,用它;否则用 sceneName 参数
-            string key = !string.IsNullOrEmpty(snap.ToSaveId) ? snap.ToSaveId : sceneName;
-            _data[key] = snap;
+            // v2.7.60 修 bug:key 必须用 Unity scene 名(sceneName 参数),因为 TravelTo 里 Lookup 传的也是 Unity scene 名
+            //   之前用 ToSaveId 当 key,在 DLC Tale scene 上 ToSaveId ≠ Unity sceneName 时会 lookup miss —— 等于这个 mod
+            //   对真正需要它的 scene 不起作用。当前数据巧合 ToSaveId==sceneName 所以没触发
+            _data[sceneName] = snap;
             Save();
-            ModMain.Log?.Msg($"[TransitionRecorder] learned transition → {key} (from={snap.FromSaveId}, locID={snap.LocIDOverride})");
+            ModMain.Log?.Msg($"[TransitionRecorder] learned → {sceneName} (ToSaveId={snap.ToSaveId}, locID={snap.LocIDOverride})");
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[TransitionRecorder.OnScene] {ex.Message}"); }
     }

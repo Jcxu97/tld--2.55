@@ -1,6 +1,21 @@
 # TldHacks — 交接文档
 
-## 🎯 当前版本 v2.7.59 — 待测 / 需继续关注
+## 🛠️ v2.7.60 改动(self-review 后修)
+
+### Bug 修 4 个
+1. **TransitionRecorder key 用 Unity sceneName** —— 之前用 `snap.ToSaveId`,DLC Tale scene 真需要 mod 时(ToSaveId ≠ scene 名)会 lookup miss,等于无效
+2. **删 FlyHotkey 死按键** —— `uConsole fly` release 不 work,按键只 toggle 没人读的 flag
+3. **删 4 个无用 tick counter**(`_durabilityTick / _camTick / _animalsCheapTick / _animalsFullTick`)—— v2.7.21 `_frame % N` 重构后残留
+4. **删 CheatState.C*(5 字段)** —— uConsole toggles 全部不起作用,纯死代码
+
+### 性能优化 3 个
+5. **`InventoryGridItem.Update` Postfix 加 early-out** —— panel 关或 stacking off 时零开销(之前 40 cell × 60fps × Harmony stub = 2400/s)
+6. **`OnLateUpdate` 加 StackingEnabled 守卫**
+7. **Scene 切换清 3 个 dicts**:`Fire.Snapshots` / `HeatSource.Snapshots` / `AutoPickupGuard.DroppedAt` —— 防 long session 累积
+
+---
+
+## 🎯 当前版本 v2.7.60 — 待测 / 需继续关注
 
 ### 必测(本 session 新改,还没完整验证)
 1. **秒烤肉 v2.7.51 重做** — 之前 "放肉→Ready→左键拾取时抽搐卡死"。新做法仿 CT:

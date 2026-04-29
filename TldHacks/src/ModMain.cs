@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.59", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.60", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -14,11 +14,7 @@ public class ModMain : MelonMod
     public static MelonLogger.Instance Log;
     internal static TldHacksSettings Settings;
 
-    private int _durabilityTick = 0;
     private int _posTick = 0;
-    private int _camTick = 0;
-    private int _animalsCheapTick = 0;
-    private int _animalsFullTick = 0;
     // v2.7.21 —— 单调递增帧计数器,用 modulo 把 7 个 tick 摊到不同帧,消除 90 帧 1 次的集中大 spike
     private int _frame = 0;
 
@@ -32,9 +28,9 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            // v2.7.59 加载 scene transition 历史记录
+            // v2.7.60 加载 scene transition 历史记录
             TransitionRecorder.Init();
-            Log.Msg($"TldHacks v2.7.59 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}, transitions recorded = {TransitionRecorder.Count}");
+            Log.Msg($"TldHacks v2.7.60 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}, transitions recorded = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -92,7 +88,7 @@ public class ModMain : MelonMod
         CheatState.CureFrostbite = Settings.CureFrostbite;
         CheatState.ClearDeathPenalty = Settings.ClearDeathPenalty;
         CheatState.QuickFishing = Settings.QuickFishing;
-        // v2.7.59 商人 + 美洲狮
+        // v2.7.60 商人 + 美洲狮
         CheatState.TraderUnlimitedList = Settings.TraderUnlimitedList;
         CheatState.TraderMaxTrust = Settings.TraderMaxTrust;
         CheatState.TraderInstantExchange = Settings.TraderInstantExchange;
@@ -110,13 +106,7 @@ public class ModMain : MelonMod
             // Menu toggle
             if (Settings.MenuHotkey != KeyCode.None && Input.GetKeyDown(Settings.MenuHotkey))
                 Menu.Toggle();
-
-            // Fly toggle hotkey
-            if (Settings.FlyHotkey != KeyCode.None && Input.GetKeyDown(Settings.FlyHotkey))
-            {
-                CheatState.CFly = !CheatState.CFly;
-                ConsoleBridge.Run("fly");
-            }
+            // FlyHotkey 已删除 —— uConsole `fly` 命令在 release build 无效,按键只会 toggle 一个没读的 flag
 
             // Time scale —— v2.7.21:默认 1.0 时不写回,避免覆盖第三方时间加速 mod
             // 只有用户在菜单主动改成 != 1.0 的倍率时才强制同步
@@ -195,9 +185,14 @@ public class ModMain : MelonMod
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
         Teleport.OnSceneLoaded(sceneName);
-        // v2.7.59 学习 scene transition 字段到 JSON,解决 DLC Tale 跨区物品丢失
+        // v2.7.60 学习 scene transition 字段到 JSON,解决 DLC Tale 跨区物品丢失
         TransitionRecorder.OnSceneInitialized(sceneName);
         // v2.7.29 关键修:跨场景时清 BaseAi HashSet,避免 stale wrapper 残留 → AccessViolation
         try { BaseAiRegistry.Known.Clear(); } catch { }
+        // v2.7.60 清 Fire/HeatSource snapshot dicts,防 long session 累积旧场景的 stale IntPtr
+        try { Patch_Fire_Update_NeverDie.Snapshots.Clear(); } catch { }
+        try { Patch_HeatSource_Update.Snapshots.Clear(); } catch { }
+        // v2.7.60 清 AutoPickupGuard 的 DroppedAt dict —— 跨 scene 后地上 gear 会重新 spawn,旧 Pointer 失效
+        try { AutoPickupGuard.DroppedAt.Clear(); } catch { }
     }
 }

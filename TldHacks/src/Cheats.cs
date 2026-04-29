@@ -92,12 +92,8 @@ internal static class CheatState
         set => _lastActionLog = (value != null && value.Length > 200) ? value.Substring(0, 200) : (value ?? "");
     }
 
-    // Console-command-based toggles(内存态,不持久化 —— 每次启动游戏要重新开)
-    public static bool CInvulnerable;
-    public static bool CInvisible;
-    public static bool CNoJamConsole;
-    public static bool CNoSprain;
-    public static bool CFly;
+    // v2.7.60 删除:5 个 C* (CInvulnerable/CInvisible/CNoJamConsole/CNoSprain/CFly)
+    //   都是 uConsole-based,release build 不 work,字段永远 false 且无人读 —— 死代码
 
     // Fast fire(tick 类,持久化)
     public static bool FastFire;

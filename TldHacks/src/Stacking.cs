@@ -17,7 +17,8 @@ internal static class Stacking
     //   每帧 reapply SeenItems 里只有 panel 打开时活跃的 cell(几十个),字符串比较非 set,开销可忽略
     public static void OnLateUpdate()
     {
-
+        // v2.7.60 性能:stacking toggle 关时不跑
+        if (ModMain.Settings != null && !ModMain.Settings.StackingEnabled) return;
         try
         {
             if (StackState.Counts.Count == 0) return;
@@ -303,6 +304,9 @@ internal static class Patch_InventoryGridItem_Update
 {
     private static void Postfix(InventoryGridItem __instance)
     {
+        // v2.7.60 性能:SeenItems 空(通常 panel 关)时快速 early-out —— 避免 null check + Pointer getter
+        if (StackState.SeenItems.Count == 0) return;
+        if (ModMain.Settings != null && !ModMain.Settings.StackingEnabled) return;
         try
         {
             if (__instance == null) return;
