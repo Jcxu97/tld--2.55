@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>GfxBoost</AssemblyName>
+    <RootNamespace>GfxBoost</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Version>1.0.0</Version>
+    <TldRoot>D:\Steam\steamapps\common\TheLongDark</TldRoot>
+    <TldMlNet6>$(TldRoot)\MelonLoader\net6</TldMlNet6>
+    <TldInterop>$(TldRoot)\MelonLoader\Il2CppAssemblies</TldInterop>
+    <TldModsDir>$(TldRoot)\Mods</TldModsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MelonLoader"><HintPath>$(TldMlNet6)\MelonLoader.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(TldInterop)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(TldInterop)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ModSettings"><HintPath>$(TldModsDir)\ModSettings.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <Target Name="CopyToMods" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" />
+  </Target>
+</Project>

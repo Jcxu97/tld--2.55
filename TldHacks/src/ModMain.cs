@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.62", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.64", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -28,9 +28,9 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            // v2.7.62 加载 scene transition 历史记录
+            // v2.7.64 加载 scene transition 历史记录
             TransitionRecorder.Init();
-            Log.Msg($"TldHacks v2.7.62 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}, transitions recorded = {TransitionRecorder.Count}");
+            Log.Msg($"TldHacks v2.7.64 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}, transitions recorded = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -88,7 +88,7 @@ public class ModMain : MelonMod
         CheatState.CureFrostbite = Settings.CureFrostbite;
         CheatState.ClearDeathPenalty = Settings.ClearDeathPenalty;
         CheatState.QuickFishing = Settings.QuickFishing;
-        // v2.7.62 商人 + 美洲狮
+        // v2.7.64 商人 + 美洲狮
         CheatState.TraderUnlimitedList = Settings.TraderUnlimitedList;
         CheatState.TraderMaxTrust = Settings.TraderMaxTrust;
         CheatState.TraderInstantExchange = Settings.TraderInstantExchange;
@@ -191,16 +191,16 @@ public class ModMain : MelonMod
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
         Teleport.OnSceneLoaded(sceneName);
-        // v2.7.62 学习 scene transition 字段到 JSON,解决 DLC Tale 跨区物品丢失
+        // v2.7.64 学习 scene transition 字段到 JSON,解决 DLC Tale 跨区物品丢失
         TransitionRecorder.OnSceneInitialized(sceneName);
         // v2.7.29 关键修:跨场景时清 BaseAi HashSet,避免 stale wrapper 残留 → AccessViolation
         try { BaseAiRegistry.Known.Clear(); } catch { }
-        // v2.7.62 清 Fire/HeatSource snapshot dicts,防 long session 累积旧场景的 stale IntPtr
+        // v2.7.64 清 Fire/HeatSource snapshot dicts,防 long session 累积旧场景的 stale IntPtr
         try { Patch_Fire_Update_NeverDie.Snapshots.Clear(); } catch { }
         try { Patch_HeatSource_Update.Snapshots.Clear(); } catch { }
-        // v2.7.62 清 AutoPickupGuard 的 DroppedAt dict —— 跨 scene 后地上 gear 会重新 spawn,旧 Pointer 失效
+        // v2.7.64 清 AutoPickupGuard 的 DroppedAt dict —— 跨 scene 后地上 gear 会重新 spawn,旧 Pointer 失效
         try { AutoPickupGuard.DroppedAt.Clear(); } catch { }
-        // v2.7.62 清 BreakDown snapshot —— 跨 scene 后 BreakDown 组件重新 spawn,stale ptr
+        // v2.7.64 清 BreakDown snapshot —— 跨 scene 后 BreakDown 组件重新 spawn,stale ptr
         try { Patch_BreakDown_UpdateDuration.Snapshots.Clear(); } catch { }
     }
 }

@@ -1,5 +1,43 @@
 # TldHacks — 交接文档
 
+## 🆕 2026-04-30 session 新 mod / 改动 — 明天要测
+
+### 新建 3 个独立 mod(不在 TldHacks 内,独立 dll)
+| mod | 作用 | 默认值 |
+|---|---|---|
+| **GfxBoost** | 强制 `QualitySettings` 低值 + **强制 `Time.fixedDeltaTime = 1/150`** 修"fps 150 体感 30"感 | fixedRate=150Hz, shadowDist=50m, cascades=1, shadowRes=Low, pixLights=1, lodBias=0.8, AA=off |
+| **LightCull** | 每秒扫所有 Light,远的禁阴影/禁用 | maxShadow=4, shadowR=25m, disableR=80m |
+| **FrameTimeProbe** | 每 5s log frame time p50/p95/p99 + fixedDt + timeScale | 无配置 |
+
+### 关键发现:用户"fps 150 体感 30"的根因
+FrameTimeProbe log 出 `fixedDt=40.0ms(25Hz)` —— TLD 默认物理 25Hz,和渲染 150fps 完全不同步。**GfxBoost 强制 fixedDeltaTime=1/150** 后体感帧率质变。
+
+### v2.7.64 / v2.7.65 改动
+- **修"不饥饿/不口渴/不疲劳"导致不能吃喝睡(v2.7.62)**:仿 CT 设"合理低值"(Fatigue=10 / Hunger=2450)而非 max/0。删 Hunger.UpdateCalorieReserves Prefix return false
+- **美洲狮秒激活(v2.7.63)**:加 `CougarManager.Update` Prefix tick 兜底,state<2 强推 2。绕开 UpdateWaitingForArrival 只在 state=1 时才调的限制
+- **QuickBreakDown 变灰 / 变暗修(v2.7.64 / v2.7.65)**:
+  - FadeSuppressionWindow 窗口 1.5s → **3s**
+  - **删 `m_TimeIsAccelerated=true`**(这个字段触发 ScreenTint)
+  - 加 `BreakDownFinished` Postfix 主动调 `CameraFade.FadeIn(0,0,null)` 强制亮屏
+  - **加 `SetTODLocked(true/false)`**:OnBreakDown 锁,BreakDownFinished/ExitInterface/OnCancel 解锁 —— 和 QuickCraft 原理一致,冻结 TOD 避免触发 UniStorm 昼夜/天气 ScreenTint
+- **FlyHotkey 回退**(v2.7.60 我错删,F1 实测 work,已恢复 CFly 字段)
+- **商人 uConsole 按钮合并**(v2.7.61)到列 2 "商人 & 美洲狮" 下的"商人 uConsole 命令"子 section,删控制台区原 block
+
+### 明天要测的
+1. **150fps 体感应该变质**(fixedDt 生效)—— FrameTimeProbe log 查 `fixedDt=6.7ms(150Hz)` 就对
+2. **打碎变灰是否解决**(TOD 锁定是最后一招,还有问题的话可能要 patch UniStorm 的 tint 路径)
+3. **美洲狮能否生效**(cougar tale scene 查 log `[Cougar] 强推 state X → WaitingForTransition (2)`)
+4. **商人功能**(需进 trader 对话后 toggle 才调 GetAvailableTradeExchanges,要求先联系商人)
+5. **吃喝睡恢复**(v2.7.62 后 NoHunger/NoThirst/NoFatigue toggle 开了应该能吃/喝/睡)
+
+### 性能诊断结论
+- `p50=5.5ms, p95=15ms, p99=24ms, max=27ms` —— CPU 其实够快,没 spike
+- 用户说"卡"不是 spike 问题,是 fixedDt 25Hz 的 **物理/AI 采样率过低** 导致的"滑步感"
+- DLSS 4.5 不现实(工作量月级 +TLD Unity built-in pipeline 不支持)
+- Lossless Scaling 是外部替代
+
+---
+
 ## 🛠️ v2.7.60 改动(self-review 后修)
 
 ### Bug 修 4 个

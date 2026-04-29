@@ -213,10 +213,49 @@ internal static class Patch_BreakDown_OnBreakDown
         FadeSuppressionWindow.Arm();
         try
         {
+            // v2.7.65 关键修:冻结 TOD 避免游戏推进时钟触发 UniStorm 昼夜/天气 ScreenTint(变灰源头)
+            //   和 QuickCraft 用的 m_HoursToSpendCrafting=100 但 TOD 不真实推进是同逻辑
+            try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(true); } catch { }
             __instance.m_TimeSpentBreakingDown = __instance.m_SecondsToBreakDown + 1f;
-            __instance.m_TimeIsAccelerated = true;
+            // 不设 m_TimeIsAccelerated=true —— 它也会触发 ScreenTint
         }
         catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickBreakDown] {ex.Message}"); }
+    }
+}
+
+// v2.7.65 打碎完成解锁 TOD + 强制亮屏 —— 必须解锁,不然整个游戏时钟会卡住
+[HarmonyPatch(typeof(Panel_BreakDown), "BreakDownFinished")]
+internal static class Patch_BreakDown_Finished_Unfade
+{
+    private static void Postfix()
+    {
+        if (!CheatState.QuickAction && !CheatState.QuickBreakDown) return;
+        try
+        {
+            try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(false); } catch { }
+            FadeSuppressionWindow.Arm(3.0f);
+            CameraFade.FadeIn(0f, 0f, null);    // 0s fade 0s delay —— 立即亮屏
+        }
+        catch { }
+    }
+}
+
+// 防御性:如果玩家中途取消或退出界面,也要解锁 TOD 不然时钟永远冻
+[HarmonyPatch(typeof(Panel_BreakDown), "ExitInterface")]
+internal static class Patch_BreakDown_ExitInterface_UnlockTOD
+{
+    private static void Postfix()
+    {
+        try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(false); } catch { }
+    }
+}
+
+[HarmonyPatch(typeof(Panel_BreakDown), "OnCancel")]
+internal static class Patch_BreakDown_OnCancel_UnlockTOD
+{
+    private static void Postfix()
+    {
+        try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(false); } catch { }
     }
 }
 
@@ -231,7 +270,8 @@ internal static class Patch_BreakDown_OnBreakDown
 internal static class FadeSuppressionWindow
 {
     private static float _expiresAt = 0f;
-    public static void Arm(float seconds = 1.5f)
+    // v2.7.64 从 1.5s 拉长到 3s —— 打碎完成时 TimeIsAccelerated 可能触发 ScreenTint,窗口太短漏掉
+    public static void Arm(float seconds = 3.0f)
     {
         try { _expiresAt = UnityEngine.Time.realtimeSinceStartup + seconds; } catch { }
     }
@@ -1430,6 +1470,9 @@ internal static class Patch_ExchangeItem_IsFullyExchanged
 //   CT: UpdateWaitingForArrival Prefix,设 __instance.m_ActiveTerritory.m_CougarState = 2 (WaitingForTransition)
 //   enum CougarState { Start=0, WaitingForArrival=1, WaitingForTransition=2, HasArrivedAfterTransition=3, PlayingIntroTimeline=4, HasArrived=5 }
 //   激活后进出门/睡觉会触发到 HasArrivedAfterTransition 动画
+// v2.7.63 双路并行:
+//   A. Patch UpdateWaitingForArrival Prefix(CT 原路径)—— 仅 state=WaitingForArrival 时调
+//   B. 加 tick 扫 m_ActiveTerritory,state < 2 时强推 2 —— 绕开 CT 路径只在特定 state 才触发的限制
 [HarmonyPatch(typeof(Il2CppTLD.AI.CougarManager), "UpdateWaitingForArrival")]
 internal static class Patch_CougarManager_UpdateWaitingForArrival
 {
@@ -1441,6 +1484,33 @@ internal static class Patch_CougarManager_UpdateWaitingForArrival
             var terr = __instance.m_ActiveTerritory;
             if (terr != null)
                 terr.m_CougarState = Il2CppTLD.AI.CougarManager.CougarState.WaitingForTransition;
+        }
+        catch { }
+    }
+}
+
+// v2.7.63 tick 兜底 —— CougarManager 实例每帧都在 Update,我们在 Update Prefix 里直接扫
+[HarmonyPatch(typeof(Il2CppTLD.AI.CougarManager), "Update")]
+internal static class Patch_CougarManager_Update_ForceActivate
+{
+    private static bool _logged;
+    private static void Prefix(Il2CppTLD.AI.CougarManager __instance)
+    {
+        if (!CheatState.CougarInstantActivate) return;
+        try
+        {
+            var terr = __instance.m_ActiveTerritory;
+            if (terr == null) return;
+            // 只在 state < WaitingForTransition(2)时推;>=2 不动,让进出门/睡觉自然触发动画
+            if ((int)terr.m_CougarState < 2)
+            {
+                if (!_logged)
+                {
+                    _logged = true;
+                    ModMain.Log?.Msg($"[Cougar] 强推 state {terr.m_CougarState} → WaitingForTransition (2)");
+                }
+                terr.m_CougarState = Il2CppTLD.AI.CougarManager.CougarState.WaitingForTransition;
+            }
         }
         catch { }
     }
