@@ -1,11 +1,69 @@
 # TldHacks — 交接文档
 
-## 🎯 明天第一件事要测 (v2.7.48)
+## 🎯 当前版本 v2.7.59 — 待测 / 需继续关注
 
-1. **采集玫瑰果等地上作物** — v2.7.48 把 DefaultHoldTime=0.001 + Timer=99999,应该完全看不到读条(之前"能看到一点点读条")
-2. **秒烤肉** — v2.7.47 改成直接设 m_PercentCooked=1 + m_PercentRuined=0 + m_MinutesUntilRuined=99999,应该**刚熟不烤糊**(之前烤糊)
-3. **篝火永不熄灭** — v2.7.47 改成 m_IsPerpetual=true + m_MaxOnTODSeconds=Infinity,应该真永不灭
-4. **进出门** — 确认没被秒搜索 patch 破坏(v2.7.47 改成只 patch HarvestableInteraction 子类,不碰 TimedHoldInteraction base)
+### 必测(本 session 新改,还没完整验证)
+1. **秒烤肉 v2.7.51 重做** — 之前 "放肉→Ready→左键拾取时抽搐卡死"。新做法仿 CT:
+   只在 `m_CookingState == Cooking` 时写 `m_CookingElapsedHours = cookTimeMin/60 × 1.01`,
+   **不碰 percent/state** → 让原方法自然转 Ready。拾取流程应不再被干扰。
+2. **物品生成 v2.7.57 换 API** — 原 `AddItemCONSOLE` 在 release 被 stub,DLC 物品点了没反应。
+   改 `GearItem.LoadGearItemPrefab(name)` + `PlayerManager.InstantiateItemInPlayerInventory(prefab, qty, 100f, None)`。
+   Latest.log 会打 `[Spawn] +N prefab`,Menu 底部状态栏显示"已刷 ×N xxx"。
+3. **DLC 跨区传送不丢物品(TransitionRecorder v2.7.56)** — 起因:神秘湖→废弃机场物品丢失。
+   原因:Tale scene 的 save slot id ≠ Unity scene 名,我们硬猜触发 tale-init。
+   **用户要先用 FastTravel.dll 去一趟 DLC scene(AirfieldRegion/BlackrockRegion/WhalingStationRegion/MountainPassRegion 等)**,
+   mod 会在 `OnSceneWasInitialized` 自动把 `GameManager.m_SceneTransitionData` 字段存到
+   `Mods/TldHacks_Transitions.txt`。以后我的按钮跨过去会 lookup 这份记录用真实 save slot id。
+
+### 已确认修好(用户确认) ✅
+- **篝火 300℃ / 永不熄灭 toggle on/off 恢复**(v2.7.49 加 snapshot + restore dict)
+- **秒采集** 可用但有 0.1s 读条(v2.7.54 回退到 deltaTime ×10000,用户接受)
+- **进出门** 不被秒采集 patch 破坏
+
+### 按 CT 写好,用户说免测 ✅
+- 商人 4 个 toggle(交易清单 64 / 信任满 / 秒完成交易 / 随时可联系)—— `TraderManager.GetAvailableTradeExchanges` + `IsTraderAvailable` + `ExchangeItem.IsFullyExchanged` Prefix
+- 美洲狮秒激活 — `CougarManager.UpdateWaitingForArrival` Prefix 设 `m_ActiveTerritory.m_CougarState = WaitingForTransition(2)`
+
+### 待排查(用户报告失败)
+- **ItemPicker 不捡自己丢的物品(v2.7.58 → v2.7.59)** — 用户首次测失败。v2.7.59 加诊断 log + 第二条 drop 路径 `PlayerManager.Drop(GameObject, bool)`。下次测看 `Latest.log`:
+  - `[AutoPickupGuard] hooked ItemPickerMain.OnUpdate` — 启动时,ItemPicker patch 挂成功
+  - `[AutoPickupGuard.GIDrop] hook 生效` — 首次 drop 物品
+  - `[AutoPickupGuard.IPUpdate] 第一次进 OnUpdate` — 首次按 W 触发 ItemPicker
+  - `[AutoPickupGuard.Skip] 第一次阻止 pickup` — 真正拦截到
+  - 哪条 log 没出,就是哪步没挂。
+- **回收衣服秒完成(v2.7.59 加强 QuickBreakDown)** — 原 `UpdateDurationLabel` 是 private 只调一次。
+  新加 `Panel_BreakDown.Update` Prefix:`IsBreakingDown()` 时每帧设 `m_SecondsToBreakDown=0.2` + 
+  `m_TimeSpentBreakingDown=1` + `m_BreakDown.m_TimeCostHours=0` 强推完成。
+
+### 本 session UI / 功能变更(v2.7.53 → v2.7.59)
+- UI 统一常量 `TOG_W=180 / TOG2_OFF=200 / TOG_WIDE=380`,所有 2-toggle 行对齐
+- 删冗余:蓝图解锁按钮(失效)/ NYI 三件 / QuickAction toggle(和秒搜刮重复)/ "火焰无限时长"label
+- 新分组:生存/温饱/移动速度/技能 | 动物/环境/篝火/锁容器/世界时钟(地图+天气+时间)/一次性 | 快速操作/制作/物品装备/武器/瞄准/一键获取武器
+- Spawner tab:**动态 PageSize**(根据视窗剩余高度)+ **cols 3→4**(每页 +33%)+ ContentH = viewport 无滚动
+- Teleport:**24 条精确坐标**(全部 Pos≠0),按 scene 英文字母排序,CT 汇编块提取 9 个 prepper/应急舱
+- 新"★ 打印坐标到 log"按钮 → `Latest.log` 写 `[POS-MARK] Scene=XXX X=... Y=... Z=...`
+- **商人 & 美洲狮**:5 个新 toggle 按 CT 复刻
+- **TransitionRecorder**:学习 scene transition 持久化到 `Mods/TldHacks_Transitions.txt`
+- **AutoPickupGuard**:`ItemPicker 不捡自己丢的物品` toggle(Patch ItemPickerMain.OnUpdate + 2 条 drop 路径)
+
+### ItemPicker 配置
+- `D:\Steam\steamapps\common\TheLongDark\Mods\ItemPickerCustomList.txt`(同步 repo `configs/Mods/`)
+- v2.7.59 本次删了 29 条:
+  - **锅具 3**:CookingPot / Skillet / CookingPotDummy
+  - **生肉红 7**:RawMeatBear/Deer/Moose/Rabbit/Wolf/Cougar/Ptarmigan
+  - **生鱼 16**:RawBurbot / RawCohoSalmon + _A01 / RawCopperFish_A01 / RawGoldeye / RawLakeBurbot / RawLakeGoldeye_A01 / RawLakeWhiteFish + _A01 / RawRainbowTrout + _A01 / RawRedIrishLord + _A01 / RawRockfish / RawSmallMouthBass + _A01
+  - **XxxRaw 3**:BirdEggRaw / BirdMeatRaw / OrcaMeatRaw
+  - 保留:CattailRhizomeRaw(生香蒲根茎)/ RiceRaw(生米)—— 植物非肉
+- **改后必须重启游戏**,ItemPicker 启动时才读一次
+
+---
+
+## 🕰️ 历史 v2.7.48 遗留测试项(已过期,保留参考)
+
+1. ~~采集玫瑰果等地上作物~~ — 已解决 (v2.7.54 deltaTime ×10000)
+2. ~~秒烤肉不烤糊~~ — 已改为 v2.7.51 仿 CT elapsed-push 方案
+3. ~~篝火永不熄灭~~ — v2.7.49 snapshot+restore 解决
+4. ~~进出门不被秒搜索 patch 破坏~~ — 已确认
 
 ## 📝 本次 session 全量功能 (v2.7.43 → v2.7.48)
 

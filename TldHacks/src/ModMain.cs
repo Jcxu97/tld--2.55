@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.48", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.59", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -32,7 +32,9 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
-            Log.Msg($"TldHacks v2.7.48 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}");
+            // v2.7.59 加载 scene transition 历史记录
+            TransitionRecorder.Init();
+            Log.Msg($"TldHacks v2.7.59 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}, transitions recorded = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -90,6 +92,13 @@ public class ModMain : MelonMod
         CheatState.CureFrostbite = Settings.CureFrostbite;
         CheatState.ClearDeathPenalty = Settings.ClearDeathPenalty;
         CheatState.QuickFishing = Settings.QuickFishing;
+        // v2.7.59 商人 + 美洲狮
+        CheatState.TraderUnlimitedList = Settings.TraderUnlimitedList;
+        CheatState.TraderMaxTrust = Settings.TraderMaxTrust;
+        CheatState.TraderInstantExchange = Settings.TraderInstantExchange;
+        CheatState.TraderAlwaysAvailable = Settings.TraderAlwaysAvailable;
+        CheatState.CougarInstantActivate = Settings.CougarInstantActivate;
+        CheatState.BlockAutoPickupOwnDrops = Settings.BlockAutoPickupOwnDrops;
     }
 
     public override void OnUpdate()
@@ -186,6 +195,8 @@ public class ModMain : MelonMod
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
         Teleport.OnSceneLoaded(sceneName);
+        // v2.7.59 学习 scene transition 字段到 JSON,解决 DLC Tale 跨区物品丢失
+        TransitionRecorder.OnSceneInitialized(sceneName);
         // v2.7.29 关键修:跨场景时清 BaseAi HashSet,避免 stale wrapper 残留 → AccessViolation
         try { BaseAiRegistry.Known.Clear(); } catch { }
     }

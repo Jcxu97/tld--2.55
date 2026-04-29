@@ -22,26 +22,52 @@ internal class Waypoint
 internal static class Teleport
 {
     // 已知可用坐标(BunkerDefaults 搬来的 5 个地堡) + 全部 15 个 region 的场景名。
-    // 区域名采用官方中文名(2.55 本地化),Pos == Vector3.zero 时走"只 LoadScene,不 TeleportPlayer"路径。
+    // v2.7.55 按用户实测打印的坐标更新 —— 修了 8 个原 Pos=0 的地图掉入地底问题
+    //   区域中文名按 2.55 官方本地化:林狼雪岭/宜人山谷/孤寂沼地/荒芜据点/断开的铁路/破碎山道
+    //   Pos == Vector3.zero 才走"只 LoadScene,不 TeleportPlayer"路径
+    // v2.7.55b 参照 CT 列表补 9 个 prepper 地堡 / 应急舱 / 交易地点 —— 占位 Pos=0
+    //   用户在各 scene 用"★打印坐标到 log"采准精确点后,替换这些占位行
+    // v2.7.57 排序:按 scene 英文名字母序分组,同区内先主建筑、再地堡、再应急舱
     public static readonly List<Waypoint> Destinations = new()
     {
-        // —— 地堡(精确坐标,prepper cache 隐蔽点)——
-        new Waypoint("神秘湖地堡",         "LakeRegion",              1029.06f,  91.99f,  -52.52f),
-        new Waypoint("山间小镇地堡",       "MountainTownRegion",      1828.20f, 444.39f, 1771.27f),
-        new Waypoint("荒凉水湾地堡",       "CanneryRegion",            328.37f, 344.50f,  833.16f),
-        new Waypoint("黑岩监狱地堡",       "BlackrockRegion",          705.04f, 373.98f,  816.38f),
-        new Waypoint("灰烬峡谷地堡",       "AshCanyonRegion",          -42.12f, 172.95f, -796.68f),
-        // —— 其他 region(官方中文名,Pos=0 走场景默认落点)——
-        new Waypoint("沿海公路",           "CoastalRegion",           0f, 0f, 0f),
-        new Waypoint("宁静山谷",           "RuralRegion",             0f, 0f, 0f),
-        new Waypoint("针叶狼山",           "CrashMountainRegion",     0f, 0f, 0f),
-        new Waypoint("孤寂沼泽",           "MarshRegion",             0f, 0f, 0f),
-        new Waypoint("污染区",             "MiningRegion",            0f, 0f, 0f),
-        new Waypoint("被弃机场",           "AirfieldRegion",          0f, 0f, 0f),
-        new Waypoint("晦暗湾",             "WhalingStationRegion",    0f, 0f, 0f),
-        new Waypoint("废弃铁路",           "TracksRegion",            0f, 0f, 0f),
-        new Waypoint("寂静河谷",           "RiverValleyRegion",       0f, 0f, 0f),
-        new Waypoint("崩裂之岭",           "MountainPassRegion",      0f, 0f, 0f),
+        // A —— AirfieldRegion(废弃机场)
+        new Waypoint("废弃机场(控制塔)",       "AirfieldRegion",            81.90f, 160.30f, -455.30f),
+        new Waypoint("废弃机场·应急舱",         "AirfieldRegion",          1209.80f, 304.71f, -726.11f),
+        // A —— AshCanyonRegion(灰烬峡谷)
+        new Waypoint("灰烬峡谷地堡",            "AshCanyonRegion",          -42.12f, 172.95f, -796.68f),
+        // B —— BlackrockRegion(黑岩监狱)
+        new Waypoint("黑岩监狱地堡",            "BlackrockRegion",          705.04f, 373.98f,  816.38f),
+        // C —— CanneryRegion(荒凉水湾)
+        new Waypoint("荒凉水湾地堡",            "CanneryRegion",            328.37f, 344.50f,  833.16f),
+        new Waypoint("荒凉水湾·应急舱",         "CanneryRegion",            -39.50f, 103.38f,  501.57f),
+        // C —— CoastalRegion(沿海公路)
+        new Waypoint("沿海公路·加油站",         "CoastalRegion",            760.51f,  24.00f,  645.93f),
+        new Waypoint("沿海公路·交易地点",       "CoastalRegion",            325.76f,  26.22f,  118.83f),
+        // C —— CrashMountainRegion(林狼雪岭)
+        new Waypoint("林狼雪岭(机舱)",         "CrashMountainRegion",      934.50f, 470.10f, 1174.40f),
+        new Waypoint("林狼雪岭·地堡",           "CrashMountainRegion",     1675.41f, 207.32f,  968.21f),
+        // L —— LakeRegion(神秘湖)
+        new Waypoint("神秘湖地堡",              "LakeRegion",              1029.06f,  91.99f,  -52.52f),
+        // M —— MarshRegion(孤寂沼地)
+        new Waypoint("孤寂沼地",                "MarshRegion",             1116.10f,-130.60f,  969.10f),
+        new Waypoint("孤寂沼地·地堡",           "MarshRegion",              593.07f, -83.38f, -104.89f),
+        // M —— MiningRegion(污染区)
+        new Waypoint("污染区(井架)",           "MiningRegion",            -169.20f, 201.80f,  231.70f),
+        // M —— MountainPassRegion(破碎山道)
+        new Waypoint("破碎山道(气象站)",       "MountainPassRegion",       532.10f, 592.10f, -601.20f),
+        // M —— MountainTownRegion(山间小镇)
+        new Waypoint("山间小镇地堡",            "MountainTownRegion",      1828.20f, 444.39f, 1771.27f),
+        // R —— RiverValleyRegion(寂静河谷)
+        new Waypoint("寂静河谷·地堡",           "RiverValleyRegion",        363.44f, 238.61f,  375.49f),
+        new Waypoint("寂静河谷·应急舱",         "RiverValleyRegion",        171.97f, 126.65f,  731.10f),
+        // R —— RuralRegion(宜人山谷)
+        new Waypoint("宜人山谷(农庄)",         "RuralRegion",             1460.70f,  48.40f, 1032.40f),
+        new Waypoint("宜人山谷·地堡",           "RuralRegion",              423.89f, 177.93f, 1458.51f),
+        new Waypoint("宜人山谷·应急舱",         "RuralRegion",             1113.96f,  98.49f,  140.33f),
+        // T —— TracksRegion(断开的铁路)
+        new Waypoint("断开的铁路(维修站)",     "TracksRegion",             588.20f, 199.00f,  565.50f),
+        // W —— WhalingStationRegion(荒芜据点)
+        new Waypoint("荒芜据点(孤寂灯塔)",     "WhalingStationRegion",     728.00f,  46.80f,  766.60f),
     };
 
     // 正解:PlayerManager.TeleportPlayer(Vector3, Quaternion) 是公开方法。
@@ -94,26 +120,55 @@ internal static class Teleport
 
             Log($"[TP] 跨场景 → {w.Label} ({w.Scene}),开始保存 + 加载...");
 
-            // 1) 存当前档(反射避免签名问题)
+            // 1) 存当前档 —— FastTravel 用的是 SaveGameSystem.SaveGame("autosave", currentSceneName) 有参版本
+            //    反射先试 (string, string) 再 fallback 无参
             try
             {
                 var sgt = typeof(SaveGameSystem);
-                var saveMethod = sgt.GetMethod("SaveGame", BindingFlags.Static | BindingFlags.Public, null, System.Type.EmptyTypes, null)
-                              ?? sgt.GetMethod("ForceSaveGame", BindingFlags.Static | BindingFlags.Public, null, System.Type.EmptyTypes, null);
-                saveMethod?.Invoke(null, null);
+                var saveTwoArg = sgt.GetMethod("SaveGame", BindingFlags.Static | BindingFlags.Public,
+                    null, new[] { typeof(string), typeof(string) }, null);
+                if (saveTwoArg != null)
+                {
+                    saveTwoArg.Invoke(null, new object[] { "autosave", activeScene.name });
+                }
+                else
+                {
+                    var saveNoArg = sgt.GetMethod("SaveGame", BindingFlags.Static | BindingFlags.Public, null, System.Type.EmptyTypes, null)
+                                 ?? sgt.GetMethod("ForceSaveGame", BindingFlags.Static | BindingFlags.Public, null, System.Type.EmptyTypes, null);
+                    saveNoArg?.Invoke(null, null);
+                }
             }
             catch (Exception ex) { Log($"[TP.Save] {ex.Message}"); }
 
-            // 2) 构造 SceneTransitionData
+            // 2) 构造 SceneTransitionData —— 优先用 TransitionRecorder 记录的真实 save slot id
+            //    DLC Tale scene 的 save slot id ≠ Unity scene 名,硬猜会让游戏把玩家 re-init 丢物品
             try
             {
+                var snapTo   = TransitionRecorder.Lookup(w.Scene);         // 目标
+                var snapFrom = TransitionRecorder.Lookup(activeScene.name); // 当前
+
                 var std = new SceneTransitionData();
-                std.m_SceneSaveFilenameCurrent = activeScene.name;
-                std.m_SceneSaveFilenameNextLoad = w.Scene;
+                std.m_SceneSaveFilenameCurrent  = (snapFrom != null && !string.IsNullOrEmpty(snapFrom.ToSaveId))
+                                                      ? snapFrom.ToSaveId : activeScene.name;
+                std.m_SceneSaveFilenameNextLoad = (snapTo != null && !string.IsNullOrEmpty(snapTo.ToSaveId))
+                                                      ? snapTo.ToSaveId : w.Scene;
                 std.m_TeleportPlayerSaveGamePosition = true;
-                std.m_LastOutdoorScene = w.Scene;
+                std.m_LastOutdoorScene = (snapTo != null && !string.IsNullOrEmpty(snapTo.LastOutdoor))
+                                              ? snapTo.LastOutdoor : w.Scene;
                 std.m_PosBeforeInteriorLoad = w.Pos;
+                if (snapTo != null)
+                {
+                    if (!string.IsNullOrEmpty(snapTo.LocIDOverride))    std.m_SceneLocationLocIDOverride    = snapTo.LocIDOverride;
+                    if (!string.IsNullOrEmpty(snapTo.SpawnPoint))       std.m_SpawnPointName                = snapTo.SpawnPoint;
+                    if (!string.IsNullOrEmpty(snapTo.SpawnAudio))       std.m_SpawnPointAudio               = snapTo.SpawnAudio;
+                    if (!string.IsNullOrEmpty(snapTo.ForceNextTrigger)) std.m_ForceNextSceneLoadTriggerScene = snapTo.ForceNextTrigger;
+                }
                 GameManager.m_SceneTransitionData = std;
+
+                if (snapTo == null)
+                    Log($"[TP.Std] ⚠ 无历史记录,fallback 用 scene 名当 save id — 首次去 Tale scene 可能丢物品");
+                else
+                    Log($"[TP.Std] 命中历史 transition (curId={std.m_SceneSaveFilenameCurrent}, nextId={std.m_SceneSaveFilenameNextLoad})");
             }
             catch (Exception ex) { Log($"[TP.Std] {ex.Message}"); }
 

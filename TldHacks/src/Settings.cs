@@ -206,4 +206,27 @@ internal class TldHacksSettings : JsonModSettings
 
     [Name("钓鱼 100% 成功")]
     public bool QuickFishing = false;
+
+    // ——— v2.7.55 商人 + 美洲狮 ———
+    [Section("商人 Trader")]
+    [Name("交易清单不限制(上限 → 64)")]
+    public bool TraderUnlimitedList = false;
+
+    [Name("信任值最大化")]
+    public bool TraderMaxTrust = false;
+
+    [Name("商人交易秒完成")]
+    public bool TraderInstantExchange = false;
+
+    [Name("随时可联系商人(无线电)")]
+    public bool TraderAlwaysAvailable = false;
+
+    [Section("美洲狮")]
+    [Name("新档首次立即激活美洲狮")]
+    public bool CougarInstantActivate = false;
+
+    [Section("与 ItemPicker mod 交互")]
+    [Name("W 键自动拾取时跳过自己丢的物品")]
+    [Description("按 W 触发 ItemPicker 自动拾取时,忽略本会话内玩家 drop 的 GearItem,避免刚丢就又捡回来")]
+    public bool BlockAutoPickupOwnDrops = false;
 }

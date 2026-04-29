@@ -74,6 +74,14 @@ internal static class CheatState
     public static bool CureFrostbite;      // 治愈永久冻伤
     public static bool ClearDeathPenalty;  // 清除死亡惩罚
     public static bool QuickFishing;       // 钓鱼 100%
+    // v2.7.55 商人 + 美洲狮
+    public static bool TraderUnlimitedList;   // 交易清单上限 → 64
+    public static bool TraderMaxTrust;        // 信任拉满
+    public static bool TraderInstantExchange; // 交易秒完成
+    public static bool TraderAlwaysAvailable; // 随时可联系商人
+    public static bool CougarInstantActivate; // 新档首次立即激活美洲狮
+    // v2.7.58 与 ItemPicker mod 交互 —— 不让 W 键自动拾取捡回玩家自己丢的物品
+    public static bool BlockAutoPickupOwnDrops;
     // Display
     public static string PositionText = "";
     // v2.7.29:LastActionLog 截断到 200 字符避免 UI 溢出
@@ -98,16 +106,53 @@ internal static class CheatState
 // 工具函数:刷物品/清 affliction/天气/时间/耐久恢复
 internal static class Cheats
 {
+    // v2.7.57 换实现 —— AddItemCONSOLE 对部分物品(DLC / 特殊)返回 null 无响应(console 守卫)
+    //   稳定公开 API:GearItem.LoadGearItemPrefab(name) → PlayerManager.InstantiateItemInPlayerInventory
+    //   DLC 物品、特殊物品、release build 都 work
     public static void SpawnItem(string prefabName, int quantity)
     {
         try
         {
             var pm = GameManager.GetPlayerManagerComponent();
-            if (pm == null) { ModMain.Log?.Warning("[Cheats.Spawn] PlayerManager not ready"); return; }
-            for (int i = 0; i < quantity; i++) pm.AddItemCONSOLE(prefabName, 1, 100f);
-            ModMain.Log?.Msg($"[Cheats.Spawn] +{quantity} {prefabName}");
+            if (pm == null) { ModMain.Log?.Warning("[Spawn] PlayerManager not ready"); return; }
+
+            // 1) 先 LoadGearItemPrefab —— TLD 自己用这个方法加载 prefab,稳定
+            GearItem prefab = null;
+            try { prefab = GearItem.LoadGearItemPrefab(prefabName); } catch { }
+
+            if (prefab == null)
+            {
+                // 2) fallback:AddItemCONSOLE(和以前一样,某些物品可能成功)
+                try
+                {
+                    var r = pm.AddItemCONSOLE(prefabName, quantity, 100f);
+                    if (r != null)
+                    {
+                        ModMain.Log?.Msg($"[Spawn] CONSOLE fallback +{quantity} {prefabName}");
+                        return;
+                    }
+                }
+                catch { }
+                ModMain.Log?.Error($"[Spawn] prefab not found: {prefabName}");
+                CheatState.LastActionLog = $"刷物品失败:{prefabName}(prefab 未找到)";
+                return;
+            }
+
+            // 3) 用 InstantiateItemInPlayerInventory —— flags=0 即 InventoryInstantiateFlags.None
+            try
+            {
+                pm.InstantiateItemInPlayerInventory(prefab, quantity, 100f, PlayerManager.InventoryInstantiateFlags.None);
+                ModMain.Log?.Msg($"[Spawn] +{quantity} {prefabName}");
+                CheatState.LastActionLog = $"已刷 ×{quantity} {prefabName}";
+            }
+            catch (Exception ex)
+            {
+                ModMain.Log?.Error($"[Spawn.Instantiate] {ex.Message}");
+                // 最后 fallback 再试 CONSOLE
+                try { pm.AddItemCONSOLE(prefabName, quantity, 100f); } catch { }
+            }
         }
-        catch (Exception ex) { ModMain.Log?.Error($"[Cheats.Spawn] {ex.Message}"); }
+        catch (Exception ex) { ModMain.Log?.Error($"[Spawn] {ex.Message}"); }
     }
 
     public static void ClearAllAfflictions()
@@ -466,6 +511,24 @@ internal static class Cheats
             }
         }
         catch (System.Exception ex) { ModMain.Log?.Warning($"[UpdatePos] {ex.Message}"); }
+    }
+
+    // v2.7.55:在当前场景写一条 POS-MARK 到 Latest.log —— 用于采集传送坐标
+    //   mod 作者事后 grep `\[POS-MARK\]` 就能拿到场景名 + 精确坐标
+    public static void PrintPositionToLog()
+    {
+        try
+        {
+            var tr = GameManager.GetPlayerTransform();
+            if (tr == null) { ModMain.Log?.Warning("[POS-MARK] player transform null"); return; }
+            var p = tr.position;
+            string scene = "?";
+            try { scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch { }
+            ModMain.Log?.Msg($"[POS-MARK] Scene={scene} X={p.x:F2} Y={p.y:F2} Z={p.z:F2}");
+            CheatState.PositionText = $"X:{p.x:F1}  Y:{p.y:F1}  Z:{p.z:F1}";
+            CheatState.LastActionLog = $"POS-MARK {scene} ({p.x:F1},{p.y:F1},{p.z:F1})";
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[POS-MARK] {ex.Message}"); }
     }
 }
 

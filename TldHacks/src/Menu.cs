@@ -15,7 +15,8 @@ internal static class Menu
     //   之前固定 2200 → tab1 底部有 ~1300 空白可滚但无内容
     // v2.7.46:CT 复刻加了 16 toggle 分布三列,列最长 ~900 + Console 区 ~500 → 1600f 防截断
     private const float ContentH_Main = 1600f;
-    private const float ContentH_Spawner = 850f;
+    // v2.7.55: Spawner content = viewport 等高,无滚动;物品行数动态填满
+    private const float ContentH_Spawner = H - 80f;
     private static Vector2 _mainScroll;
     private static Rect _window = new Rect(30f, 30f, W, H);
     private const int WindowId = 0x71D4_AC;
@@ -29,7 +30,9 @@ internal static class Menu
     // Spawner + presets
     private static int _selectedCategory = 0;
     private static int _page = 0;
-    private const int PageSize = 18;  // v2.7.28: 6 → 18 (3 col × 6 row),页数从 60 → 20
+    // v2.7.55: PageSize 改成动态,按 UI 框可用高度自适应(cols 固定 3)
+    private static int _pageSize = 18;
+    private static int _pageRows = 6;
     private static int _quantity = 1;
     private static readonly int[] QuantityPresets = { 1, 5, 10, 50, 100 };
     private static readonly float[] SpeedPresets = { 0.5f, 1f, 2f, 5f };
@@ -55,6 +58,13 @@ internal static class Menu
     private const float ROW_H = 24f;        // 单个 toggle/button 高度
     private const float ROW_ADV = 28f;      // 同类型元素之间 y 推进
     private const float SECTION_END_ADV = 4f; // 一个 section 结束后额外留白
+
+    // v2.7.54 UI 对齐常量 —— 所有 2 列 toggle 行用同一组尺寸,避免错位
+    private const float COL_W = 400f;       // 每列总宽
+    private const float BOX_W = 390f;       // Section 标题框宽(略小于列宽)
+    private const float TOG_W = 180f;       // 标准 toggle 宽度
+    private const float TOG2_OFF = 200f;    // 第二个 toggle 的 x 偏移(180 + 20 间距)
+    private const float TOG_WIDE = 380f;    // 单行横跨两列的 toggle 宽度
 
     public static void Toggle() { if (Open) Close(); else OpenMenu(); }
 
@@ -95,7 +105,7 @@ internal static class Menu
         _window.y = Mathf.Clamp(_window.y, 0f, Screen.height - 60f);
 
         ApplyFontScale();
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.48");
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "TldHacks v2.7.59");
     }
 
     // v2.7.5:基准字号降到 13pt(原 16 在 1.8x 时 29px 超过 22*1.8=39.6 的行距,section 重叠 toggle)
@@ -166,39 +176,42 @@ internal static class Menu
     }
 
     // ————————————— Tab 1:主 cheat 面板 —————————————
-    // v2.7.28 三列重排:天气/时间 从列 1 挪到列 3 底部,让 3 列高度更均衡
-    // 列起点 x:10, 410, 810(列宽 400,中间 10 空隙)
-    // 返回三列中最大的 y(之后 uConsole 区块从这里起)
+    // v2.7.54 重设:所有 2-toggle 行统一 TOG_W=180 + TOG2_OFF=200
+    //   整列 width 400;Section box 宽 BOX_W=390;toggle 宽度一致防错位
+    //   地图/天气/时间 合并到一个 "世界时钟" section
+    //   Settings 字段一律保留,兼容旧存档
     private static float DrawMainTab(TldHacksSettings s)
     {
-        // 列起点
-        // 三列起点,列宽 400,总宽 1200-中间空隙
         float c1 = 10f, c2 = 410f, c3 = 810f;
         float y1 = 6f, y2 = 6f, y3 = 6f;
 
-        // ========== 第一列:人物辅助 + 状态 + 技能 ==========
-        y1 = Section(c1, y1, "设置");
-        GUI.Label(R(c1, y1, 330f, ROW_H), $"菜单键: {s.MenuHotkey}   飞行键: {s.FlyHotkey}");
-        y1 += ROW_ADV + SECTION_END_ADV;
-
-        y1 = Section(c1, y1, "Stacking");
-        bool st = GUI.Toggle(R(c1, y1, 200f, ROW_H), s.StackingEnabled, " UI 堆叠");
-        if (st != s.StackingEnabled) { s.StackingEnabled = st; s.Save(); }
-        y1 += ROW_ADV + SECTION_END_ADV;
-
-        y1 = Section(c1, y1, "游戏模式");
-        bool god = GUI.Toggle(R(c1, y1, 150f, ROW_H), s.GodMode, " 无敌模式");
-        bool nfall = GUI.Toggle(R(c1 + 170f, y1, 150f, ROW_H), s.NoFallDamage, " 无坠落伤害");
-        if (god != s.GodMode || nfall != s.NoFallDamage)
-        { s.GodMode = god; s.NoFallDamage = nfall; CheatState.GodMode = god; CheatState.NoFallDamage = nfall; s.Save(); }
-        y1 += ROW_ADV + SECTION_END_ADV;
-
-        y1 = Section(c1, y1, "状态辅助");
-        bool warm = GUI.Toggle(R(c1, y1, 150f, ROW_H), s.AlwaysWarm, " 始终温暖");
-        bool nhun = GUI.Toggle(R(c1 + 170f, y1, 150f, ROW_H), s.NoHunger, " 无饥饿");
+        // ═════════ 列 1:玩家状态 ═════════
+        y1 = Section(c1, y1, "生存");
+        bool god   = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.GodMode,          " 无敌模式");
+        bool nfall = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.NoFallDamage,     " 无坠落伤害");
         y1 += ROW_ADV;
-        bool nthir= GUI.Toggle(R(c1, y1, 150f, ROW_H), s.NoThirst, " 无口渴");
-        bool nfat = GUI.Toggle(R(c1 + 170f, y1, 150f, ROW_H), s.NoFatigue, " 无疲劳");
+        bool nspr  = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.NoSprainRisk,     " 免扭伤风险");
+        bool immA  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.ImmuneAnimalDamage," 免动物伤害");
+        y1 += ROW_ADV;
+        bool nsuf  = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.NoSuffocating,    " 不会窒息");
+        bool cdp   = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.ClearDeathPenalty," 清除死亡惩罚");
+        y1 += ROW_ADV + SECTION_END_ADV;
+        if (god != s.GodMode || nfall != s.NoFallDamage || nspr != s.NoSprainRisk
+            || immA != s.ImmuneAnimalDamage || nsuf != s.NoSuffocating || cdp != s.ClearDeathPenalty)
+        {
+            s.GodMode = god; s.NoFallDamage = nfall; s.NoSprainRisk = nspr;
+            s.ImmuneAnimalDamage = immA; s.NoSuffocating = nsuf; s.ClearDeathPenalty = cdp;
+            CheatState.GodMode = god; CheatState.NoFallDamage = nfall; CheatState.NoSprainRisk = nspr;
+            CheatState.ImmuneAnimalDamage = immA; CheatState.NoSuffocating = nsuf; CheatState.ClearDeathPenalty = cdp;
+            s.Save();
+        }
+
+        y1 = Section(c1, y1, "温饱");
+        bool warm  = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.AlwaysWarm, " 始终温暖");
+        bool nhun  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.NoHunger,   " 无饥饿");
+        y1 += ROW_ADV;
+        bool nthir = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.NoThirst,   " 无口渴");
+        bool nfat  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.NoFatigue,  " 无疲劳");
         y1 += ROW_ADV + SECTION_END_ADV;
         if (warm != s.AlwaysWarm || nhun != s.NoHunger || nthir != s.NoThirst || nfat != s.NoFatigue)
         {
@@ -208,58 +221,36 @@ internal static class Menu
             s.Save();
         }
 
-        y1 = Section(c1, y1, "人物辅助 — 移动速度");
-        float bx = c1;
+        y1 = Section(c1, y1, "移动速度");
+        float bx1 = c1;
         foreach (var sp in SpeedPresets)
         {
             bool active = Mathf.Abs(s.SpeedMultiplier - sp) < 0.01f;
-            if (GUI.Button(R(bx, y1, 64f, ROW_H), active ? $"[{sp:F1}x]" : $"{sp:F1}x"))
+            if (GUI.Button(R(bx1, y1, 92f, ROW_H), active ? $"[{sp:F1}x]" : $"{sp:F1}x"))
             { s.SpeedMultiplier = sp; CheatState.SpeedMultiplier = sp; s.Save(); }
-            bx += 70f;
+            bx1 += 96f;
         }
         y1 += ROW_ADV + SECTION_END_ADV;
 
-        y1 = Section(c1, y1, "技能 / 勋章");
+        y1 = Section(c1, y1, "技能");
         for (int i = 0; i < Skills.All.Length; i++)
         {
             var (lbl, t) = Skills.All[i];
-            GUI.Label(R(c1, y1, 100f, ROW_H), lbl);
-            GUI.Label(R(c1 + 104f, y1, 40f, ROW_H), Skills.GetTier(t).ToString());
-            if (GUI.Button(R(c1 + 150f, y1, 34f, ROW_H), "+")) Skills.SetMax(t);
+            GUI.Label (R(c1,            y1, 120f, ROW_H), lbl);
+            GUI.Label (R(c1 + 130f,     y1, 50f,  ROW_H), Skills.GetTier(t).ToString());
+            if (GUI.Button(R(c1 + 190f, y1, 40f,  ROW_H), "+")) Skills.SetMax(t);
             y1 += ROW_ADV;
         }
-        if (GUI.Button(R(c1, y1, 180f, ROW_H), "全部满级")) Skills.SetAllMax();
+        if (GUI.Button(R(c1, y1, TOG_W, ROW_H), "全部满级")) Skills.SetAllMax();
         y1 += ROW_ADV + SECTION_END_ADV;
 
-        // 节省时间辅助 (CT 对应) — 秒烤/秒搜/秒割/秒打碎/加工
-        y1 = Section(c1, y1, "节省时间辅助");
-        bool qcook = GUI.Toggle(R(c1, y1, 160f, ROW_H), s.QuickCook, " 秒烤肉");
-        bool qsrch = GUI.Toggle(R(c1 + 170f, y1, 180f, ROW_H), s.QuickSearch, " 秒搜刮/采玫瑰果");
-        y1 += ROW_ADV;
-        bool qhv   = GUI.Toggle(R(c1, y1, 160f, ROW_H), s.QuickHarvest, " 秒割肉");
-        bool qbd   = GUI.Toggle(R(c1 + 170f, y1, 160f, ROW_H), s.QuickBreakDown, " 秒打碎");
-        y1 += ROW_ADV;
-        bool qev   = GUI.Toggle(R(c1, y1, 200f, ROW_H), s.QuickEvolve, " 加工秒完成(风干)");
-        y1 += ROW_ADV + SECTION_END_ADV;
-        if (qcook != s.QuickCook || qsrch != s.QuickSearch || qhv != s.QuickHarvest
-            || qbd != s.QuickBreakDown || qev != s.QuickEvolve)
-        {
-            s.QuickCook = qcook; s.QuickSearch = qsrch; s.QuickHarvest = qhv;
-            s.QuickBreakDown = qbd; s.QuickEvolve = qev;
-            CheatState.QuickCook = qcook; CheatState.QuickSearch = qsrch;
-            CheatState.QuickHarvest = qhv; CheatState.QuickBreakDown = qbd;
-            CheatState.QuickEvolve = qev;
-            s.Save();
-        }
-
-        // ========== 第二列:游戏模式(动物) + 背包辅助 + 免疫 + 工具辅助 ==========
-        y2 = Section(c2, y2, "游戏模式 — 动物");
-        bool kill = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.InstantKillAnimals, " 一击必杀");
-        bool frz  = GUI.Toggle(R(c2 + 180f, y2, 160f, ROW_H), s.FreezeAnimals, " 动物不能动");
+        // ═════════ 列 2:世界 & 环境 & 一次性 ═════════
+        y2 = Section(c2, y2, "动物");
+        bool kill    = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.InstantKillAnimals," 一击必杀");
+        bool frz     = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FreezeAnimals,     " 动物冰冻");
         y2 += ROW_ADV;
-        bool stealth = GUI.Toggle(R(c2, y2, 220f, ROW_H), s.Stealth, " 动物自动逃跑");
-        y2 += ROW_ADV;
-        bool tinv = GUI.Toggle(R(c2, y2, 260f, ROW_H), s.TrueInvisible, " 真·隐身(检测不到)");
+        bool stealth = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.Stealth,           " 动物逃跑");
+        bool tinv    = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TrueInvisible,     " 真·隐身");
         y2 += ROW_ADV + SECTION_END_ADV;
         if (kill != s.InstantKillAnimals || frz != s.FreezeAnimals || stealth != s.Stealth || tinv != s.TrueInvisible)
         {
@@ -269,134 +260,177 @@ internal static class Menu
             s.Save();
         }
 
-        y2 = Section(c2, y2, "环境 / 地图");
-        bool ice = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.ThinIceNoBreak, " 冰面不破");
-        bool lok = GUI.Toggle(R(c2 + 180f, y2, 160f, ROW_H), s.IgnoreLock, " 忽略上锁");
+        y2 = Section(c2, y2, "环境 / 篝火");
+        bool ice  = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.ThinIceNoBreak, " 冰面不破");
+        bool wnd  = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.StopWind,       " 停止刮风");
         y2 += ROW_ADV;
-        bool qc  = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.QuickOpenContainer, " 快速打开容器");
-        bool wnd = GUI.Toggle(R(c2 + 180f, y2, 160f, ROW_H), s.StopWind, " 停止刮风");
+        bool ftmp = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.FireTemp300,    " 篝火 300℃");
+        bool fnev = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FireNeverDie,   " 篝火永不熄灭");
         y2 += ROW_ADV + SECTION_END_ADV;
-        if (ice != s.ThinIceNoBreak || lok != s.IgnoreLock || qc != s.QuickOpenContainer || wnd != s.StopWind)
+        if (ice != s.ThinIceNoBreak || wnd != s.StopWind
+            || ftmp != s.FireTemp300 || fnev != s.FireNeverDie)
         {
-            s.ThinIceNoBreak = ice; s.IgnoreLock = lok; s.QuickOpenContainer = qc; s.StopWind = wnd;
-            CheatState.ThinIceNoBreak = ice; CheatState.IgnoreLock = lok; CheatState.QuickOpenContainer = qc; CheatState.StopWind = wnd;
+            s.ThinIceNoBreak = ice; s.StopWind = wnd; s.FireTemp300 = ftmp; s.FireNeverDie = fnev;
+            CheatState.ThinIceNoBreak = ice; CheatState.StopWind = wnd;
+            CheatState.FireTemp300 = ftmp; CheatState.FireNeverDie = fnev;
             s.Save();
         }
 
-        y2 = Section(c2, y2, "地图");
-        if (GUI.Button(R(c2, y2, 180f, ROW_H), "全开地图")) Cheats.RevealFullMap();
-        y2 += ROW_ADV + SECTION_END_ADV;
-
-        y2 = Section(c2, y2, "背包辅助 — 物品/衣物");
-        bool dur = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.InfiniteDurability, " 物品不损耗");
-        bool wet = GUI.Toggle(R(c2 + 180f, y2, 160f, ROW_H), s.NoWetClothes, " 衣物不潮湿");
+        y2 = Section(c2, y2, "锁 & 容器");
+        bool lok  = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.IgnoreLock,        " 忽略上锁");
+        bool qc   = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.QuickOpenContainer," 快速开容器");
         y2 += ROW_ADV;
-        // 火焰无限时长已移除 —— 其他 mod(InfiniteFiresDLC)覆盖 / 游戏内 H 键也可
-        GUI.Label(R(c2, y2, 360f, ROW_H), "火焰无限时长:由其他 mod 覆盖,此处不做");
+        bool usaf = GUI.Toggle(R(c2,            y2, TOG_WIDE, ROW_H), s.UnlockSafes,   " 解锁保险箱/门");
         y2 += ROW_ADV + SECTION_END_ADV;
-        if (dur != s.InfiniteDurability || wet != s.NoWetClothes)
+        if (lok != s.IgnoreLock || qc != s.QuickOpenContainer || usaf != s.UnlockSafes)
         {
-            s.InfiniteDurability = dur; s.NoWetClothes = wet;
-            CheatState.InfiniteDurability = dur; CheatState.NoWetClothes = wet;
+            s.IgnoreLock = lok; s.QuickOpenContainer = qc; s.UnlockSafes = usaf;
+            CheatState.IgnoreLock = lok; CheatState.QuickOpenContainer = qc; CheatState.UnlockSafes = usaf;
             s.Save();
         }
+
+        // 世界时钟 — 地图 + 天气(3行) + 时间(1行)合并一块
+        y2 = Section(c2, y2, "世界时钟 — 地图 / 天气 / 时间");
+        if (GUI.Button(R(c2, y2, TOG_WIDE, ROW_H), "全开地图")) Cheats.RevealFullMap();
+        y2 += ROW_ADV + 2f;
+        // 天气 — 每行 5 个 + 最后一行剩余
+        float bx2 = c2;
+        for (int i = 0; i < WeatherStages.Length; i++)
+        {
+            if (GUI.Button(R(bx2, y2, 72f, ROW_H), WeatherLabels[i])) Cheats.SetWeatherStage(WeatherStages[i]);
+            bx2 += 76f;
+            if ((i + 1) % 5 == 0 && i < WeatherStages.Length - 1) { bx2 = c2; y2 += ROW_ADV; }
+        }
+        y2 += ROW_ADV + 2f;
+        // 时间 — 4 个小时 preset
+        bx2 = c2;
+        for (int i = 0; i < HourPresets.Length; i++)
+        {
+            if (GUI.Button(R(bx2, y2, 92f, ROW_H), HourLabels[i])) Cheats.SetTimeOfDay(HourPresets[i]);
+            bx2 += 96f;
+        }
+        y2 += ROW_ADV + SECTION_END_ADV;
 
         y2 = Section(c2, y2, "一次性操作");
-        if (GUI.Button(R(c2, y2, 260f, ROW_H), "清除所有负面")) Cheats.ClearAllAfflictions();
+        if (GUI.Button(R(c2,             y2, TOG_W, ROW_H), "清除所有负面"))   Cheats.ClearAllAfflictions();
+        if (GUI.Button(R(c2 + TOG2_OFF,  y2, TOG_W, ROW_H), "解锁全部壮举"))   Feats.UnlockAllFeats();
         y2 += ROW_ADV;
-        if (GUI.Button(R(c2, y2, 170f, ROW_H), "恢复全部耐久")) Cheats.RestoreAllSceneGear();
-        if (GUI.Button(R(c2 + 180f, y2, 170f, ROW_H), "修复背包物品")) QuickActions.RepairAllInventory();
+        if (GUI.Button(R(c2,             y2, TOG_W, ROW_H), "恢复全部耐久"))   Cheats.RestoreAllSceneGear();
+        if (GUI.Button(R(c2 + TOG2_OFF,  y2, TOG_W, ROW_H), "修复背包"))       QuickActions.RepairAllInventory();
         y2 += ROW_ADV;
-        if (GUI.Button(R(c2, y2, 260f, ROW_H), "修复手持物品")) Cheats.RepairItemInHands();
+        if (GUI.Button(R(c2,             y2, TOG_WIDE, ROW_H), "修复手持物品")) Cheats.RepairItemInHands();
         y2 += ROW_ADV + SECTION_END_ADV;
 
-        y2 = Section(c2, y2, "解锁");
-        if (GUI.Button(R(c2, y2, 170f, ROW_H), "解锁全部壮举")) Feats.UnlockAllFeats();
-        // v2.7.34 UI 标记:蓝图解锁实测失效 —— FindObjectsOfType 找不到 Blueprint (ScriptableObject not MonoBehaviour)
-        //   临时解法:开 "免费制作" toggle 等效 —— 所有蓝图都能 craft,无需解锁
-        if (GUI.Button(R(c2 + 180f, y2, 170f, ROW_H), "解锁蓝图⚠(失效/用免费制作)")) QuickActions.UnlockAllBlueprints();
-        y2 += ROW_ADV + SECTION_END_ADV;
-
-        y2 = Section(c2, y2, "免疫伤害");
-        bool nspr  = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.NoSprainRisk, " 免扭伤风险");
-        bool immA  = GUI.Toggle(R(c2 + 180f, y2, 180f, ROW_H), s.ImmuneAnimalDamage, " 免动物伤害");
+        // 商人 & 美洲狮(CT 复刻 v2.7.55)
+        y2 = Section(c2, y2, "商人 & 美洲狮");
+        bool tul = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.TraderUnlimitedList,   " 交易清单上限 64");
+        bool tmt = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TraderMaxTrust,        " 信任值最大化");
         y2 += ROW_ADV;
-        bool nsuf  = GUI.Toggle(R(c2, y2, 160f, ROW_H), s.NoSuffocating, " 不会窒息");
+        bool tix = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.TraderInstantExchange, " 交易秒完成");
+        bool taa = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TraderAlwaysAvailable, " 随时可联系商人");
+        y2 += ROW_ADV;
+        bool cia = GUI.Toggle(R(c2,            y2, TOG_WIDE, ROW_H), s.CougarInstantActivate, " 美洲狮首次立即激活(进/出门、睡觉触发动画)");
         y2 += ROW_ADV + SECTION_END_ADV;
-        if (nspr != s.NoSprainRisk || immA != s.ImmuneAnimalDamage || nsuf != s.NoSuffocating)
+        if (tul != s.TraderUnlimitedList || tmt != s.TraderMaxTrust
+            || tix != s.TraderInstantExchange || taa != s.TraderAlwaysAvailable
+            || cia != s.CougarInstantActivate)
         {
-            s.NoSprainRisk = nspr; s.ImmuneAnimalDamage = immA; s.NoSuffocating = nsuf;
-            CheatState.NoSprainRisk = nspr; CheatState.ImmuneAnimalDamage = immA; CheatState.NoSuffocating = nsuf;
+            s.TraderUnlimitedList = tul; s.TraderMaxTrust = tmt;
+            s.TraderInstantExchange = tix; s.TraderAlwaysAvailable = taa;
+            s.CougarInstantActivate = cia;
+            CheatState.TraderUnlimitedList = tul; CheatState.TraderMaxTrust = tmt;
+            CheatState.TraderInstantExchange = tix; CheatState.TraderAlwaysAvailable = taa;
+            CheatState.CougarInstantActivate = cia;
             s.Save();
         }
 
-        // 工具辅助 (CT 对应)— 保险箱 / 灯具 / 保温杯
-        y2 = Section(c2, y2, "工具辅助");
-        bool usaf  = GUI.Toggle(R(c2, y2, 180f, ROW_H), s.UnlockSafes, " 解锁保险箱/门");
-        bool lamp  = GUI.Toggle(R(c2 + 180f, y2, 180f, ROW_H), s.LampFuelNoDrain, " 油灯不耗油");
-        y2 += ROW_ADV;
-        bool flsk1 = GUI.Toggle(R(c2, y2, 180f, ROW_H), s.FlaskNoHeatLoss, " 保温杯不失温");
-        bool flsk2 = GUI.Toggle(R(c2 + 180f, y2, 180f, ROW_H), s.FlaskInfiniteVol, " 保温杯无限容量");
-        y2 += ROW_ADV;
-        bool flsk3 = GUI.Toggle(R(c2, y2, 240f, ROW_H), s.FlaskAnyItem, " 保温瓶装任意液体");
-        y2 += ROW_ADV + SECTION_END_ADV;
-        if (usaf != s.UnlockSafes || lamp != s.LampFuelNoDrain
-            || flsk1 != s.FlaskNoHeatLoss || flsk2 != s.FlaskInfiniteVol || flsk3 != s.FlaskAnyItem)
-        {
-            s.UnlockSafes = usaf; s.LampFuelNoDrain = lamp;
-            s.FlaskNoHeatLoss = flsk1; s.FlaskInfiniteVol = flsk2; s.FlaskAnyItem = flsk3;
-            CheatState.UnlockSafes = usaf; CheatState.LampFuelNoDrain = lamp;
-            CheatState.FlaskNoHeatLoss = flsk1; CheatState.FlaskInfiniteVol = flsk2; CheatState.FlaskAnyItem = flsk3;
-            s.Save();
-        }
-
-        // ========== 第三列:制作 + 猎杀辅助 + 瞄准 + 生火 + 天气 ==========
-        y3 = Section(c3, y3, "制作辅助");
-        bool fc = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.FreeCraft, " 免费制作");
-        bool qk = GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.QuickCraft, " 快速制作");
+        // ═════════ 列 3:物品 & 武器 ═════════
+        y3 = Section(c3, y3, "快速操作(CT 复刻)");
+        bool qcook = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickCook,      " 秒烤肉");
+        bool qsrch = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickSearch,    " 秒搜刮/采摘");
         y3 += ROW_ADV;
-        bool qf = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.QuickFire, " 生火 100%");
-        bool qcl= GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.QuickClimb, " 爬绳 ×5");
+        bool qhv   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickHarvest,   " 秒割肉");
+        bool qbd   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickBreakDown, " 秒打碎");
         y3 += ROW_ADV;
-        bool qa = GUI.Toggle(R(c3, y3, 340f, ROW_H), s.QuickAction, " 采集/修理/拆解 自动加速");
+        bool qev   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickEvolve,    " 加工秒完成");
+        bool qf    = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickFire,      " 生火 100%");
+        y3 += ROW_ADV;
+        bool qcl   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickClimb,     " 爬绳 ×5");
         y3 += ROW_ADV + SECTION_END_ADV;
-        if (fc != s.FreeCraft || qk != s.QuickCraft || qf != s.QuickFire || qcl != s.QuickClimb || qa != s.QuickAction)
+        if (qcook != s.QuickCook || qsrch != s.QuickSearch || qhv != s.QuickHarvest
+            || qbd != s.QuickBreakDown || qev != s.QuickEvolve || qf != s.QuickFire || qcl != s.QuickClimb)
         {
-            s.FreeCraft = fc; s.QuickCraft = qk; s.QuickFire = qf; s.QuickClimb = qcl; s.QuickAction = qa;
-            CheatState.FreeCraft = fc; CheatState.QuickCraft = qk; CheatState.QuickFire = qf; CheatState.QuickClimb = qcl;
-            CheatState.QuickAction = qa;
+            s.QuickCook = qcook; s.QuickSearch = qsrch; s.QuickHarvest = qhv;
+            s.QuickBreakDown = qbd; s.QuickEvolve = qev; s.QuickFire = qf; s.QuickClimb = qcl;
+            CheatState.QuickCook = qcook; CheatState.QuickSearch = qsrch;
+            CheatState.QuickHarvest = qhv; CheatState.QuickBreakDown = qbd;
+            CheatState.QuickEvolve = qev; CheatState.QuickFire = qf; CheatState.QuickClimb = qcl;
             s.Save();
         }
 
-        y3 = Section(c3, y3, "猎杀辅助 — 武器");
-        bool amm = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.InfiniteAmmo, " 无限弹药");
-        bool jam = GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.NoJam, " 永不卡壳");
+        y3 = Section(c3, y3, "制作");
+        bool fc = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.FreeCraft,  " 免费制作");
+        bool qk = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickCraft, " 快速制作");
+        y3 += ROW_ADV + SECTION_END_ADV;
+        if (fc != s.FreeCraft || qk != s.QuickCraft)
+        {
+            s.FreeCraft = fc; s.QuickCraft = qk;
+            CheatState.FreeCraft = fc; CheatState.QuickCraft = qk;
+            s.Save();
+        }
+
+        y3 = Section(c3, y3, "物品 & 装备");
+        bool stk   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.StackingEnabled,    " UI 堆叠");
+        bool dur   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.InfiniteDurability, " 物品不损耗");
         y3 += ROW_ADV;
-        bool rec = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.NoRecoil, " 无后坐力");
-        bool ff  = GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.FastFire, " 快速射击");
+        bool wet   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoWetClothes,       " 衣物不潮湿");
+        bool lamp  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.LampFuelNoDrain,    " 油灯不耗油");
+        y3 += ROW_ADV;
+        bool flsk1 = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.FlaskNoHeatLoss,    " 保温杯不失温");
+        bool flsk2 = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.FlaskInfiniteVol,   " 保温杯无限容量");
+        y3 += ROW_ADV;
+        bool flsk3 = GUI.Toggle(R(c3,            y3, TOG_WIDE, ROW_H), s.FlaskAnyItem,    " 保温瓶装任意液体");
+        y3 += ROW_ADV;
+        bool bnop  = GUI.Toggle(R(c3,            y3, TOG_WIDE, ROW_H), s.BlockAutoPickupOwnDrops, " ItemPicker 不捡自己丢的物品");
+        y3 += ROW_ADV + SECTION_END_ADV;
+        if (stk != s.StackingEnabled || dur != s.InfiniteDurability || wet != s.NoWetClothes
+            || lamp != s.LampFuelNoDrain || flsk1 != s.FlaskNoHeatLoss
+            || flsk2 != s.FlaskInfiniteVol || flsk3 != s.FlaskAnyItem
+            || bnop != s.BlockAutoPickupOwnDrops)
+        {
+            s.StackingEnabled = stk; s.InfiniteDurability = dur; s.NoWetClothes = wet;
+            s.LampFuelNoDrain = lamp; s.FlaskNoHeatLoss = flsk1;
+            s.FlaskInfiniteVol = flsk2; s.FlaskAnyItem = flsk3;
+            s.BlockAutoPickupOwnDrops = bnop;
+            CheatState.InfiniteDurability = dur; CheatState.NoWetClothes = wet;
+            CheatState.LampFuelNoDrain = lamp; CheatState.FlaskNoHeatLoss = flsk1;
+            CheatState.FlaskInfiniteVol = flsk2; CheatState.FlaskAnyItem = flsk3;
+            CheatState.BlockAutoPickupOwnDrops = bnop;
+            s.Save();
+        }
+
+        y3 = Section(c3, y3, "武器 / 射击");
+        bool amm = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.InfiniteAmmo, " 无限弹药");
+        bool jam = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoJam,        " 永不卡壳");
+        y3 += ROW_ADV;
+        bool rec = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoRecoil,     " 无后坐力");
+        bool ff  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.FastFire,     " 快速射击");
         y3 += ROW_ADV + SECTION_END_ADV;
         if (amm != s.InfiniteAmmo || jam != s.NoJam || rec != s.NoRecoil || ff != s.FastFire)
-        { s.InfiniteAmmo = amm; s.NoJam = jam; s.NoRecoil = rec; s.FastFire = ff;
-          CheatState.InfiniteAmmo = amm; CheatState.NoJam = jam; CheatState.NoRecoil = rec; CheatState.FastFire = ff; s.Save(); }
+        {
+            s.InfiniteAmmo = amm; s.NoJam = jam; s.NoRecoil = rec; s.FastFire = ff;
+            CheatState.InfiniteAmmo = amm; CheatState.NoJam = jam; CheatState.NoRecoil = rec; CheatState.FastFire = ff;
+            s.Save();
+        }
 
-        // 一键获取武器
-        if (GUI.Button(R(c3, y3, 110f, ROW_H), "获取弓")) QuickActions.GiveWeapon("GEAR_Bow");
-        if (GUI.Button(R(c3 + 120f, y3, 110f, ROW_H), "获取信号枪")) QuickActions.GiveWeapon("GEAR_FlareGun");
-        if (GUI.Button(R(c3 + 240f, y3, 110f, ROW_H), "获取步枪")) QuickActions.GiveWeapon("GEAR_Rifle");
+        y3 = Section(c3, y3, "瞄准");
+        bool sway = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoAimSway,     " 瞄准无晃动");
+        bool shk  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoAimShake,    " 瞄准无抖动");
         y3 += ROW_ADV;
-        if (GUI.Button(R(c3, y3, 110f, ROW_H), "获取左轮")) QuickActions.GiveWeapon("GEAR_Revolver");
-        if (GUI.Button(R(c3 + 120f, y3, 110f, ROW_H), "获取猎熊矛")) QuickActions.GiveWeapon("GEAR_BearSpear");
-        if (GUI.Button(R(c3 + 240f, y3, 110f, ROW_H), "获取猎刀")) QuickActions.GiveWeapon("GEAR_Knife");
-        y3 += ROW_ADV + SECTION_END_ADV;
-
-        y3 = Section(c3, y3, "瞄准辅助");
-        bool sway = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.NoAimSway, " 关闭瞄准晃动");
-        bool shk  = GUI.Toggle(R(c3 + 180f, y3, 160f, ROW_H), s.NoAimShake, " 关闭瞄准抖动");
+        bool brth = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoBreathSway,  " 呼吸无晃动");
+        bool nstam= GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoAimStamina,  " 瞄准不耗体力");
         y3 += ROW_ADV;
-        bool brth = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.NoBreathSway, " 关闭呼吸晃动");
-        bool nstam= GUI.Toggle(R(c3 + 180f, y3, 200f, ROW_H), s.NoAimStamina, " 关闭瞄准体力消耗");
-        y3 += ROW_ADV;
-        bool ndof = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.NoAimDOF, " 关闭瞄准景深");
+        bool ndof = GUI.Toggle(R(c3,            y3, TOG_WIDE, ROW_H), s.NoAimDOF,   " 关闭瞄准景深");
         y3 += ROW_ADV + SECTION_END_ADV;
         if (sway != s.NoAimSway || shk != s.NoAimShake || brth != s.NoBreathSway
             || nstam != s.NoAimStamina || ndof != s.NoAimDOF)
@@ -408,43 +442,16 @@ internal static class Menu
             s.Save();
         }
 
-        // 生火辅助 + 治疗(CT 对应)
-        y3 = Section(c3, y3, "生火辅助 / 治疗");
-        bool ftmp  = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.FireTemp300, " 篝火 300℃");
-        bool fnev  = GUI.Toggle(R(c3 + 170f, y3, 160f, ROW_H), s.FireNeverDie, " 篝火永不熄灭");
+        // 一键获取武器 — 3 列 × 2 行,每按钮宽 122,间距 6
+        y3 = Section(c3, y3, "一键获取武器");
+        const float wbw = 122f, wgap = 6f;
+        if (GUI.Button(R(c3,                      y3, wbw, ROW_H), "弓"))       QuickActions.GiveWeapon("GEAR_Bow");
+        if (GUI.Button(R(c3 + wbw + wgap,         y3, wbw, ROW_H), "信号枪"))   QuickActions.GiveWeapon("GEAR_FlareGun");
+        if (GUI.Button(R(c3 + 2*(wbw + wgap),     y3, wbw, ROW_H), "步枪"))     QuickActions.GiveWeapon("GEAR_Rifle");
         y3 += ROW_ADV;
-        bool icon  = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.InfiniteContainer, " 容器无限(NYI)");
-        bool cfro  = GUI.Toggle(R(c3 + 170f, y3, 160f, ROW_H), s.CureFrostbite, " 治愈永久冻伤(NYI)");
-        y3 += ROW_ADV;
-        bool cdp   = GUI.Toggle(R(c3, y3, 160f, ROW_H), s.ClearDeathPenalty, " 清除死亡惩罚");
-        bool qfish = GUI.Toggle(R(c3 + 170f, y3, 160f, ROW_H), s.QuickFishing, " 钓鱼 100%(NYI)");
-        y3 += ROW_ADV + SECTION_END_ADV;
-        if (ftmp != s.FireTemp300 || fnev != s.FireNeverDie || icon != s.InfiniteContainer
-            || cfro != s.CureFrostbite || cdp != s.ClearDeathPenalty || qfish != s.QuickFishing)
-        {
-            s.FireTemp300 = ftmp; s.FireNeverDie = fnev; s.InfiniteContainer = icon;
-            s.CureFrostbite = cfro; s.ClearDeathPenalty = cdp; s.QuickFishing = qfish;
-            CheatState.FireTemp300 = ftmp; CheatState.FireNeverDie = fnev; CheatState.InfiniteContainer = icon;
-            CheatState.CureFrostbite = cfro; CheatState.ClearDeathPenalty = cdp; CheatState.QuickFishing = qfish;
-            s.Save();
-        }
-
-        // 天气 / 时间选项 (CT 对应)
-        y3 = Section(c3, y3, "天气 / 时间选项");
-        float bx3 = c3;
-        for (int i = 0; i < WeatherStages.Length; i++)
-        {
-            if (GUI.Button(R(bx3, y3, 58f, ROW_H), WeatherLabels[i])) Cheats.SetWeatherStage(WeatherStages[i]);
-            bx3 += 62f;
-            if ((i + 1) % 5 == 0 && i < WeatherStages.Length - 1) { bx3 = c3; y3 += ROW_ADV; }
-        }
-        y3 += ROW_ADV;
-        bx3 = c3;
-        for (int i = 0; i < HourPresets.Length; i++)
-        {
-            if (GUI.Button(R(bx3, y3, 62f, ROW_H), HourLabels[i])) Cheats.SetTimeOfDay(HourPresets[i]);
-            bx3 += 66f;
-        }
+        if (GUI.Button(R(c3,                      y3, wbw, ROW_H), "左轮"))     QuickActions.GiveWeapon("GEAR_Revolver");
+        if (GUI.Button(R(c3 + wbw + wgap,         y3, wbw, ROW_H), "猎熊矛"))   QuickActions.GiveWeapon("GEAR_BearSpear");
+        if (GUI.Button(R(c3 + 2*(wbw + wgap),     y3, wbw, ROW_H), "猎刀"))     QuickActions.GiveWeapon("GEAR_Knife");
         y3 += ROW_ADV + SECTION_END_ADV;
 
         return Mathf.Max(y1, Mathf.Max(y2, y3));
@@ -471,10 +478,11 @@ internal static class Menu
         }
         y += ROW_ADV * ((Teleport.Destinations.Count + teleCols - 1) / teleCols) + SECTION_END_ADV;
 
-        // 位置控制行
-        if (GUI.Button(R(10f, y, 180f, ROW_H), "打印位置")) ConsoleBridge.Run("pos");
-        if (GUI.Button(R(200f, y, 180f, ROW_H), "反射刷新位置")) Cheats.UpdatePlayerPosition();
-        GUI.Label(R(400f, y, W - 410f, ROW_H),
+        // 位置控制行 —— v2.7.55 "打印位置到 log" 按钮:在 Latest.log 留 [POS-MARK],mod 作者可回读坐标
+        if (GUI.Button(R(10f, y, 160f, ROW_H), "uConsole pos"))    ConsoleBridge.Run("pos");
+        if (GUI.Button(R(180f, y, 160f, ROW_H), "刷新位置显示"))   Cheats.UpdatePlayerPosition();
+        if (GUI.Button(R(350f, y, 200f, ROW_H), "★ 打印坐标到 log")) Cheats.PrintPositionToLog();
+        GUI.Label(R(560f, y, W - 570f, ROW_H),
             $"当前:{(string.IsNullOrEmpty(CheatState.PositionText) ? "(未获取)" : CheatState.PositionText)}");
         y += ROW_ADV + SECTION_END_ADV;
 
@@ -511,15 +519,21 @@ internal static class Menu
 
         if (_lastCat != _selectedCategory) { RebuildFilter(); _lastCat = _selectedCategory; }
 
-        int totalPages = Mathf.Max(1, (_filtered.Count + PageSize - 1) / PageSize);
-        _page = Mathf.Clamp(_page, 0, totalPages - 1);
-        int start = _page * PageSize;
-        int end = Mathf.Min(start + PageSize, _filtered.Count);
+        // v2.7.57: 动态 PageSize —— 根据剩余可视高度塞满物品
+        //   viewport 高度 H-80;y 是本帧起物品列表位置;底部留 ROW_ADV+8 给分页控件
+        //   cols 从 3 改 4 —— 每页物品数 +33%,总页数减少
+        const int cols = 4;
+        float availH = (H - 80f) - y - (ROW_ADV + 8f);
+        _pageRows = Mathf.Max(3, (int)(availH / ROW_ADV));
+        _pageSize = _pageRows * cols;
 
-        // 3 列 × 6 行 = 18 个/页,每列宽 (W-40)/3 ≈ 387
-        const int cols = 3, rows = 6;
+        int totalPages = Mathf.Max(1, (_filtered.Count + _pageSize - 1) / _pageSize);
+        _page = Mathf.Clamp(_page, 0, totalPages - 1);
+        int start = _page * _pageSize;
+        int end = Mathf.Min(start + _pageSize, _filtered.Count);
+
         float colW = (W - 40f) / cols;
-        float btnW = 56f;  // + ×N 按钮宽度缩小,留更多空间给名字
+        float btnW = 56f;
         for (int idx = start; idx < end; idx++)
         {
             int i = idx - start;
@@ -532,20 +546,20 @@ internal static class Menu
             GUI.Label(R(x + btnW + 6f, yy, colW - btnW - 14f, ROW_H),
                 $"{e.Name}" + (e.Calories > 0 ? $" {e.Calories}k" : ""));
         }
-        y += ROW_ADV * rows + SECTION_END_ADV;
+        y += ROW_ADV * _pageRows + SECTION_END_ADV;
 
         // 分页控制
         if (GUI.Button(R(10f, y, 100f, ROW_H), "◀ 上一页")) { if (_page > 0) _page--; }
-        GUI.Label(R(120f, y, 350f, ROW_H), $"页 {_page + 1}/{totalPages}   共 {_filtered.Count} 个");
-        if (GUI.Button(R(480f, y, 100f, ROW_H), "下一页 ▶")) { if (_page < totalPages - 1) _page++; }
-        // 快速跳页
-        if (GUI.Button(R(600f, y, 80f, ROW_H), "⏮ 首页")) _page = 0;
-        if (GUI.Button(R(690f, y, 80f, ROW_H), "末页 ⏭")) _page = totalPages - 1;
+        GUI.Label(R(120f, y, 500f, ROW_H),
+            $"页 {_page + 1}/{totalPages}   共 {_filtered.Count} 个   每页 {_pageSize}");
+        if (GUI.Button(R(630f, y, 100f, ROW_H), "下一页 ▶")) { if (_page < totalPages - 1) _page++; }
+        if (GUI.Button(R(750f, y, 80f, ROW_H), "⏮ 首页"))   _page = 0;
+        if (GUI.Button(R(840f, y, 80f, ROW_H), "末页 ⏭"))   _page = totalPages - 1;
     }
 
     private static float Section(float x, float y, string title)
     {
-        GUI.Box(R(x, y, 390f, SEC_H), title);
+        GUI.Box(R(x, y, BOX_W, SEC_H), title);
         return y + SEC_ADV;
     }
 

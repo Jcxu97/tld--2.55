@@ -1060,28 +1060,40 @@ internal static class CheatsTick
 //   v2.7.45 CT 复刻 —— 从 CT 脚本直接映射的 Harmony patches
 // ═══════════════════════════════════════════════════════════════════
 
-// —— 秒烤肉 v2.7.47 修 CT:CT 还 NOP 了 Ruined 判断,防止过度烤糊
-//   我之前只设 m_CookingElapsedHours=10 但没禁烤糊 → 用户说"烤糊了"
-//   正确做法:直接设 m_PercentCooked=1.0(熟了) + m_PercentRuined=0(不糊)
-[HarmonyPatch(typeof(CookingPotItem), "UpdateCookingTimeAndState")]
+// —— 秒烤肉 v2.7.51 —— 仿 CT:只推 m_CookingElapsedHours,不碰 percent/state
+//   CT 做法:mov [rcx+m_CookingElapsedHours],(float)10; jmp original;
+//   之前 v2.7.49/50 直接写 state=Ready,拾取时游戏内部想换状态被 Postfix 抢回 → 抽搐卡死
+//   新法:Prefix 拿 cookTimeMinutes 参数,把 elapsed 推到刚好过熟透阈值,让原方法自然转 Ready
+//   仅在 Cooking 状态下干预;Ready/Ruined 状态完全不动,pickup / eat 流程正常
+[HarmonyPatch(typeof(CookingPotItem), "UpdateCookingTimeAndState", new System.Type[] { typeof(float), typeof(float) })]
 internal static class Patch_CookingPot_Update
 {
-    private static void Postfix(CookingPotItem __instance)
+    private static bool _logged;
+    private static void Prefix(CookingPotItem __instance, float cookTimeMinutes, float readyTimeMinutes)
     {
         if (!CheatState.QuickCook) return;
         try
         {
-            __instance.m_PercentCooked = 1f;
-            __instance.m_PercentRuined = 0f;
-            __instance.m_MinutesUntilRuined = 99999f;
+            if (__instance.m_CookingState != CookingPotItem.CookingState.Cooking) return;
+            if (cookTimeMinutes <= 0f) return;
+            if (!_logged)
+            {
+                _logged = true;
+                ModMain.Log.Msg($"[QuickCook] elapsed-push cookTimeMin={cookTimeMinutes}");
+            }
+            // elapsed 单位小时,cookTime 单位分钟;推到 (cookTime/60)*1.01 刚过熟透阈值
+            //   原方法会自己算 percent = elapsed*60 / cookTime → 约 1.01 → 转 Ready
+            //   下一帧 state != Cooking,patch 直接 return 不再干扰
+            __instance.m_CookingElapsedHours = cookTimeMinutes / 60f * 1.01f;
         }
-        catch { }
+        catch (System.Exception e) { ModMain.Log.Error($"[QuickCook] {e.Message}"); }
     }
 }
 
-// —— 秒采集地上作物 v2.7.48 —— 读条再短一点
-//   v2.7.47 BeginHold 设 Timer=DefaultHoldTime,还有 1 帧读条可见
-//   修:InitializeInteraction 把 DefaultHoldTime 降到 0.001s + BeginHold Timer 推到超大
+// —— 秒采集地上作物 v2.7.54 —— 回退 PerformHold 方案(采不了 bug)
+//   v2.7.52 PerformHold Prefix __result=true 导致按 E 无响应 —— 猜 true 在 TLD 语义是"继续 hold"
+//   回退到 v2.7.49 方案:字段压爆 + UpdateHoldInteraction deltaTime ×10000
+//   代价是看得见 ~0.1s 读条,但能采集
 [HarmonyPatch(typeof(HarvestableInteraction), "InitializeInteraction")]
 internal static class Patch_HarvestableInteraction_Init
 {
@@ -1101,7 +1113,32 @@ internal static class Patch_HarvestableInteraction_BeginHold
         try
         {
             __instance.m_DefaultHoldTime = 0.001f;
-            __instance.m_Timer = 99999f;  // 一帧内就满
+            __instance.m_Timer = 99999f;
+        }
+        catch { }
+    }
+}
+
+// 按子类类型过滤放大 deltaTime,Harvestable 子类一帧内跑满
+[HarmonyPatch(typeof(Il2CppTLD.Interactions.TimedHoldInteraction), "UpdateHoldInteraction", new System.Type[] { typeof(float) })]
+internal static class Patch_TimedHold_UpdateHoldInteraction_QuickSearch
+{
+    private static bool _logged;
+    private static void Prefix(Il2CppTLD.Interactions.TimedHoldInteraction __instance, ref float deltaTime)
+    {
+        if (!CheatState.QuickSearch) return;
+        try
+        {
+            var name = __instance.GetType().Name;
+            if (name.Contains("Harvest") || name.Contains("PickUp"))
+            {
+                if (!_logged)
+                {
+                    _logged = true;
+                    ModMain.Log.Msg($"[QuickSearch.UpdateHold] 加速 type={name}");
+                }
+                deltaTime *= 10000f;
+            }
         }
         catch { }
     }
@@ -1134,7 +1171,9 @@ internal static class Patch_BodyHarvest_MaybeFreeze
     }
 }
 
-// —— 秒打碎 CT:Panel_BreakDown.UpdateDurationLabel 设 SecondsToBreakDown=0.2, BreakDown.TimeCostHours=0 ——
+// —— 秒打碎/回收 CT:Panel_BreakDown.UpdateDurationLabel 设 SecondsToBreakDown=0.2, BreakDown.TimeCostHours=0 ——
+//   v2.7.59 加强:UpdateDurationLabel 是 private 只在 UI 打开时调一次 → 回收衣服可能漏触发
+//              加 Panel_BreakDown.Update 每帧兜底:既改 SecondsToBreakDown 又推 TimeSpentBreakingDown 过线
 [HarmonyPatch(typeof(Panel_BreakDown), "UpdateDurationLabel")]
 internal static class Patch_BreakDown_UpdateDuration
 {
@@ -1144,6 +1183,26 @@ internal static class Patch_BreakDown_UpdateDuration
         try
         {
             __instance.m_SecondsToBreakDown = 0.2f;
+            if (__instance.m_BreakDown != null)
+                __instance.m_BreakDown.m_TimeCostHours = 0f;
+        }
+        catch { }
+    }
+}
+
+[HarmonyPatch(typeof(Panel_BreakDown), "Update")]
+internal static class Patch_BreakDown_Update_ForceFinish
+{
+    private static void Prefix(Panel_BreakDown __instance)
+    {
+        if (!CheatState.QuickBreakDown) return;
+        try
+        {
+            // 只有在正在拆解过程中才干预(避免影响 UI 开启前的状态)
+            if (!__instance.IsBreakingDown()) return;
+            __instance.m_SecondsToBreakDown = 0.2f;
+            // 直接推时间过线 —— 游戏会在下一帧判定完成
+            __instance.m_TimeSpentBreakingDown = 1f;
             if (__instance.m_BreakDown != null)
                 __instance.m_BreakDown.m_TimeCostHours = 0f;
         }
@@ -1219,35 +1278,71 @@ internal static class Patch_EvolveItem_Update
     }
 }
 
-// —— 篝火温度 300℃ CT:HeatSource.Update 设 m_MaxTempIncrease=300 ——
+// —— 篝火温度 300℃ v2.7.49 加 snapshot+restore —— toggle off 必须还原
+//   v2.7.48 只写不还原 → 关 toggle 后 m_MaxTempIncrease 仍是 300
 [HarmonyPatch(typeof(HeatSource), "Update")]
 internal static class Patch_HeatSource_Update
 {
+    // 每实例原值快照:toggle 第一次 on 时记,toggle off 时恢复并删除
+    internal static readonly System.Collections.Generic.Dictionary<System.IntPtr, float> Snapshots
+        = new System.Collections.Generic.Dictionary<System.IntPtr, float>();
+
     private static void Prefix(HeatSource __instance)
     {
-        if (!CheatState.FireTemp300) return;
-        try { __instance.m_MaxTempIncrease = 300f; } catch { }
+        try
+        {
+            var ptr = __instance.Pointer;
+            if (CheatState.FireTemp300)
+            {
+                if (!Snapshots.ContainsKey(ptr))
+                    Snapshots[ptr] = __instance.m_MaxTempIncrease;   // 首次开启 snapshot
+                __instance.m_MaxTempIncrease = 300f;
+            }
+            else if (Snapshots.TryGetValue(ptr, out var orig))
+            {
+                __instance.m_MaxTempIncrease = orig;                 // 关闭 → 恢复
+                Snapshots.Remove(ptr);
+            }
+        }
+        catch { }
     }
 }
 
-// —— 篝火永不熄灭 CT v2.7.47 真修:改正字段名
-//   CT 改 offset +D4(INF) / +CC(0) / +A0(6):
-//     +D4 = m_MaxOnTODSeconds = INF
-//     +CC = m_ElapsedOnTODSeconds = 0 (重置已燃烧时间)
-//     +A0 = m_NumStartingCharcoalPieces = 6
-//   更直接:m_IsPerpetual=true 直接让游戏认为这是永久火堆
+// —— 篝火永不熄灭 v2.7.49 加 snapshot+restore ——
+//   v2.7.48 写 IsPerpetual=true / MaxOnTODSeconds=INF / ElapsedOnTODSeconds=0 / BurnMinutesIfLit=99999
+//   toggle off 时必须复原这些字段,不然火堆"永久烙印"
 [HarmonyPatch(typeof(Fire), "Update")]
 internal static class Patch_Fire_Update_NeverDie
 {
+    // (isPerpetual, maxOnTOD, elapsedOnTOD, burnMinutesIfLit)
+    internal static readonly System.Collections.Generic.Dictionary<System.IntPtr, (bool, float, float, float)> Snapshots
+        = new System.Collections.Generic.Dictionary<System.IntPtr, (bool, float, float, float)>();
+
     private static void Prefix(Fire __instance)
     {
-        if (!CheatState.FireNeverDie) return;
         try
         {
-            __instance.m_IsPerpetual = true;               // 永久燃烧标记
-            __instance.m_MaxOnTODSeconds = float.PositiveInfinity;
-            __instance.m_ElapsedOnTODSeconds = 0f;          // 已燃烧时间清零
-            __instance.m_BurnMinutesIfLit = 99999f;
+            var ptr = __instance.Pointer;
+            if (CheatState.FireNeverDie)
+            {
+                if (!Snapshots.ContainsKey(ptr))
+                    Snapshots[ptr] = (__instance.m_IsPerpetual,
+                                      __instance.m_MaxOnTODSeconds,
+                                      __instance.m_ElapsedOnTODSeconds,
+                                      __instance.m_BurnMinutesIfLit);
+                __instance.m_IsPerpetual = true;
+                __instance.m_MaxOnTODSeconds = float.PositiveInfinity;
+                __instance.m_ElapsedOnTODSeconds = 0f;
+                __instance.m_BurnMinutesIfLit = 99999f;
+            }
+            else if (Snapshots.TryGetValue(ptr, out var s))
+            {
+                __instance.m_IsPerpetual = s.Item1;
+                __instance.m_MaxOnTODSeconds = s.Item2;
+                __instance.m_ElapsedOnTODSeconds = s.Item3;
+                __instance.m_BurnMinutesIfLit = s.Item4;
+                Snapshots.Remove(ptr);
+            }
         }
         catch { }
     }
@@ -1261,6 +1356,88 @@ internal static class Patch_CheatDeathAfflict_Update
     {
         if (!CheatState.ClearDeathPenalty) return;
         try { if (__instance.HasAffliction) __instance.Cure(AfflictionOptions.None); } catch { }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   v2.7.55 CT 复刻 —— 商人 Trader + 美洲狮 Cougar
+// ═══════════════════════════════════════════════════════════════════
+
+// —— 商人:交易清单上限 + 信任最大化 ——
+//   CT: GetAvailableTradeExchanges Prefix,根据 toggle 改 m_MaxExchangesInTrade(原 3 → 64)
+//       以及把 m_CurrentState.m_CurrentTrust/m_HighestTrust = m_MaxTrustLevel
+[HarmonyPatch(typeof(Il2CppTLD.Trader.TraderManager), "GetAvailableTradeExchanges")]
+internal static class Patch_TraderManager_GetAvailableTradeExchanges
+{
+    private static void Prefix(Il2CppTLD.Trader.TraderManager __instance)
+    {
+        try
+        {
+            // CT 做法:toggle 开写 64,toggle 关强制写 3(原游戏默认)—— 每次调用都刷新
+            //   这样 toggle off 立刻生效,不会像篝火那样"开了就回不去"
+            __instance.m_MaxExchangesInTrade = CheatState.TraderUnlimitedList ? 64 : 3;
+
+            if (CheatState.TraderMaxTrust)
+            {
+                var st = __instance.m_CurrentState;
+                if (st != null)
+                {
+                    int mx = __instance.m_MaxTrustLevel;
+                    st.m_CurrentTrust = mx;
+                    st.m_HighestTrust = mx;
+                }
+            }
+        }
+        catch { }
+    }
+}
+
+// —— 商人:随时可联系(无线电)——
+//   CT: IsTraderAvailable 直接 mov al,01; ret → __result = true
+[HarmonyPatch(typeof(Il2CppTLD.Trader.TraderManager), "IsTraderAvailable")]
+internal static class Patch_TraderManager_IsTraderAvailable
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.TraderAlwaysAvailable) __result = true;
+    }
+}
+
+// —— 商人:交易秒完成 ——
+//   CT: ExchangeItem.IsFullyExchanged Prefix,把 Exchanged* 三个字段 = 源字段,让 IsFullyExchanged 自动 return true
+[HarmonyPatch(typeof(Il2CppTLD.Trader.ExchangeItem), "IsFullyExchanged")]
+internal static class Patch_ExchangeItem_IsFullyExchanged
+{
+    private static void Prefix(Il2CppTLD.Trader.ExchangeItem __instance)
+    {
+        if (!CheatState.TraderInstantExchange) return;
+        try
+        {
+            __instance.m_ExchangedAmount       = __instance.m_Amount;
+            __instance.m_ExchangedWeight       = __instance.m_Weight;
+            __instance.m_ExchangedLiquidVolume = __instance.m_LiquidVolume;
+        }
+        catch { }
+    }
+}
+
+// —— 美洲狮:新档首次立即激活 ——
+//   CT: UpdateWaitingForArrival Prefix,设 __instance.m_ActiveTerritory.m_CougarState = 2 (WaitingForTransition)
+//   enum CougarState { Start=0, WaitingForArrival=1, WaitingForTransition=2, HasArrivedAfterTransition=3, PlayingIntroTimeline=4, HasArrived=5 }
+//   激活后进出门/睡觉会触发到 HasArrivedAfterTransition 动画
+[HarmonyPatch(typeof(Il2CppTLD.AI.CougarManager), "UpdateWaitingForArrival")]
+internal static class Patch_CougarManager_UpdateWaitingForArrival
+{
+    private static void Prefix(Il2CppTLD.AI.CougarManager __instance)
+    {
+        if (!CheatState.CougarInstantActivate) return;
+        try
+        {
+            var terr = __instance.m_ActiveTerritory;
+            if (terr != null)
+                terr.m_CougarState = Il2CppTLD.AI.CougarManager.CougarState.WaitingForTransition;
+        }
+        catch { }
     }
 }
 
