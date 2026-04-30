@@ -210,7 +210,7 @@ internal static class Patch_BreakDown_OnBreakDown
     private static void Postfix(Panel_BreakDown __instance)
     {
         if (!CheatState.QuickAction && !CheatState.QuickBreakDown) return;
-        FadeSuppressionWindow.Arm();
+        FadeSuppressionWindow.Arm(5.0f);
         try
         {
             // v2.7.65 关键修:冻结 TOD 避免游戏推进时钟触发 UniStorm 昼夜/天气 ScreenTint(变灰源头)
@@ -224,17 +224,46 @@ internal static class Patch_BreakDown_OnBreakDown
 }
 
 // v2.7.65 打碎完成解锁 TOD + 强制亮屏 —— 必须解锁,不然整个游戏时钟会卡住
+// v2.7.73 修"持续暗":之前 FadeIn(0,0) 没拦住 alpha 往 target 走,加 FinishFade(true) 跳过进行中 fade
+// v2.7.74 定位到真源头 —— CT 也会出现,说明不是 CameraFade,是 PassTime.m_TimeAccelerated 触发的 ScreenTint;
+//   原 BreakDownFinished 可能没 call PassTime.End(),或 End 被我们 force 到的字段抄近路绕过;
+//   显式 End() + reset Panel 实例 m_TimeIsAccelerated + PassTime.m_TimeAccelerated
 [HarmonyPatch(typeof(Panel_BreakDown), "BreakDownFinished")]
 internal static class Patch_BreakDown_Finished_Unfade
 {
-    private static void Postfix()
+    private static void Postfix(Panel_BreakDown __instance)
     {
         if (!CheatState.QuickAction && !CheatState.QuickBreakDown) return;
         try
         {
             try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(false); } catch { }
             FadeSuppressionWindow.Arm(3.0f);
-            CameraFade.FadeIn(0f, 0f, null);    // 0s fade 0s delay —— 立即亮屏
+            CameraFade.FadeIn(0f, 0f, null);
+            try
+            {
+                CameraFade.m_TargetAlpha = 0f;
+                CameraFade.m_StartAlpha = 0f;
+                CameraFade.m_FadeTimer = 0f;
+                CameraFade.m_FadeDuration = 0f;
+                CameraFade.FinishFade(true);
+            }
+            catch { }
+            // v2.7.74 关键:强制终结 PassTime — "阴天感" overlay 来自 m_TimeAccelerated
+            try
+            {
+                if (__instance != null) __instance.m_TimeIsAccelerated = false;
+                var pt = GameManager.GetPassTime();
+                if (pt != null)
+                {
+                    bool wasActive = false;
+                    try { wasActive = pt.IsPassingTime(); } catch { }
+                    try { if (wasActive) pt.End(); } catch { }
+                    try { pt.m_TimeAccelerated = false; } catch { }
+                    ModMain.Log?.Msg($"[QuickBD.Finished] PassTime.End (wasActive={wasActive}) + m_TimeAccelerated=false");
+                }
+                else ModMain.Log?.Msg("[QuickBD.Finished] PassTime null");
+            }
+            catch (System.Exception ex) { ModMain.Log?.Warning($"[QuickBD.PassTime] {ex.Message}"); }
         }
         catch { }
     }
@@ -244,18 +273,77 @@ internal static class Patch_BreakDown_Finished_Unfade
 [HarmonyPatch(typeof(Panel_BreakDown), "ExitInterface")]
 internal static class Patch_BreakDown_ExitInterface_UnlockTOD
 {
-    private static void Postfix()
+    private static void Postfix(Panel_BreakDown __instance)
     {
-        try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(false); } catch { }
+        BreakDownCleanup.Run(__instance, "ExitInterface");
     }
 }
 
 [HarmonyPatch(typeof(Panel_BreakDown), "OnCancel")]
 internal static class Patch_BreakDown_OnCancel_UnlockTOD
 {
-    private static void Postfix()
+    private static void Postfix(Panel_BreakDown __instance)
     {
+        BreakDownCleanup.Run(__instance, "OnCancel");
+    }
+}
+
+// v2.7.74 Update 边沿检测:BreakDownFinished 被内联没 fire,用 IsBreakingDown true→false 替代
+[HarmonyPatch(typeof(Panel_BreakDown), "Update")]
+internal static class Patch_BreakDown_Update_Edge
+{
+    private static bool _wasBreaking;
+    private static void Postfix(Panel_BreakDown __instance)
+    {
+        if (__instance == null) return;
+        bool now = false;
+        try { now = __instance.m_IsBreakingDown; } catch { }
+        if (_wasBreaking && !now) BreakDownCleanup.Run(__instance, "UpdateEdge");
+        _wasBreaking = now;
+    }
+}
+
+// Panel 关闭时也 cleanup —— 兜底覆盖所有退出 path
+[HarmonyPatch(typeof(Panel_BreakDown), "Enable", new System.Type[] { typeof(bool) })]
+internal static class Patch_BreakDown_Enable_Cleanup
+{
+    private static void Postfix(Panel_BreakDown __instance, bool enable)
+    {
+        if (!enable) BreakDownCleanup.Run(__instance, "Enable(false)");
+    }
+}
+
+internal static class BreakDownCleanup
+{
+    public static void Run(Panel_BreakDown inst, string tag)
+    {
+        if (!CheatState.QuickAction && !CheatState.QuickBreakDown) return;
+        try { FadeSuppressionWindow.Arm(5.0f); } catch { }
+        try { CameraFade.FadeIn(0f, 0f, null); } catch { }
+        try
+        {
+            CameraFade.m_TargetAlpha = 0f;
+            CameraFade.m_StartAlpha = 0f;
+            CameraFade.m_FadeTimer = 0f;
+            CameraFade.m_FadeDuration = 0f;
+            CameraFade.FinishFade(true);
+        }
+        catch { }
+        try { if (inst != null) inst.m_TimeIsAccelerated = false; } catch { }
+        bool ptWasActive = false;
+        try
+        {
+            var pt = GameManager.GetPassTime();
+            if (pt != null)
+            {
+                try { ptWasActive = pt.IsPassingTime(); } catch { }
+                try { if (ptWasActive) pt.End(); } catch { }
+                try { pt.m_TimeAccelerated = false; } catch { }
+            }
+        }
+        catch { }
         try { var tod = GameManager.GetTimeOfDayComponent(); if (tod != null) tod.SetTODLocked(false); } catch { }
+        ModMain.Log?.Msg($"[QuickBD.Cleanup:{tag}] ptWasActive={ptWasActive}");
     }
 }
 
@@ -290,7 +378,11 @@ internal static class Patch_CameraFade_FadeOut
 {
     private static void Prefix(ref float time, ref float delay)
     {
-        if (FadeSuppressionWindow.IsActive) { time = 0f; delay = 0f; }
+        if (FadeSuppressionWindow.IsActive)
+        {
+            ModMain.Log?.Msg($"[FadeSuppress] FadeOut time={time} delay={delay}");
+            time = 0f; delay = 0f;
+        }
     }
 }
 
@@ -312,12 +404,18 @@ internal static class Patch_CameraFade_FadeTo
     }
 }
 
+// v2.7.73 合并 Fade(startAlpha, targetAlpha, time, delay, action) 5 参数
+//   窗口内把 start/target 也归 0,避免 Fade(1,1,...) 把黑屏锁死
 [HarmonyPatch(typeof(CameraFade), "Fade", new System.Type[] { typeof(float), typeof(float), typeof(float), typeof(float), typeof(Il2CppSystem.Action) })]
 internal static class Patch_CameraFade_Fade
 {
-    private static void Prefix(ref float time, ref float delay)
+    private static void Prefix(ref float startAlpha, ref float targetAlpha, ref float time, ref float delay)
     {
-        if (FadeSuppressionWindow.IsActive) { time = 0f; delay = 0f; }
+        if (FadeSuppressionWindow.IsActive)
+        {
+            ModMain.Log?.Msg($"[FadeSuppress] Fade5 s={startAlpha} t={targetAlpha} time={time} delay={delay}");
+            startAlpha = 0f; targetAlpha = 0f; time = 0f; delay = 0f;
+        }
     }
 }
 
@@ -938,6 +1036,19 @@ internal static class CheatsTick
                         }
                         catch { }
                     }
+                    // v2.7.74 Stealth 关闭边沿:把之前被强推到 Flee 的动物拉回 Wander,让 AI 重新按 fear/感知判断
+                    else if (_lastTickedStealth)
+                    {
+                        try
+                        {
+                            if (ai.GetAiMode() == AiMode.Flee)
+                            {
+                                try { ai.ClearTarget(); } catch { }
+                                ai.SetAiMode(AiMode.Wander);
+                            }
+                        }
+                        catch { }
+                    }
                 }
                 catch { }
             }
@@ -1030,8 +1141,12 @@ internal static class CheatsTick
     //   - GodMode 走 max HP 路径(玩家不会死,与吃喝睡 UI 无关)
     public static void TickStatus()
     {
+        // v2.7.74 FreezeColdValue 边沿清理:关的那一 tick 把 snapshot 设回 NaN,让游戏自然变化
+        if (!CheatState.FreezeColdValue && !float.IsNaN(CheatState._frozenColdSnapshot))
+            CheatState._frozenColdSnapshot = float.NaN;
         if (!CheatState.NoFatigue && !CheatState.NoHunger
-            && !CheatState.NoThirst && !CheatState.AlwaysWarm && !CheatState.GodMode) return;
+            && !CheatState.NoThirst && !CheatState.AlwaysWarm
+            && !CheatState.FreezeColdValue && !CheatState.GodMode) return;
 
         try
         {
@@ -1054,6 +1169,19 @@ internal static class CheatsTick
             {
                 var f = GameManager.GetFreezingComponent();
                 if (f != null) { try { f.m_CurrentFreezing = 0f; } catch { } }
+            }
+            else if (CheatState.FreezeColdValue)
+            {
+                var f = GameManager.GetFreezingComponent();
+                if (f != null)
+                {
+                    // 第一次 tick 抓当前值;之后每 tick 写回 snapshot
+                    if (float.IsNaN(CheatState._frozenColdSnapshot))
+                    {
+                        try { CheatState._frozenColdSnapshot = f.m_CurrentFreezing; } catch { CheatState._frozenColdSnapshot = 0f; }
+                    }
+                    try { f.m_CurrentFreezing = CheatState._frozenColdSnapshot; } catch { }
+                }
             }
             if (CheatState.GodMode)
             {

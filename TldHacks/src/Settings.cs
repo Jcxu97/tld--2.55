@@ -39,6 +39,9 @@ internal class TldHacksSettings : JsonModSettings
     [Name("Always Warm(始终温暖)")]
     public bool AlwaysWarm = false;
 
+    [Name("冻结寒冷值(开启抓当前,关后恢复自然)")]
+    public bool FreezeColdValue = false;
+
     [Name("No Hunger(无饥饿)")]
     public bool NoHunger = false;
 

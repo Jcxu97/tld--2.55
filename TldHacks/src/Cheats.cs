@@ -17,6 +17,8 @@ internal static class CheatState
     public static bool NoFallDamage;
     // Status / 状态(注:InfiniteStamina 去掉 —— UniversalTweaks / 其他 mod 已覆盖)
     public static bool AlwaysWarm;
+    public static bool FreezeColdValue;            // v2.7.74 锁身体寒冷值(开关瞬间抓当前,关后让游戏自然变化)
+    public static float _frozenColdSnapshot = float.NaN;  // 仅 FreezeColdValue 用;NaN = 尚未锁定
     public static bool NoHunger;
     public static bool NoThirst;
     public static bool NoFatigue;

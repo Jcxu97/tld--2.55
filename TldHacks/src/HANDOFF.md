@@ -1,5 +1,54 @@
 # TldHacks — 交接文档
 
+## 🆕 2026-05-01 凌晨会话 v2.7.74(已 commit)
+
+继续 v2.7.73 工作树。新增/改动:
+
+- **Spawner 加 mod 物品**:新文件 `src/ItemDatabaseMod.cs`,自动扫 40 个 `Mods/*.modcomponent` 得 553 条(vanilla 358 已有的去重),每条名字后 `[ModName简写]`。`Menu.RebuildFilter` 双 list 遍历,顶部 label 合计。生成脚本 `C:\Users\82077\AppData\Local\Temp\tldmod\gen_moddb.py`。
+- **秒打碎"阴天感"再修**(用户反馈 CT 也出这 bug):发现 `Patch_CameraFade_Fade5` 和 `Patch_CameraFade_Fade` 挂同签名(冗余)→ 合并为一个 5 参 Prefix 归 0 start/target/time/delay。加诊断 log 后发现 `BreakDownFinished` Postfix 命中 0 次(IL2Cpp 内联)→ 改走 **Update 边沿检测**(`IsBreakingDown` true→false)+ **Enable(false) 兜底**,统一走新 `BreakDownCleanup.Run`:FadeSuppress 5s + CameraFade.FinishFade + `PassTime.End()` + `PassTime.m_TimeAccelerated=false` + Panel 实例 `m_TimeIsAccelerated=false`。log 证据 Fade5 `target=0.5` 已拦截,用户"概率性还暗"未最终定论。
+- **Stealth 关掉动物还在逃**:TickAnimals 加 `else if (_lastTickedStealth)` 边沿分支 → 遍历 AI 把 Flee 拉回 Wander + ClearTarget。
+- **冻结寒冷值 toggle**(新):玩家列温饱 section 加 toggle,CheatState.FreezeColdValue + `_frozenColdSnapshot` (NaN = 未锁)。TickStatus 开启抓当前值 / 关闭清 NaN → 游戏自然变化。
+- **锁温度 uConsole UI 删**(坏的 unlock_temperature) → 用上面冻结寒冷值替代。
+- 版本号 `v2.7.72` → `v2.7.74`(Menu.cs 标题 + ModMain.cs 日志),DLL 204800 bytes(+50%)。
+
+---
+
+## 🆕 2026-04-30 晚会话 v2.7.73 工作树(已并入 v2.7.74)
+
+codex 在仓库外 `D:\TLD-Mods\TldHacks\` 把 Menu.cs 重写成 Cursor Ink UI (v2.7.66→v2.7.72)后合并回本仓库。Claude 本会话在此基础上做 5 处修复。
+
+### 改动清单
+
+**Menu.cs**
+1. **列重分组** —— 锁&容器 / 制作 / 瞄准 → 列 1;商人 uConsole → 列 3。三列视觉高度更平衡
+2. **x1.7 缩放 label 垂直居中** (line 294) —— codex 的 `_mutedLabelStyle` 没 alignment 默认 UpperLeft,字符比按钮字符偏上偏左。**不引 `UnityEngine.TextRenderingModule`**(避免动 csproj),改用坐标 `R(W-158, 14, 50, 18)`
+3. **Spawner 翻页消失** (line 710) —— codex `ContentH_Spawner=H-108` 但 Spawner 内部写死 `availH=(H-80)-y-...` → 多塞 28px → 分页按钮被裁出 scroll content。改 `H-80 → ContentH_Spawner`
+4. **UI 切场景后透明** (line 101-107 + InitStyles 开头) —— `Tex()` 的 `Texture2D` 没 `hideFlags` → Unity 场景切换 GC 掉 → GUIStyle.background 指 dead texture。加 `tex.hideFlags = HideFlags.HideAndDontSave` + InitStyles 开头兜底检测 `_bgTex == null` 触发重建
+
+**CheatsPatches.cs**
+5. **秒打碎完成后持续暗** —— v2.7.65 只 `FadeIn(0,0)+SetTODLocked+FadeSuppressionWindow 3s` 不够。加两条防线:
+   - `Patch_BreakDown_Finished_Unfade` Postfix 强化:强制 `m_TargetAlpha=0/m_StartAlpha=0/m_FadeTimer=0/m_FadeDuration=0` + `FinishFade(true)` 跳过进行中 fade
+   - 新增 `Patch_CameraFade_Fade5` —— codex 只 patch 了 FadeIn/FadeOut/FadeTo 的 3/4 参数重载,`Fade(startAlpha, targetAlpha, time, delay, action)` 5 参数版本是漏网路径。打碎持续暗很可能走这条
+
+### 状态
+- 编译 0 错误,DLL 140288 bytes 已部署到 `Mods/TldHacks.dll`
+- Menu.cs 标题栏版本号仍是 `"TldHacks v2.7.72"` —— 等 5 项测过再升 v2.7.73 + commit
+- `git status`:Menu.cs + CheatsPatches.cs modified 未 commit
+
+### 下次要测
+1. 三列高度是否平衡(列重分组)
+2. 右上角 x1.7 和 -/+ 是否垂直对齐
+3. Spawner 翻页按钮出现了吗
+4. 切场景 / 打开 uConsole 后 UI 底色保持不透明吗
+5. 秒打碎完成后还持续暗吗 —— 如还暗:**室内还是室外 / 打碎什么物品**,加诊断 log 精确定位(可能要 patch UniStorm 而非 CameraFade)
+
+### ⚠ codex UI 主题别改
+用户明确说过两次。只允许:section 重分组 / 功能 bugfix / texture 生命周期修 / 单 toggle 增删。
+不要碰:W=1280/H=760 / COL_W=405 / TOG_W=182 / SECTION_END_ADV=14 / Cursor Ink 7 个 Color 常量 / GUIStyle 配置。
+详见 memory `feedback_tldhacks_codex_ui.md`。
+
+---
+
 ## 🆕 2026-04-30 session 新 mod / 改动 — 明天要测
 
 ### 新建 3 个独立 mod(不在 TldHacks 内,独立 dll)

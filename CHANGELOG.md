@@ -20,7 +20,7 @@
 |---|---|
 | `BunkerDefaults.dll` | **本仓库原创** —— 给每个存档预填 9 个地堡 FastTravel 传送点 |
 | `FoodStackable.dll` | **本仓库原创**(v0.4.9,已并入 TldHacks v2.7.0)—— 背包里同类食物视觉堆叠成一格 ×N,不改底层物品 |
-| `TldHacks.dll` | **本仓库原创**(v2.7.0)—— 综合修改器。替代 FoodStackable(含其全部功能)+ 移植 Cheat Engine 表 ~60 个 cheat:无敌/免疫/无限体力/瞄准稳定/无后坐力/快速制作/生火 100%/爬绳 ×5/15 region 传送/358 条物品刷出/技能满级/解锁壮举·蓝图·地图 等 |
+| `TldHacks.dll` | **本仓库原创**(v2.7.74)—— 综合修改器。替代 FoodStackable(含其全部功能)+ 移植 Cheat Engine 表 ~90 个 cheat:无敌/免疫/无限体力/瞄准稳定/无后坐力/快速制作/生火 100%/爬绳 ×5/15 region 传送/**911 条物品刷出(358 vanilla + 553 自动扫出的 mod 物品,带 `[ModName]` 标签)**/技能满级/解锁壮举·蓝图·地图/冻结寒冷值(开启抓当前,关闭自然变化)等 |
 | `ModSettingsQuickNav.dll` | **本仓库原创**(v1.0.0)—— ModSettings 面板快速跳转:按 `` ` `` 打开 IMGUI 浮层,A-Z 字母跳段 + 滚动列表点一下直接切到对应 mod 设置。Harmony patch `ModSettingsGUI.OnEnable/OnDisable`(internal 类走 `AccessTools.TypeByName` 反射) |
 | `AudioCore.dll` | 某个 mod 的依赖 |
 | `ImprovedTrader.dll` | 优化商人交互 |

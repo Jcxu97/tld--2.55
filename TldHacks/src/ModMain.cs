@@ -30,7 +30,7 @@ public class ModMain : MelonMod
             SyncStateFromSettings();
             // v2.7.64 加载 scene transition 历史记录
             TransitionRecorder.Init();
-            Log.Msg($"TldHacks v2.7.64 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}, transitions recorded = {TransitionRecorder.Count}");
+            Log.Msg($"TldHacks v2.7.74 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -40,6 +40,7 @@ public class ModMain : MelonMod
         CheatState.GodMode = Settings.GodMode;
         CheatState.NoFallDamage = Settings.NoFallDamage;
         CheatState.AlwaysWarm = Settings.AlwaysWarm;
+        CheatState.FreezeColdValue = Settings.FreezeColdValue;
         CheatState.NoHunger = Settings.NoHunger;
         CheatState.NoThirst = Settings.NoThirst;
         CheatState.NoFatigue = Settings.NoFatigue;
