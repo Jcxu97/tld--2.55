@@ -7,8 +7,24 @@ namespace TldHacks;
 // KeyCode 字段会被 ModSettings 2.2.x 自动识别为可重绑按钮;bool → toggle;带 [Slider] 的 float → 滑块。
 internal class TldHacksSettings : JsonModSettings
 {
+    // v2.7.75 诊断应急开关 —— 开了 OnUpdate/OnLateUpdate/OnGUI 全 skip,保留 Harmony patch
+    [Section("Diagnostic / 诊断")]
+    [Name("Emergency: Pause Runtime(暂停所有 tick/update)")]
+    [Description("诊断用。开了 ModMain 不再跑任何 per-frame tick / Stacking OnLateUpdate / Menu UI。Harmony patch 仍挂着(静态挂载不受此开关影响)。若开了仍卡 → 卡在 patch 本身")]
+    public bool DiagPauseRuntime = false;
+
+    // v2.7.79 终极诊断:启动时把所有 Harmony patch 全卸载(静态 + DynamicPatch)
+    [Name("Emergency: Unpatch All Harmony(卸载所有 patch)")]
+    [Description("启动时立即 UnpatchAll + skip Reconcile,TldHacks 的所有 [HarmonyPatch] 零挂载。需重启游戏生效。开了仍卡 = 100% 不是 TldHacks;开了不卡 = 是 patch 总数问题,下一步全迁 DynamicPatch")]
+    public bool DiagUnpatchAll = false;
+
     // ——— Menu ———
     [Section("Menu")]
+    [Name("Language / 语言")]
+    [Description("Auto = 按系统语言(非中文系统 → English);Chinese = 强制中文;English = 强制英文。改完需按菜单热键重开菜单生效。")]
+    [Choice("Auto", "中文 / Chinese", "English")]
+    public int LanguageMode = 0;
+
     [Name("Toggle menu hotkey")]
     [Description("按此键呼出/关闭 TldHacks 菜单。默认 Tab 会和游戏日志键冲突,建议改成 F1 / \\ 等。")]
     public KeyCode MenuHotkey = KeyCode.Tab;
@@ -20,6 +36,13 @@ internal class TldHacksSettings : JsonModSettings
     [Slider(0.6f, 3.0f, 24)]
     [Name("Menu UI Scale(菜单缩放,4K 可设 2-3)")]
     public float MenuScale = 1f;
+
+    // v2.7.83:窗口位置持久化(拖动自动保存,重启保留)
+    [Name("Menu X Position(窗口 X,拖动自动存)")]
+    public float MenuX = 30f;
+
+    [Name("Menu Y Position(窗口 Y,拖动自动存)")]
+    public float MenuY = 30f;
 
     // ——— Stacking ———
     [Section("Stacking")]
@@ -38,9 +61,6 @@ internal class TldHacksSettings : JsonModSettings
     [Section("Status / 状态")]
     [Name("Always Warm(始终温暖)")]
     public bool AlwaysWarm = false;
-
-    [Name("冻结寒冷值(开启抓当前,关后恢复自然)")]
-    public bool FreezeColdValue = false;
 
     [Name("No Hunger(无饥饿)")]
     public bool NoHunger = false;

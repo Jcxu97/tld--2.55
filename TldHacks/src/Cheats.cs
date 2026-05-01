@@ -17,8 +17,6 @@ internal static class CheatState
     public static bool NoFallDamage;
     // Status / 状态(注:InfiniteStamina 去掉 —— UniversalTweaks / 其他 mod 已覆盖)
     public static bool AlwaysWarm;
-    public static bool FreezeColdValue;            // v2.7.74 锁身体寒冷值(开关瞬间抓当前,关后让游戏自然变化)
-    public static float _frozenColdSnapshot = float.NaN;  // 仅 FreezeColdValue 用;NaN = 尚未锁定
     public static bool NoHunger;
     public static bool NoThirst;
     public static bool NoFatigue;
@@ -106,6 +104,144 @@ internal static class CheatState
 // 工具函数:刷物品/清 affliction/天气/时间/耐久恢复
 internal static class Cheats
 {
+    // v2.7.80 一键把所有作弊 toggle 设 false —— 修 "ModSettings Disable All 后 5 秒内还生效" 的响应性问题
+    //   三步:1) Settings 所有 bool cheat 字段设 false(StackingEnabled/MenuHotkey/MenuScale 等 UI 偏好不动)
+    //        2) 立即内联同步到 CheatState(比等 30 帧 SyncStateFromSettings 快)
+    //        3) 立即 DynamicPatch.Reconcile() —— 动态 patch 下一帧就卸
+    public static void DisableAllCheats()
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null) return;
+
+            s.GodMode = false;
+            s.NoFallDamage = false;
+            s.AlwaysWarm = false;
+            s.NoHunger = false;
+            s.NoThirst = false;
+            s.NoFatigue = false;
+            s.SpeedMultiplier = 1f;
+            s.InstantKillAnimals = false;
+            s.FreezeAnimals = false;
+            s.Stealth = false;
+            s.TrueInvisible = false;
+            s.ThinIceNoBreak = false;
+            s.IgnoreLock = false;
+            s.QuickOpenContainer = false;
+            s.InfiniteDurability = false;
+            s.NoWetClothes = false;
+            s.FreeCraft = false;
+            s.QuickCraft = false;
+            s.InfiniteAmmo = false;
+            s.NoJam = false;
+            s.NoRecoil = false;
+            s.NoAimSway = false;
+            s.NoAimShake = false;
+            s.NoBreathSway = false;
+            s.NoAimStamina = false;
+            s.NoAimDOF = false;
+            s.StopWind = false;
+            s.NoSprainRisk = false;
+            s.ImmuneAnimalDamage = false;
+            s.NoSuffocating = false;
+            s.QuickFire = false;
+            s.QuickClimb = false;
+            s.QuickAction = false;
+            s.QuickCook = false;
+            s.QuickSearch = false;
+            s.QuickHarvest = false;
+            s.QuickBreakDown = false;
+            s.UnlockSafes = false;
+            s.LampFuelNoDrain = false;
+            s.FlaskNoHeatLoss = false;
+            s.FlaskInfiniteVol = false;
+            s.FlaskAnyItem = false;
+            s.QuickEvolve = false;
+            s.InfiniteContainer = false;
+            s.FireTemp300 = false;
+            s.FireNeverDie = false;
+            s.CureFrostbite = false;
+            s.ClearDeathPenalty = false;
+            s.QuickFishing = false;
+            s.TraderUnlimitedList = false;
+            s.TraderMaxTrust = false;
+            s.TraderInstantExchange = false;
+            s.TraderAlwaysAvailable = false;
+            s.CougarInstantActivate = false;
+            s.BlockAutoPickupOwnDrops = false;
+            s.Save();
+
+            SyncCheatStateInline(s);
+            DynamicPatch.Reconcile();
+
+            CheatState.LastActionLog = "已关闭全部作弊 toggle(立即生效)";
+            ModMain.Log?.Msg("[DisableAll] 所有作弊 toggle 已关,CheatState 同步,动态 patch Reconcile");
+        }
+        catch (Exception ex) { ModMain.Log?.Error($"[DisableAll] {ex}"); }
+    }
+
+    // 内联版 Settings → CheatState(避免反射 ModMain.SyncStateFromSettings private)
+    private static void SyncCheatStateInline(TldHacksSettings s)
+    {
+        CheatState.GodMode = s.GodMode;
+        CheatState.NoFallDamage = s.NoFallDamage;
+        CheatState.AlwaysWarm = s.AlwaysWarm;
+        CheatState.NoHunger = s.NoHunger;
+        CheatState.NoThirst = s.NoThirst;
+        CheatState.NoFatigue = s.NoFatigue;
+        CheatState.SpeedMultiplier = s.SpeedMultiplier;
+        CheatState.InstantKillAnimals = s.InstantKillAnimals;
+        CheatState.FreezeAnimals = s.FreezeAnimals;
+        CheatState.Stealth = s.Stealth;
+        CheatState.TrueInvisible = s.TrueInvisible;
+        CheatState.ThinIceNoBreak = s.ThinIceNoBreak;
+        CheatState.IgnoreLock = s.IgnoreLock;
+        CheatState.QuickOpenContainer = s.QuickOpenContainer;
+        CheatState.InfiniteDurability = s.InfiniteDurability;
+        CheatState.NoWetClothes = s.NoWetClothes;
+        CheatState.FreeCraft = s.FreeCraft;
+        CheatState.QuickCraft = s.QuickCraft;
+        CheatState.InfiniteAmmo = s.InfiniteAmmo;
+        CheatState.NoJam = s.NoJam;
+        CheatState.NoRecoil = s.NoRecoil;
+        CheatState.NoAimSway = s.NoAimSway;
+        CheatState.NoAimShake = s.NoAimShake;
+        CheatState.NoBreathSway = s.NoBreathSway;
+        CheatState.NoAimStamina = s.NoAimStamina;
+        CheatState.NoAimDOF = s.NoAimDOF;
+        CheatState.StopWind = s.StopWind;
+        CheatState.NoSprainRisk = s.NoSprainRisk;
+        CheatState.ImmuneAnimalDamage = s.ImmuneAnimalDamage;
+        CheatState.NoSuffocating = s.NoSuffocating;
+        CheatState.QuickFire = s.QuickFire;
+        CheatState.QuickClimb = s.QuickClimb;
+        CheatState.QuickAction = s.QuickAction;
+        CheatState.QuickCook = s.QuickCook;
+        CheatState.QuickSearch = s.QuickSearch;
+        CheatState.QuickHarvest = s.QuickHarvest;
+        CheatState.QuickBreakDown = s.QuickBreakDown;
+        CheatState.UnlockSafes = s.UnlockSafes;
+        CheatState.LampFuelNoDrain = s.LampFuelNoDrain;
+        CheatState.FlaskNoHeatLoss = s.FlaskNoHeatLoss;
+        CheatState.FlaskInfiniteVol = s.FlaskInfiniteVol;
+        CheatState.FlaskAnyItem = s.FlaskAnyItem;
+        CheatState.QuickEvolve = s.QuickEvolve;
+        CheatState.InfiniteContainer = s.InfiniteContainer;
+        CheatState.FireTemp300 = s.FireTemp300;
+        CheatState.FireNeverDie = s.FireNeverDie;
+        CheatState.CureFrostbite = s.CureFrostbite;
+        CheatState.ClearDeathPenalty = s.ClearDeathPenalty;
+        CheatState.QuickFishing = s.QuickFishing;
+        CheatState.TraderUnlimitedList = s.TraderUnlimitedList;
+        CheatState.TraderMaxTrust = s.TraderMaxTrust;
+        CheatState.TraderInstantExchange = s.TraderInstantExchange;
+        CheatState.TraderAlwaysAvailable = s.TraderAlwaysAvailable;
+        CheatState.CougarInstantActivate = s.CougarInstantActivate;
+        CheatState.BlockAutoPickupOwnDrops = s.BlockAutoPickupOwnDrops;
+    }
+
+
     // v2.7.57 换实现 —— AddItemCONSOLE 对部分物品(DLC / 特殊)返回 null 无响应(console 守卫)
     //   稳定公开 API:GearItem.LoadGearItemPrefab(name) → PlayerManager.InstantiateItemInPlayerInventory
     //   DLC 物品、特殊物品、release build 都 work
@@ -134,7 +270,9 @@ internal static class Cheats
                 }
                 catch { }
                 ModMain.Log?.Error($"[Spawn] prefab not found: {prefabName}");
-                CheatState.LastActionLog = $"刷物品失败:{prefabName}(prefab 未找到)";
+                CheatState.LastActionLog = I18n.IsEnglish
+                    ? $"Spawn failed: {prefabName} (prefab not found)"
+                    : $"刷物品失败:{prefabName}(prefab 未找到)";
                 return;
             }
 
@@ -143,7 +281,9 @@ internal static class Cheats
             {
                 pm.InstantiateItemInPlayerInventory(prefab, quantity, 100f, PlayerManager.InventoryInstantiateFlags.None);
                 ModMain.Log?.Msg($"[Spawn] +{quantity} {prefabName}");
-                CheatState.LastActionLog = $"已刷 ×{quantity} {prefabName}";
+                CheatState.LastActionLog = I18n.IsEnglish
+                    ? $"Spawned ×{quantity} {prefabName}"
+                    : $"已刷 ×{quantity} {prefabName}";
             }
             catch (Exception ex)
             {
@@ -274,7 +414,9 @@ internal static class Cheats
             if (had) { cleared++; log.Append("肠寄生虫; "); }
         }} catch (Exception ex) { log.Append($"肠寄生虫-err:{ex.Message}; "); }
 
-        string summary = cleared > 0 ? $"已清 {cleared} 项: {log}" : $"未检测到活跃负面; 尝试过: {log}";
+        string summary = cleared > 0
+            ? (I18n.IsEnglish ? $"Cleared {cleared} afflictions: {log}" : $"已清 {cleared} 项: {log}")
+            : (I18n.IsEnglish ? $"No active affliction; tried: {log}" : $"未检测到活跃负面; 尝试过: {log}");
         ModMain.Log?.Msg($"[Cheats] {summary}");
         CheatState.LastActionLog = summary;
     }
@@ -305,7 +447,9 @@ internal static class Cheats
             if (wt == null)
             {
                 ModMain.Log?.Warning("[Weather] WeatherTransition not found in scene");
-                CheatState.LastActionLog = "[Weather] 没找到 WeatherTransition";
+                CheatState.LastActionLog = I18n.IsEnglish
+                    ? "[Weather] No WeatherTransition found"
+                    : "[Weather] 没找到 WeatherTransition";
                 return;
             }
 
@@ -383,7 +527,9 @@ internal static class Cheats
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[RestoreAll.Bag] {ex.Message}"); }
 
-        string msg = $"场景 {scene} 件 + 背包 {bag} 件 恢复满 (失败 {fail})";
+        string msg = I18n.IsEnglish
+            ? $"Restored scene {scene} + bag {bag} to full (failed {fail})"
+            : $"场景 {scene} 件 + 背包 {bag} 件 恢复满 (失败 {fail})";
         CheatState.LastActionLog = msg;
         ModMain.Log?.Msg($"[RestoreAll] {msg}");
     }
@@ -409,16 +555,20 @@ internal static class Cheats
         try
         {
             var pm = GameManager.GetPlayerManagerComponent();
-            if (pm == null) { CheatState.LastActionLog = "[修复手持] no PM"; return; }
+            if (pm == null) { CheatState.LastActionLog = I18n.IsEnglish ? "[Repair] no PM" : "[修复手持] no PM"; return; }
             var item = pm.m_ItemInHands;
-            if (item == null) { CheatState.LastActionLog = "[修复手持] 手上没东西"; return; }
+            if (item == null) { CheatState.LastActionLog = I18n.IsEnglish ? "[Repair] Nothing in hands" : "[修复手持] 手上没东西"; return; }
             bool ok = RestoreDurability(item);
-            CheatState.LastActionLog = ok ? $"[修复手持] {item.name} → 100%" : $"[修复手持失败] {item.name}";
+            CheatState.LastActionLog = ok
+                ? (I18n.IsEnglish ? $"[Repair] {item.name} → 100%" : $"[修复手持] {item.name} → 100%")
+                : (I18n.IsEnglish ? $"[Repair failed] {item.name}" : $"[修复手持失败] {item.name}");
             ModMain.Log?.Msg($"[Repair.Hands] {item.name} ok={ok}");
         }
         catch (Exception ex)
         {
-            CheatState.LastActionLog = $"[修复手持异常] {ex.Message}";
+            CheatState.LastActionLog = I18n.IsEnglish
+                ? $"[Repair error] {ex.Message}"
+                : $"[修复手持异常] {ex.Message}";
             ModMain.Log?.Warning($"[Repair.Hands] {ex.Message}");
         }
     }
@@ -458,7 +608,7 @@ internal static class Cheats
                 catch { }
             }
             if (kills > 0) ModMain.Log?.Msg($"[Cheats.Kill] killed {kills}");
-            CheatState.LastActionLog = $"已击杀 {kills} 只";
+            CheatState.LastActionLog = I18n.IsEnglish ? $"Killed {kills}" : $"已击杀 {kills} 只";
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[Cheats.Kill] {ex.Message}"); }
     }
@@ -588,23 +738,21 @@ internal static class Patch_Infection_Start
 // 删掉 Postfix,只靠 Degrade / WearOut / DegradeOnUse 3 个 Prefix 拦衰减源头
 // 想一次性拉满用"恢复全部耐久"按钮 / "修复背包物品"按钮
 
-// InfiniteDurability 兜底:拦衰减 3 个源头 Degrade / WearOut / DegradeOnUse
-[HarmonyPatch(typeof(GearItem), "Degrade", new System.Type[] { typeof(float) })]
+// v2.7.75 DynamicPatch: 去 [HarmonyPatch] attribute —— GearItem.Degrade 等每帧多次调用,
+// 即便 Prefix 第一行 return true,Harmony wrapper 本身就是每帧数百次 bridge 的开销
 internal static class Patch_GearItem_Degrade
 {
-    private static bool Prefix() => !CheatState.InfiniteDurability;
+    internal static bool Prefix() => !CheatState.InfiniteDurability;
 }
 
-[HarmonyPatch(typeof(GearItem), "WearOut")]
 internal static class Patch_GearItem_WearOut
 {
-    private static bool Prefix() => !CheatState.InfiniteDurability;
+    internal static bool Prefix() => !CheatState.InfiniteDurability;
 }
 
-[HarmonyPatch(typeof(GearItem), "DegradeOnUse")]
 internal static class Patch_GearItem_DegradeOnUse
 {
-    private static bool Prefix() => !CheatState.InfiniteDurability;
+    internal static bool Prefix() => !CheatState.InfiniteDurability;
 }
 
 // Patch_GearItem_Awake 也删 —— 同样是'强制到 100',不符合用户'不损耗'要求

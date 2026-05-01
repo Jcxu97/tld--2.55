@@ -1,5 +1,399 @@
 # TldHacks — 交接文档
 
+## 🆕 2026-05-02 session v2.7.83 — 武器瞄准修 + UI 拖动持久化 + 布局对齐
+
+### 本轮改动(都已合并到 repo)
+
+1. **武器/瞄准功能诊断 + 修**(`CheatsPatches.cs`):
+   - `TickCamera` 加诊断日志:首次有 toggle ON 时列举 vp_FPSCamera / vp_FPSWeapon 的所有相关字段名,报告哪些 FieldInfo 为 null → 方便定位 IL2CPP 字段名不匹配
+   - 加 `FindWeapon()` 多重 fallback:反射 `m_CurrentWeapon` → 尝试 `m_Weapon/m_ActiveWeapon/currentWeapon` → `PlayerManager.GetWeaponItem()/GetCurrentWeapon()`
+   - 所有武器字段反射加 `??` fallback(如 `m_DisableAimSway` → `m_DisableSway`, `ShakeAmplitude` → `m_ShakeAmplitude`)
+   - TickCamera 频率从 120 帧(2s) → 30 帧(0.5s)(`ModMain.cs`)
+   - 诊断结果打到 `MelonLoader/Latest.log`,搜 `[AimDiag]`
+
+2. **UI 窗口拖动 + 位置持久化**(`Menu.cs` + `Settings.cs`):
+   - `Settings.cs` 新增 `MenuX` / `MenuY` float 字段(默认 30,30)
+   - `OpenMenu()` 从 Settings 恢复窗口位置
+   - `Draw()` 检测拖动后位置变化,延迟 30 帧(0.5s)保存(避免每帧写磁盘)
+   - `Close()` 关闭时立即保存位置
+   - 重启游戏后菜单位置自动恢复
+
+3. **Section header 对齐**(`Menu.cs`):
+   - `BOX_W` 从 405 → 380,与 toggle 行(TOG2_OFF+TOG_W=380)右对齐
+
+4. **右上角布局紧凑化**(`Menu.cs`):
+   - `-`/`x1.0`/`+`/`Close` 按钮统一间距 4px
+   - 总宽度从 176px 缩到 148px,更紧凑
+   - Close 按钮文本走 `I18n.T("关闭","Close")`
+
+5. **版本号** → v2.7.83(`Menu.cs` 标题 + `ModMain.cs` 日志)
+
+### 改动文件
+
+```
+src/CheatsPatches.cs  [改] TickCamera 诊断日志 + 多重 fallback 武器查找 + 字段名 fallback
+src/ModMain.cs        [改] TickCamera 频率 120→30 帧;版本号 v2.7.82 → v2.7.83
+src/Menu.cs           [改] 窗口拖动持久化 + BOX_W 对齐 + 右上角紧凑 + 版本号
+src/Settings.cs       [改] 新增 MenuX / MenuY 字段
+src/HANDOFF.md        [改] 本文档
+```
+
+### ⚠ 武器瞄准功能说明
+
+这些功能依赖反射设置 `vp_FPSCamera` / `vp_FPSWeapon` 的字段。如果字段名在 TLD 2.55 IL2CPP 版本中不匹配,功能会静默失效。**首次开启任一瞄准 toggle 时**,`Latest.log` 会打 `[AimDiag]` 诊断信息,包含:
+- Camera/Weapon 的实际类型名和所有匹配字段
+- 哪些 FieldInfo 为 null
+
+**排查流程**:开游戏 → 开任一瞄准 toggle → 退游戏 → 搜 `Latest.log` 的 `[AimDiag]` → 看哪些字段为 null → 修改 `EnsureReflectionInited` 里的字段名。
+
+---
+
+## 🆕 2026-05-02 session v2.7.82 — UI 三列平衡 + 秒打碎 bug 修 + 生成动物合并
+
+### 本轮改动(都已合并到 repo)
+
+1. **UI 重排 方案A 三列平衡**(`Menu.cs`):
+   - 技能 section "全部满级" + "展开▼" 同行,省一行
+   - 动物 section:美洲狮 toggle 搬回"商人 & 美洲狮",只留 4 toggle + 8 生成动物按钮(4列×2行)
+   - 环境/篝火:删"生火100%",只留 4 toggle(2行,整齐)
+   - 快速操作:加"生火100%"为第 4 行(8 toggle,4行)
+   - 商人 section:改回"商人 & 美洲狮",5 toggle
+   - 一次性操作:"修复手持" + "★ 全关并同步" 合成一行
+   - 物品&装备:"保温瓶装任意液体" + "不捡自己丢的" 合成一行
+   - 锁&容器:"解锁保险箱" 改 TOG_W 配对
+   - **所有 toggle 统一 TOG_W=182px 两列布局,无 TOG_WIDE 散落**
+   - 三列高度:列1 ~458px / 列2 ~458px / 列3 ~502px
+
+2. **uConsole 区精简**(`Menu.cs`):
+   - 删除"一键操作"(添加全部物品/秒杀所有动物/修复传输器) — 功能可由 Tab 1 toggle 替代
+   - 删除"生成动物 spawn_*" — 合并到列 2"动物"section
+   - 整个 `DrawConsoleSection` 函数已移除
+
+3. **秒打碎 toggle OFF 后仍秒打碎 bug 修**(`CheatsPatches.cs`):
+   - 根因:`Patch_BreakDown_UpdateDuration` 有 cleanupGate(Snapshots.Count==0),toggle OFF 后 patch 仍挂载,但 Prefix 只在 `UpdateDurationLabel` 被调用时才 restore `m_TimeCostHours`。如果玩家关 toggle 后不开打碎面板,snapshot 永远不被 restore
+   - 修法:`TickQuickActions` 新增兜底:toggle OFF 后扫描所有 `Panel_BreakDown` 实例,主动 restore `m_TimeCostHours` 并清 Snapshots
+
+4. **生成动物标签修**(`Menu.cs`):
+   - "母鹿⚠" / "Doe⚠" → "母鹿" / "Doe",去掉 ⚠ 字符(显示异常符号)
+
+5. **缩放比例标签居中**(`Menu.cs`):
+   - `x1.0` 标签 x: W-158→W-160, w: 50→52,水平居中在 -/+ 按钮之间
+
+6. **滚轮过度滚动修**(`Menu.cs`):
+   - `ContentH_Main` 从 1600f → 800f,防止滚轮拉到底都是空白
+
+7. **版本号** → v2.7.82(`Menu.cs` 标题 + `ModMain.cs` 日志)
+
+### 改动文件
+
+```
+src/Menu.cs           [改] UI 重排 + 标签修 + 居中 + ContentH + 版本号
+src/CheatsPatches.cs  [改] TickQuickActions 加秒打碎 snapshot 兜底 restore
+src/ModMain.cs        [改] 版本号 v2.7.81 → v2.7.82
+src/HANDOFF.md        [改] 本文档
+```
+
+### ⚠ 已确认无效的方向(别再试)
+
+| 尝试过 | 为什么无效 |
+|---|---|
+| `Application.targetFrameRate` / `QualitySettings.vSyncCount` / `Time.fixedDeltaTime` 强推 150Hz | 用户实测体感无变化,不是 Unity pacing 问题(v2.7.76 尝试,v2.7.77 删) |
+| PerfDiagnostics stopwatch 诊断 | 只是测耗时,不是修复,用户明确说"卡就是 mod,不想靠诊断拖" |
+| 优化 `DynamicPatch.Reconcile()` 调用频率 / mask 缓存 | 调度频率不是瓶颈。每个 Harmony patch **挂载本身** 产生开销,哪怕不被调用也有 detour bridge |
+| 动态扫场景 `FindObjectsOfType` 决定是否挂 patch | 用户实测"卡的要死",完全放弃 |
+
+---
+
+## 🆕 2026-05-01 session v2.7.80 — 目录整合 + UI 重排 + 快速操作 bug 修
+
+### 🏁 工作目录统一
+此前 `D:\TLD-Mods\TldHacks\`(dev)和 `D:\TLD-Mods\tld--2.55\TldHacks\src\`(repo)两处都有代码,**已分叉**。本轮以 **repo 为唯一真相**,`TldHacks.csproj` 从 dev 搬到 repo `src/`,dev 目录**已删除**。以后只在 `D:\TLD-Mods\tld--2.55\TldHacks\src\` 工作,编译产物在 `src/bin/Release/TldHacks.dll` 自动部署到 `Mods/`。
+
+### 本轮改动(都已合并到 repo)
+1. **ModSettings → CheatState 同步 5s → 0.5s**(`ModMain.cs:147`,`_frame % 300 → _frame % 30`)—— 修 ModSettings "Disable All" 后 5 秒内 cheat 还生效
+2. **HarvestableInteraction.Init/BeginHold 加 snapshot+restore 闭环**(`CheatsPatches.cs`)—— 修"秒搜刮 toggle off 后字段残留永久生效"bug。共享 `HarvestableSnaps.Snapshots` dict,BeginHold 在 toggle off 后首次触发时 restore 并删 entry;DynamicPatch cleanupGate 保持挂载直到 Snapshots.Count==0
+3. **Panel_BodyHarvest.Refresh snapshot+restore**(同上结构)—— 修"秒割肉 toggle off 后 m_HarvestTimeSeconds 残留"
+4. **`Cheats.DisableAllCheats()` + Menu 按钮 "★ 全关并立即同步"**(列 2 一次性操作下)—— 一键把所有 cheat bool 设 false + 立即 SyncCheatStateInline + DynamicPatch.Reconcile,**不用等 0.5s**
+5. **UI 重排**(Menu.cs):
+   - "瞄准" section 从列 1 搬到列 3,与"武器 / 射击"合并成 **"武器 & 瞄准"**,统一 `TOG_W` 宽度两列布局(4 行 toggle)
+   - "生火 100%" 从列 3 快速操作搬到 **列 2 环境/篝火**
+   - 快速操作重排:秒烤肉+秒搜刮 / 秒割肉+秒打碎 / 加工秒完成+爬绳×5(3 行 6 个)
+   - 技能 section **保留 repo 原有折叠**(用户偏好)
+
+### 未动 / 未解决
+- **FPS 悬案**:repo v2.7.79 加的 `DiagUnpatchAll` 诊断开关本轮**没再测**。用户说"关 TldHacks fps 高很多",但瓶颈在哪一条 patch 还没定位
+- **InventoryGridItem.Update**:repo v2.7.75 已**完全删除**该 patch(更激进,每帧 2400 bridge 消失),OnLateUpdate 兜底覆盖功能
+- **ItemPickerMain.OnUpdate**:repo 已通过 `AutoPickupGuard.ReconcileItemPickerPatch()` 动态挂/卸
+- **FreezingValueLock**(HANDOFF 提到 v2.7.74 加"冻结寒冷值")在 repo 代码里**没找到实现**,可能已回退
+
+---
+
+## 📋 全功能状态清单(v2.7.82)
+
+**图例**:✅ 能用  ⚠ 有边缘/限制  ❓ 未充分测  ❌ 坏/不实现/NYI
+
+### 列 1 玩家状态
+| 功能 | 状态 | 实现 / 备注 |
+|---|---|---|
+| 无敌模式 | ✅ | 11 affliction Prefix 过滤,DynamicPatch |
+| 无坠落伤害 | ✅ | Condition.AddHealth Prefix 过滤 DamageSource.Falling |
+| 免扭伤风险 | ✅ | SprainedWrist.SetForceNoSprainWrist + SprainedAnkleStart Prefix |
+| 免动物伤害 | ✅ | Condition.AddHealth Prefix 过滤 Wolf/Bear/Cougar |
+| 不会窒息 | ✅ | Condition.AddHealth Prefix 过滤 Suffocating |
+| 清除死亡惩罚 | ✅ | CheatDeathAffliction.Update Prefix → Cure() |
+| 始终温暖 / 无饥饿 / 无口渴 / 无疲劳 | ✅ | v2.7.62 修:Hunger=2450/Fatigue=10 合理低值,能吃喝睡 |
+| 速度倍率 0.5/1/2/5x | ✅ | Time.timeScale;默认 1.0 不写回 |
+| 技能(10 种单项 + 全部满级,折叠) | ✅ | SkillsManager.GetSkill(t).SetPoints(MaxPoints) |
+| 免费制作 / 快速制作 | ✅ | Panel_Crafting.CanCraftBlueprint / CraftingOperation.Update |
+| 忽略上锁 / 快速开容器 / 解锁保险箱 | ✅ | Lock.IsLocked + Panel_Container.Enable + SafeCracking.Update |
+
+### 列 2 世界 & 环境 & 商人
+| 功能 | 状态 | 实现 / 备注 |
+|---|---|---|
+| 一击必杀 | ✅ | BaseAi.ApplyDamage Prefix damage=9999 |
+| 动物冰冻 | ✅ | TickAnimalsFull + TickAnimalsCheap |
+| 动物逃跑 Stealth | ⚠ | v2.7.74 修 on→off 残留;DynamicPatch |
+| 真·隐身 | ✅ | BaseAi.CanSeeTarget/ScanForSmells + Start Postfix |
+| 生成动物(8 种) | ✅ | uConsole spawn_* 命令,合并到动物 section (v2.7.82) |
+| 冰面不破 | ✅ | IceCrackingTrigger.BreakIce/FallInWater DynamicPatch |
+| 停止刮风 | ✅ | Weather.DisableWindEffect/EnableWindEffect |
+| 篝火 300℃ | ✅ | HeatSource.Update Snapshots 闭环 |
+| 篝火永不熄灭 | ✅ | Fire.Update Snapshots 闭环 |
+| 全开地图 | ✅ | RegionManager.RevealAllRegions |
+| 天气切换 11 种 | ✅ | uConsole lock_weather N |
+| 时间跳跃 4 preset | ✅ | TimeOfDay.SetNormalizedTime |
+| 清除所有负面 | ✅ | 10 affliction Cure + 15 反射扩展 |
+| 解锁全部壮举 | ✅ | 反射 Feat_* m_IsUnlocked |
+| 恢复全部耐久 / 修复背包 / 修复手持 | ✅ | Cheats.RestoreDurability 遍历 |
+| **★ 全关并立即同步** | ✅ | Cheats.DisableAllCheats() 直接 Reconcile |
+| 交易清单 64 / 信任 / 秒交易 / 随时联系 | ❓ | Trader 4 toggle,要先进 Trader 对话才调方法 |
+| 商人 uConsole 按钮 | ❓ | 秒完成/刷新/信任+100/解锁对话/解锁交易/解锁改进(未测) |
+| 美洲狮首次立即激活 | ⚠ | v2.7.63 加 CougarManager.Update Prefix 兜底 |
+
+### 列 3 快速操作 & 物品 & 武器瞄准
+| 功能 | 状态 | 实现 / 备注 |
+|---|---|---|
+| 秒烤肉 | ✅ | CookingPotItem.Update elapsed-push;DynamicPatch |
+| 秒搜刮/采摘 | ✅ | HarvestableInteraction.Init/BeginHold + 共享 HarvestableSnaps 闭环 |
+| 秒割肉 | ✅ | Panel_BodyHarvest.Refresh snapshot 闭环 |
+| 秒打碎 | ✅ | v2.7.82 修 toggle OFF 后残留;UpdateDurationLabel snapshot + tick 兜底 restore |
+| 生火 100% | ✅ | FireManager.CalculateFireStartSuccess Postfix=1f (v2.7.82 挪到快速操作) |
+| 加工秒完成 | ✅ | EvolveItem.Update Prefix |
+| 爬绳 ×5 | ✅ | TickClimbRope + ClimbRopeSnaps 闭环 |
+| UI 堆叠 | ✅ | Panel_Inventory/Container RefreshTable + OnLateUpdate + Hover/Refresh 3 条 |
+| 物品不损耗 | ✅ | GearItem.Degrade/WearOut/DegradeOnUse DynamicPatch |
+| 衣物不潮湿 / 油灯不耗油 / 保温杯不失温 / 无限容量 / 装任意液体 | ✅ | 5 条 DynamicPatch |
+| ItemPicker 不捡自己丢的 | ✅ | ItemPickerMain.OnUpdate 动态挂(AutoPickupGuard.ReconcileItemPickerPatch) |
+| **武器 & 瞄准(v2.7.80 合并 UI)** | ⚠ | v2.7.83 加诊断日志 + 多重 fallback,需用户测 |
+| ∟ 无限弹药 | ✅ | GunItem.RemoveNextFromClip DynamicPatch |
+| ∟ 永不卡壳 | ✅ | m_ForceNoJam + TickGuns |
+| ∟ 无后坐力 | ⚠ | TickCamera 反射 RecoilSpring + TickGuns 零化 GunItem recoil 字段 |
+| ∟ 关闭瞄准景深 | ⚠ | CameraEffects.EnableCameraWeaponPostEffects DynamicPatch |
+| ∟ 瞄准无晃动 / 抖动 / 呼吸 / 不耗体力 | ⚠ | vp_FPSWeapon m_DisableAim* bool + TickCamera 零化 sway/shake/bob 字段 |
+| 一键武器 8 个(弓/步枪/左轮/斧/刀/箭×50/子弹×50×2) | ✅ | QuickActions.GiveWeapon / Cheats.SpawnItem |
+| Spawner 911 条(347 原 + 553 mod) | ✅ v2.7.74 | ItemDatabase + ItemDatabaseMod |
+| 传送 24 条精确坐标 | ✅ | CT 汇编块提取 |
+| 跨 DLC 区传送 | ⚠ | 需 FastTravel.dll 先去一趟,写 TldHacks_Transitions.txt |
+
+### 未实现(有 Settings 字段但无 patch)
+- **QuickFishing**(钓鱼 100%):字段存在,未查 Fishing 类,不在菜单展示
+- **CureFrostbite**(治愈永久冻伤):字段存在,未 patch
+- **InfiniteContainer**(容器无限容量):Container 无 m_Capacity 字段,待反编译
+
+### 已知核心 bug(优先级排序)
+1. **FPS 卡**(禁 TldHacks 后 fps 明显高)—— 真瓶颈未定位,**v2.7.79 的 DiagUnpatchAll 诊断开关没测**。[测试流程见下方 v2.7.79 段]
+2. **T1 背包 hover 堆叠显示变 1**(见旧段)
+
+---
+
+## 🆕 2026-05-01 晚会话 v2.7.79 —— FPS 悬案诊断开关(用户重启电脑前交接)
+
+### 🔴 最重要 —— 用户回来第一件事
+
+**FPS 问题仍未解决**。本轮用户反馈"还是有点卡",排除了 fixedDeltaTime/targetFrameRate/vSync pacing、PerfDiagnostics、动态扫场景等方向。用户做过关键测试:**TldHacks 开启 + 所有 toggle 关 → 仍卡**。证明 **静态挂载的 `[HarmonyPatch]` attribute 本身**(不是 tick / runtime 代码)就是瓶颈。
+
+本轮最后加了一个**决定性诊断开关 `DiagUnpatchAll`**,用户还没测。**回来第一件事**:
+
+1. 进游戏 → **MODS → TldHacks → Diagnostic / 诊断** section 最顶
+2. 勾 **`Emergency: Unpatch All Harmony(卸载所有 patch)`**
+3. **完全退游戏**(让 ModSettings 存盘)
+4. **重启游戏**进同一存档
+5. `MelonLoader/Latest.log` 验证有 `[DIAG] DiagUnpatchAll = ON → TldHacks 所有 Harmony patch 已卸载`
+
+**结果分岔**:
+
+| 结果 | 结论 | 下一步 |
+|---|---|---|
+| 开关 ON 仍卡 | **100% 不是 TldHacks**。是整合包其他 mod / 游戏引擎本身 | 禁 UniversalTweaks / Sprainkle / SonicMode 等有大量 patch 的 mod 逐一排除;DarkerNights 在 2.55 卡启动(memory 有记录);最后考虑 GfxBoost fixedDt 路径 |
+| 开关 ON **不卡** | **100% 是 patch 总数问题** | 把剩余 26 个静态 `[HarmonyPatch]` attribute **全部**迁 DynamicPatch,按 toggle 挂卸。清单见下 |
+
+### 📋 待迁 26 个静态 [HarmonyPatch](如果诊断证明是 patch 总数问题)
+
+grep 源:`grep -rn "^\[HarmonyPatch\(" src/` 截止 v2.7.79。
+
+**Cheats.cs(7 个)** —— 全是 affliction Start 事件,低频但常驻 bridge:
+- `PlayerManager.MaybeFlushPlayerDamage` → GodMode / NoFallDamage / ImmuneAnimalDamage
+- `Hypothermia.HypothermiaStart` → GodMode / AlwaysWarm
+- `SprainedWrist.SprainedWristStart` → GodMode / NoSprainRisk
+- `SprainedAnkle.SprainedAnkleStart` → GodMode / NoSprainRisk
+- `BloodLoss.BloodLossStart` / `BloodLossStartOverrideArea` → GodMode / ImmuneAnimalDamage
+- `Infection.InfectionStart` → GodMode
+
+**CheatsPatches.cs(11 个)**:
+- `Panel_Repair.StartRepair` → QuickAction
+- `CameraFade.FadeOut/FadeIn/FadeTo/Fade(5)` 4 个 → QuickAction / QuickBreakDown / QuickCraft(FadeSuppressionWindow 控制)
+- `BaseAi.ApplyDamage` → InstantKillAnimals
+- `Panel_Crafting.CanCraftSelectedBlueprint` / `CanCraftBlueprint` → FreeCraft
+- `BaseAi.Start` → TrueInvisible(属性同步)
+- `BaseAi.OnDisable` → **❗不要迁** —— BaseAiRegistry HashSet 清理,是稳定性基础设施,防 stale wrapper AccessViolation
+- `CougarManager.UpdateWaitingForArrival` → CougarInstantActivate
+
+**AutoPickupGuard.cs(3 个)** → BlockAutoPickupOwnDrops:
+- `GearItem.Drop(int,bool,bool,bool)` / `PlayerManager.Drop(GameObject,bool)` / `PlayerManager.ProcessPickupItemInteraction`
+
+**Stacking.cs(5 个)** —— ⚠ 默认 ON,迁了也永远挂着,**意义有限**:
+- `Panel_Inventory.RefreshTable` / `Panel_Container.RefreshTables` / `InventoryGridItem.RefreshDataItem` / `Panel_Container.HoverItem` / `InventoryGridItem.Refresh`
+- 如果要省,要让 Stacking 也能按需禁(用户可能不愿意,Stacking 是默认功能)
+
+**可迁 20 个(Stacking 5 + BaseAi.OnDisable 1 不迁,其余 20)**。
+
+### v2.7.76 → v2.7.79 其他改动回顾
+
+- **v2.7.76(用户/linter 改):** 尝试加 `FixFramePacing` / `FixedUpdateRate` / `UnlockRenderFps` / `PerfDiagnostics` 等 Unity pacing 修复 —— **实测无效,用户明确说都是死路**,v2.7.77-78 期间删干净
+- **v2.7.77:** PerfDiagnostics / PerfWindow stopwatch 删
+- **v2.7.78 (之前迭代):** Condition.AddHealth 3 个重载 + DamageFilter 迁 DynamicPatch;BaseAi.CanSeeTarget/ScanForSmells 强化为 Reconcile mask 缓存 —— 也证明 Reconcile 调度频率不是瓶颈
+- **v2.7.79(本轮):**
+  - **删 `FreezeColdValue` toggle** —— 用户确认和 `AlwaysWarm` 冲突(都锁 `Freezing.m_CurrentFreezing`),UI 合并
+  - **加 `DiagUnpatchAll` 诊断开关** —— 启动时 `HarmonyInstance.UnpatchSelf()` + skip `Reconcile`,所有 tick return
+
+### 改动文件(未 commit)
+
+```
+src/Settings.cs       [改] 删 FreezeColdValue;加 DiagUnpatchAll
+src/Cheats.cs         [改] 删 FreezeColdValue / _frozenColdSnapshot 字段
+src/CheatsPatches.cs  [改] TickStatus 里删 FreezeColdValue 分支
+src/Menu.cs           [改] 温饱 section 删第 3 行 fcv toggle
+src/ModMain.cs        [改] OnInitializeMelon 加 DiagUnpatchAll 分支(UnpatchSelf + skip Reconcile);
+                            OnUpdate/OnLateUpdate/OnGUI 都判断 DiagUnpatchAll
+                            版本号 2.7.78 → 2.7.79
+src/HANDOFF.md        [改] 本段
+```
+
+编译 0 error,DLL 已自动部署到 `D:/Steam/steamapps/common/TheLongDark/Mods/TldHacks.dll`。
+
+### ⚠ 已确认无效的方向(别再试)
+
+| 尝试过 | 为什么无效 |
+|---|---|
+| `Application.targetFrameRate` / `QualitySettings.vSyncCount` / `Time.fixedDeltaTime` 强推 150Hz | 用户实测体感无变化,不是 Unity pacing 问题(v2.7.76 尝试,v2.7.77 删) |
+| PerfDiagnostics stopwatch 诊断 | 只是测耗时,不是修复,用户明确说"卡就是 mod,不想靠诊断拖" |
+| 优化 `DynamicPatch.Reconcile()` 调用频率 / mask 缓存 | 调度频率不是瓶颈。每个 Harmony patch **挂载本身** 产生开销,哪怕不被调用也有 detour bridge |
+| 动态扫场景 `FindObjectsOfType` 决定是否挂 patch | 用户实测"卡的要死",完全放弃 |
+| 按"主力 vs 冗余"分批迁 DynamicPatch | 做了几批,DamageFilter / CanSee / Smell 等都迁了,但用户仍卡 → 没迁完的静态 patch 仍是凶手 |
+
+### 🧪 保留不动的稳定性 patch(别迁走)
+
+- `BaseAi.OnDisable` —— 清 BaseAiRegistry HashSet,防跨场景 stale wrapper AccessViolation(v2.7.29 修的,血泪教训)
+- `CameraFade.Fade*` —— 防黑屏兜底,如果迁走可能留黑屏(但 FadeSuppressionWindow 本身是门闸,迁后逻辑需要仔细测)
+- `PlayerManager.MaybeFlushPlayerDamage` —— 伤害过滤总闸,如果迁走要确认没漏路径
+
+---
+
+## 🆕 2026-05-01 下午会话 v2.7.75 —— FPS 重大优化 + 英文兼容 + Toast 翻译(未 commit / FPS 未最终验证)
+
+主题:用户反馈"启动就卡",确认是 TldHacks 造成(A/B 禁用 dll 后不卡)。套用 v2.7.18 历史经验 —— **每帧每实例 Harmony bridge = 主要 FPS 杀手**。
+
+**结尾补完**:用户说"OK 把翻译也做完吧",补完了 Cheats.cs / CheatsExtra.cs 里 `LastActionLog` / toast 消息的英文翻译。
+
+### 🔥 性能核心:拆"每帧 bridge"三板斧
+
+| # | 做了什么 | 原因 | 数字 |
+|---|---|---|---|
+| 1 | **删 `Patch_InventoryGridItem_Update` Postfix**(`Stacking.cs:302`) | 40 cell × 60fps = **2400 次/秒 bridge**,早已被 v2.7.60 early-out 压住但 bridge 本身就是开销。OnLateUpdate 已每帧 reapply SeenItems,Update Postfix **功能冗余** | -2400 bridge/s |
+| 2 | **删 5 个 `GunItem` getter patch**(GetSwayIncreasePerSecond / GetRecoilPitch / GetRecoilYaw / GetCurrentStaminaPercent / CanStartAiming) | v2.7.0 已定调:主力是 `TickCamera` 的 `m_DisableAim*` 字段 + `m_RecoilSpring` 重置,getter 只是 "belt-n-suspenders" fallback。保留 `RemoveNextFromClip`(InfiniteAmmo 核心) | 启动 -5 bridge |
+| 3 | **新 `DynamicPatch.cs`** + 5 个 Update patch 改按 toggle 挂卸 | Fire.Update / HeatSource.Update / EvolveItem.Update / BaseAi.CanSeeTarget / BaseAi.ScanForSmells。`[HarmonyPatch]` attribute 全部去掉,ModMain 每 30 帧(0.5s)调 `DynamicPatch.Reconcile()`。Fire/HeatSource 有 snapshot cleanup 走 `SyncWithCleanup`(toggle off 等 snapshots 空了才 Unpatch) | toggle 关时 **0 bridge**,toggle 开时正常 |
+
+**总账**:静态 Harmony patch 54 → 43;其中 5 个改为动态按需;最重的"每帧每 cell"bridge 杀手 0 个。
+
+### 🌐 英文兼容(独立功能)
+
+- 新 `I18n.cs`:`IsEnglish` 按 `Settings.LanguageMode`(Auto/中文/English);Auto 用 `CultureInfo.CurrentUICulture.Name.StartsWith("zh")` 判断;非 zh → English。
+- `Settings.cs` 加 `LanguageMode` int 字段 + `[Choice("Auto", "中文 / Chinese", "English")]`。
+- `Menu.cs` 全部 UI 包 `I18n.T("中文", "English")`:Tabs / Section / Toggle label / Button / 动态 `$"..."` 都过了。HourLabels / WeatherLabels / Tabs 三个 static 数组改成 `Zh/En` 两份 + property 动态选。
+- 英文宽度缩写保栅格不变:`" 无敌模式"` → `" God Mode"`,`" 瞄准不耗体力"` → `" No Aim Stamina"`,超宽用缩写如 `" Clr Death Pen."`。
+- ✅ Toast / LastActionLog 翻译补完(2026-05-01 下午收尾):
+  - `Cheats.cs` —— 刷物品 / 修复 / 一键满技能 / 清负面 / 天气 / 全地图揭示 / 秒杀动物 / 温度锁定 等 ~40 条状态栏消息
+  - `CheatsExtra.cs` —— 传送(同区/跨区/就绪)、技能满级、壮举解锁、修复背包(ok/total/fail)、蓝图解锁、设温度、UnlockAllBlueprints。
+  - 模式:`I18n.IsEnglish ? "English" : "中文"` 三元。
+  - 未动:`affliction 清单`(15+ 中文 affliction 内部名)改动太大,保留;Latest.log 调试输出(`[XXX] ...`)保留中文诊断。
+
+### Settings 属性的限制
+
+`[Name]` / `[Section]` / `[Description]` 是 C# attribute 参数,**必须编译期常量**,不能用 `I18n.T()`。当前保留 v2.7.0 以来的 `English(中文)` 双语格式不动。
+
+### 已改 / 新文件
+
+| 文件 | 动作 |
+|---|---|
+| `I18n.cs` | **新建** 40 行 |
+| `DynamicPatch.cs` | **新建** 90 行 |
+| `Settings.cs` | 加 LanguageMode(1 个字段 + Choice) |
+| `Menu.cs` | 80+ 条字符串包 I18n.T;3 个 static 数组拆双语;标题版本号 v2.7.75 |
+| `ModMain.cs` | 加 `DynamicPatch.Reconcile()` 0.5s tick;启动日志 v2.7.75 |
+| `CheatsPatches.cs` | 删 5 GunItem getter;5 个 Update patch 去 `[HarmonyPatch]` attribute(类保留,Prefix/Postfix 改 internal 给 AccessTools 找得到) |
+| `Stacking.cs` | 删 InventoryGridItem.Update Postfix(FPS 杀手);加 panel 未激活清空 dict 路径 |
+| `DynamicPatch.cs` | v2.7.75 二次扩:patch 数从 5 → 26(GearItem×3 / ClothingItem×2 / Lock×2 / Flask×3 / KeroseneLamp / BodyHarvest / CookingPot / CraftingOperation / SafeCracking / TimedHoldInteraction / CougarManager / Panel_BreakDown×2 / CheatDeathAffliction / GunItem.RemoveNextFromClip)都按 toggle 动态挂卸 |
+| `CheatsPatches.cs` | 去 18+ 个 `[HarmonyPatch]` attribute,private → internal(给 AccessTools.Method 找 Prefix/Postfix)|
+| `Cheats.cs` | ~30 条 toast/LastActionLog 翻译(I18n.IsEnglish 三元)|
+| `CheatsExtra.cs` | ~10 条 toast/Log 翻译(传送/技能/壮举/修复背包/BP/温度)|
+
+编译 0 error(6 warning),最新 DLL 已部署到 `D:/Steam/steamapps/common/TheLongDark/Mods/TldHacks.dll`。
+
+### ⚠ 温饱 toggle "关不掉" —— 不是 bug
+
+用户反馈"关温饱 toggle 仍激活",排查后确认:**`TickStatus` 里 `if (CheatState.NoHunger || CheatState.GodMode)` 的 GodMode 分支覆盖所有温饱值**(CheatsPatches.cs:1147-1190)—— GodMode 开着则温饱 toggle 无意义。用户确认"保持现状,GodMode 一键包含温饱"。
+如果以后想变 —— 3 选 1:① GodMode 只管 HP ② 现状 ③ GodMode 开时自动打开 4 个 toggle,关 GodMode 不动。
+
+### 🧪 下一轮要测的(⚠ FPS 至结束未确认改善,这是本次收尾状态)
+
+1. **FPS 是否质变** —— 用户 3 次反馈"还是卡",最后一次是我全面 DynamicPatch 化 26 个高频 patch **之后**(最新 DLL)还没测。
+   - 如果**还卡** → 不是 bridge 瓶颈,怀疑方向:
+     - 其他 mod 冲突(117-mod 整合包的其他 Harmony patch 堆积,参考 memory `feedback_tldhacks_modpack_issues`)
+     - Unity physics fixedDt 25Hz(参考 GfxBoost 方案,memory 里有)
+     - `DiagPauseRuntime` ON 仍卡 = 不是 runtime tick 问题 = 是 **Harmony patch 挂载本身**(那就继续砍 patch)
+   - 如果**不卡了** → 保留当前 DynamicPatch 架构,升版本号 v2.7.75 正式发布。
+2. **DynamicPatch 挂卸 log** —— toggle 开关 FireNeverDie / FireTemp300 / QuickEvolve / TrueInvisible / Stealth / InfiniteDurability / NoWetClothes / IgnoreLock / UnlockSafes / LampFuelNoDrain / InfiniteAmmo / Flask 三件 / QuickCraft / QuickCook / QuickSearch / QuickHarvest / QuickBreakDown / CougarInstantActivate / ClearDeathPenalty 时,Player.log 应有 `[DynPatch] ON/OFF TldHacks.<method>` 行。如果没 log 说明 Reconcile 没跑。
+3. **Stacking hover 闪 1 (T1)** 是否回归 —— 删 InventoryGridItem.Update Postfix 依赖 OnLateUpdate 兜底。如果 hover 闪 1 回来 → 不要加回 Update patch,用 `InventoryGridItem.Refresh` Postfix 或 coroutine。
+4. **英文切换** —— ModSettings UI 里 LanguageMode 选 English 或 Auto + 系统非中文,Menu 文字是否切换。toast 消息(如"已刷 ×1 xxx")是否跟切换。
+5. **GodMode 温饱行为** —— GodMode 关 + 温饱 toggle 关,hunger/thirst 应该变化(已确认是 design,不改)。
+
+### 未做(后续按需)
+
+- ~~Level B DynamicPatch(GearItem/ClothingItem/Flask/Lamp)~~ → **v2.7.75 已全改**,26 个 patch 全部 DynamicPatch
+- ~~toast 消息英文翻译~~ → **v2.7.75 已补完**
+- Fire/HeatSource/EvolveItem 从 Update patch 升级为 `OnEnable` / `Awake` 事件 patch(真·一次性设字段,比 Update 高频更省),当前是 DynamicPatch Update(toggle on 时仍每帧跑)—— 如果 FPS 验证还有问题可走这条
+- `affliction` 名称英文化(~15 条中文 affliction 内部映射,改动面大)
+- Latest.log 里 `[DynPatch] ON ...` 诊断 log 改成只在 DEBUG 编译打,release 编译去掉(减少 Player.log 噪音)
+
+### 本次修改总览(文件 diff)
+
+```
+src/I18n.cs           [新建]
+src/DynamicPatch.cs   [新建]
+src/Settings.cs       [改] LanguageMode + DiagPauseRuntime
+src/Menu.cs           [改] 80+ I18n.T,3 个 static 数组拆双语,版本 v2.7.75
+src/ModMain.cs        [改] DynamicPatch.Reconcile 0.5s tick,DiagPauseRuntime gate
+src/CheatsPatches.cs  [改] 删 5 GunItem getter,18+ Update patch 去 [HarmonyPatch],private→internal
+src/Stacking.cs       [改] 删 InventoryGridItem.Update Postfix,panel 未激活清 dict
+src/Cheats.cs         [改] ~30 条 toast 翻译
+src/CheatsExtra.cs    [改] ~10 条 toast 翻译
+src/HANDOFF.md        [改] 本文档
+```
+
+未做 `git add` / `git commit`。当前编译产物 `TldHacks.dll` 已直接部署到游戏 `Mods/` 目录。
+
+---
+
 ## 🆕 2026-05-01 凌晨会话 v2.7.74(已 commit)
 
 继续 v2.7.73 工作树。新增/改动:

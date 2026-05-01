@@ -112,13 +112,15 @@ internal static class Teleport
 
             if (activeScene.name == w.Scene || string.IsNullOrEmpty(w.Scene))
             {
-                if (!hasExactCoord) { Log($"[TP] → {w.Label}:已在本区,无精确坐标不传送"); return; }
-                Log($"[TP] → {w.Label} (同区)");
+                if (!hasExactCoord) { Log(I18n.IsEnglish ? $"[TP] → {w.Label}: already in region, no exact coord" : $"[TP] → {w.Label}:已在本区,无精确坐标不传送"); return; }
+                Log(I18n.IsEnglish ? $"[TP] → {w.Label} (same region)" : $"[TP] → {w.Label} (同区)");
                 MovePlayerTo(w.Pos);
                 return;
             }
 
-            Log($"[TP] 跨场景 → {w.Label} ({w.Scene}),开始保存 + 加载...");
+            Log(I18n.IsEnglish
+                ? $"[TP] Cross-scene → {w.Label} ({w.Scene}), saving + loading..."
+                : $"[TP] 跨场景 → {w.Label} ({w.Scene}),开始保存 + 加载...");
 
             // 1) 存当前档 —— FastTravel 用的是 SaveGameSystem.SaveGame("autosave", currentSceneName) 有参版本
             //    反射先试 (string, string) 再 fallback 无参
@@ -166,9 +168,13 @@ internal static class Teleport
                 GameManager.m_SceneTransitionData = std;
 
                 if (snapTo == null)
-                    Log($"[TP.Std] ⚠ 无历史记录,fallback 用 scene 名当 save id — 首次去 Tale scene 可能丢物品");
+                    Log(I18n.IsEnglish
+                        ? $"[TP.Std] ⚠ No history, fallback to scene name as save id — first visit to Tale scene may lose items"
+                        : $"[TP.Std] ⚠ 无历史记录,fallback 用 scene 名当 save id — 首次去 Tale scene 可能丢物品");
                 else
-                    Log($"[TP.Std] 命中历史 transition (curId={std.m_SceneSaveFilenameCurrent}, nextId={std.m_SceneSaveFilenameNextLoad})");
+                    Log(I18n.IsEnglish
+                        ? $"[TP.Std] Matched history transition (curId={std.m_SceneSaveFilenameCurrent}, nextId={std.m_SceneSaveFilenameNextLoad})"
+                        : $"[TP.Std] 命中历史 transition (curId={std.m_SceneSaveFilenameCurrent}, nextId={std.m_SceneSaveFilenameNextLoad})");
             }
             catch (Exception ex) { Log($"[TP.Std] {ex.Message}"); }
 
@@ -220,11 +226,15 @@ internal static class Teleport
             _pendingWaypoint = null;
             if (target.Pos == Vector3.zero)
             {
-                Log($"[TP] 场景就绪,使用默认落点({target.Label})");
+                Log(I18n.IsEnglish
+                    ? $"[TP] Scene ready, using default landing ({target.Label})"
+                    : $"[TP] 场景就绪,使用默认落点({target.Label})");
                 return;
             }
             MovePlayerTo(target.Pos);
-            Log($"[TP] 场景就绪,TeleportPlayer → {target.Pos}");
+            Log(I18n.IsEnglish
+                ? $"[TP] Scene ready, TeleportPlayer → {target.Pos}"
+                : $"[TP] 场景就绪,TeleportPlayer → {target.Pos}");
         }
     }
 
@@ -287,7 +297,7 @@ internal static class Skills
     public static void SetAllMax()
     {
         foreach (var (_, t) in All) SetMax(t);
-        Log("[Skills] 所有技能满级");
+        Log(I18n.IsEnglish ? "[Skills] All skills maxed" : "[Skills] 所有技能满级");
     }
 
     private static void Log(string s) { CheatState.LastActionLog = s; ModMain.Log?.Msg(s); }
@@ -321,7 +331,7 @@ internal static class Feats
                     catch { }
                 }
             }
-            Log($"[Feats] 解锁 {n} 项壮举");
+            Log(I18n.IsEnglish ? $"[Feats] Unlocked {n} feats" : $"[Feats] 解锁 {n} 项壮举");
         }
         catch (Exception ex) { Log($"[Feats] {ex.Message}"); }
     }
@@ -384,9 +394,9 @@ internal static class QuickActions
         try
         {
             var inv = GameManager.m_Inventory;
-            if (inv == null) { CheatState.LastActionLog = "[修复背包] 没有背包?"; return; }
+            if (inv == null) { CheatState.LastActionLog = I18n.IsEnglish ? "[RepairBag] No inventory?" : "[修复背包] 没有背包?"; return; }
             var list = inv.m_Items;
-            if (list == null) { CheatState.LastActionLog = "[修复背包] m_Items=null"; return; }
+            if (list == null) { CheatState.LastActionLog = I18n.IsEnglish ? "[RepairBag] m_Items=null" : "[修复背包] m_Items=null"; return; }
             total = list.Count;
             for (int i = 0; i < total; i++)
             {
@@ -399,12 +409,16 @@ internal static class QuickActions
                 }
                 catch { fail++; }
             }
-            CheatState.LastActionLog = $"[修复背包] 成功 {ok} / 总 {total} (失败 {fail})";
+            CheatState.LastActionLog = I18n.IsEnglish
+                ? $"[RepairBag] ok {ok} / total {total} (failed {fail})"
+                : $"[修复背包] 成功 {ok} / 总 {total} (失败 {fail})";
             ModMain.Log?.Msg($"[Repair] ok={ok} fail={fail} total={total}");
         }
         catch (Exception ex)
         {
-            CheatState.LastActionLog = $"[修复背包异常] {ex.Message}";
+            CheatState.LastActionLog = I18n.IsEnglish
+                ? $"[RepairBag error] {ex.Message}"
+                : $"[修复背包异常] {ex.Message}";
             ModMain.Log?.Warning($"[Repair] {ex.Message}");
         }
     }
@@ -439,7 +453,7 @@ internal static class QuickActions
                 }
                 catch { }
             }
-            Log($"[BP] 处理 {n} 个蓝图");
+            Log(I18n.IsEnglish ? $"[BP] Processed {n} blueprints" : $"[BP] 处理 {n} 个蓝图");
         }
         catch (Exception ex) { Log($"[BP] {ex.Message}"); }
     }

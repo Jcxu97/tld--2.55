@@ -24,6 +24,22 @@ internal static class Stacking
             if (StackState.Counts.Count == 0) return;
             if (StackState.SeenItems.Count == 0) return;
 
+            // v2.7.75 关键性能:panel 都关着时 SeenItems 是 stale(RefreshTable Clear 但 Close 不 Clear),
+            //   每帧遍历 40+ cell × 3 次 IL2Cpp bridge(Pointer / m_GearItem / Reapply)= 每秒 ~7000 bridge。
+            //   先 check 两个 panel 的 isActiveAndEnabled,都关了就 Clear + return。
+            var inv = StackState.LastInventoryPanel;
+            var con = StackState.LastContainerPanel;
+            bool active = false;
+            try { if (inv != null && inv.isActiveAndEnabled) active = true; } catch { }
+            if (!active) { try { if (con != null && con.isActiveAndEnabled) active = true; } catch { } }
+            if (!active)
+            {
+                StackState.Counts.Clear();
+                StackState.CountsByGi.Clear();
+                StackState.SeenItems.Clear();
+                return;
+            }
+
             System.Collections.Generic.List<System.IntPtr> stale = null;
 
             foreach (var kv in StackState.SeenItems)
@@ -296,26 +312,10 @@ internal static class Patch_Panel_Container_HoverItem
 
 // Panel_Inventory 没有 HoverItem 方法,只 patch Panel_Container + InventoryGridItem.Update
 
-// v2.7.35:InventoryGridItem.Update Postfix 无条件 reapply(去掉 m_IsInHoverState 限制)
-//   hover 闪 1 的真根因是 m_UnitLabel 覆盖显示,只在 hover 时跑不够(必须每帧拍平)
-//   panel 关时 cell disable 不触发 Update,只在 panel 开时有开销
-[HarmonyPatch(typeof(InventoryGridItem), "Update")]
-internal static class Patch_InventoryGridItem_Update
-{
-    private static void Postfix(InventoryGridItem __instance)
-    {
-        // v2.7.60 性能:SeenItems 空(通常 panel 关)时快速 early-out —— 避免 null check + Pointer getter
-        if (StackState.SeenItems.Count == 0) return;
-        if (ModMain.Settings != null && !ModMain.Settings.StackingEnabled) return;
-        try
-        {
-            if (__instance == null) return;
-            if (StackState.SeenItems.TryGetValue(__instance.Pointer, out var seen))
-                LabelFix.Reapply(__instance, seen.di);
-        }
-        catch { }
-    }
-}
+// v2.7.75 删 InventoryGridItem.Update Postfix —— 每帧每 cell × 40 cell × 60fps = 2400 次/秒
+// Harmony bridge 是主要 FPS 杀手(和 v2.7.18 删 ClothingItem.Update 同理)。
+// OnLateUpdate 已经每帧 reapply SeenItems 里所有 cell,功能覆盖。
+// 如果 hover 闪 1 bug 回归,看 Stacking.OnLateUpdate 是否正常触发。
 
 // Refresh(GearItem, int) 是另一个 cell-bind 路径(跳过 dataItem 直接绑 gi)——
 // 一些 panel (slot / equipment) 走这条。我们从 CountsByGi 拿 count。

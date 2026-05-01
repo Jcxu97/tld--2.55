@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.64", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.79", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -28,9 +28,25 @@ public class ModMain : MelonMod
 
             // 把 Settings 持久值同步到 CheatState
             SyncStateFromSettings();
+
+            // v2.7.79 DiagUnpatchAll:启动时卸掉 MelonLoader 自动挂的所有 [HarmonyPatch] attribute,
+            //   跳过 DynamicPatch.Reconcile() → TldHacks 全程 0 patch 挂载
+            if (Settings.DiagUnpatchAll)
+            {
+                try { HarmonyInstance.UnpatchSelf(); }
+                catch (Exception ex) { Log.Warning($"[DiagUnpatch] UnpatchSelf: {ex.Message}"); }
+                // DynamicPatch 自己的 instance 也清一下,防上次残留(正常启动不会残留,保险起见)
+                try { new HarmonyLib.Harmony("TldHacks.Dynamic").UnpatchSelf(); } catch { }
+                Log.Msg("[DIAG] DiagUnpatchAll = ON → TldHacks 所有 Harmony patch 已卸载,Reconcile / 所有 tick 已停。重启游戏仍会重新应用此开关。");
+            }
+            else
+            {
+                DynamicPatch.Reconcile();
+            }
+
             // v2.7.64 加载 scene transition 历史记录
             TransitionRecorder.Init();
-            Log.Msg($"TldHacks v2.7.74 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
+            Log.Msg($"TldHacks v2.7.83 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -40,7 +56,6 @@ public class ModMain : MelonMod
         CheatState.GodMode = Settings.GodMode;
         CheatState.NoFallDamage = Settings.NoFallDamage;
         CheatState.AlwaysWarm = Settings.AlwaysWarm;
-        CheatState.FreezeColdValue = Settings.FreezeColdValue;
         CheatState.NoHunger = Settings.NoHunger;
         CheatState.NoThirst = Settings.NoThirst;
         CheatState.NoFatigue = Settings.NoFatigue;
@@ -103,6 +118,8 @@ public class ModMain : MelonMod
         try
         {
             if (Settings == null) return;
+            if (Settings.DiagPauseRuntime) return;  // v2.7.75 诊断开关
+            if (Settings.DiagUnpatchAll) return;    // v2.7.79 UnpatchAll 模式下也停掉 tick / Reconcile
 
             // Menu toggle
             if (Settings.MenuHotkey != KeyCode.None && Input.GetKeyDown(Settings.MenuHotkey))
@@ -125,9 +142,15 @@ public class ModMain : MelonMod
             // 快速采集延迟完成 (QuickCraft v2.7.42 改走 IncrementProgress Prefix,不需要 Tick)
             QuickHarvestRunner.Tick();
 
-            // v2.7.29:每 5s 同步 ModSettings → CheatState,让 ModSettings UI 改动能生效
-            // (之前只 OnInitializeMelon 调一次,玩家改 ModSettings 要重启才应用)
-            if (_frame > 0 && (_frame % 300) == 150) SyncStateFromSettings();
+            // v2.7.80 同步频率 5s → 0.5s(300→30 帧)—— 修 "ModSettings Disable All 后 5 秒内还生效" 根因
+            //   SyncStateFromSettings 只是 ~50 个 bool copy,成本可忽略
+            if (_frame > 0 && (_frame % 30) == 15)
+            {
+                SyncStateFromSettings();
+            }
+
+            // v2.7.75 稳定节奏:动态 patch 只在固定低频点 reconcile。
+            if ((_frame % 30) == 25) DynamicPatch.Reconcile();
 
             // (InfiniteCarry 已去除,由其他 mod 覆盖)
 
@@ -163,8 +186,8 @@ public class ModMain : MelonMod
             // One-shot 类:状态变化时重设即可,低频 OK
             if ((_frame % 180) == 90) { ExtraOneShot.TickStopWind(); ExtraOneShot.TickSprainRisk(); }
 
-            // 摄像机 / 武器 aim:120 帧 phase 20,错开上面那堆
-            if ((_frame % 120) == 20) CheatsTick.TickCamera();
+            // 摄像机 / 武器 aim:v2.7.83 从 120 帧降到 30 帧(0.5s),更灵敏
+            if ((_frame % 30) == 20) CheatsTick.TickCamera();
 
             // 玩家位置:菜单打开时 ~1 秒刷一次
             if (Menu.Open && ++_posTick >= 60)
@@ -181,11 +204,13 @@ public class ModMain : MelonMod
 
     public override void OnLateUpdate()
     {
+        if (Settings != null && (Settings.DiagPauseRuntime || Settings.DiagUnpatchAll)) return;
         Stacking.OnLateUpdate();
     }
 
     public override void OnGUI()
     {
+        if (Settings != null && (Settings.DiagPauseRuntime || Settings.DiagUnpatchAll)) return;
         Menu.Draw();
     }
 
@@ -199,6 +224,9 @@ public class ModMain : MelonMod
         // v2.7.64 清 Fire/HeatSource snapshot dicts,防 long session 累积旧场景的 stale IntPtr
         try { Patch_Fire_Update_NeverDie.Snapshots.Clear(); } catch { }
         try { Patch_HeatSource_Update.Snapshots.Clear(); } catch { }
+        // v2.7.80 快速采集/割肉 snapshot 闭环 —— 实例随场景 GC,字段污染自然消失
+        try { HarvestableSnaps.Snapshots.Clear(); } catch { }
+        try { Patch_Harvest_Refresh_Quick.Snapshots.Clear(); } catch { }
         // v2.7.64 清 AutoPickupGuard 的 DroppedAt dict —— 跨 scene 后地上 gear 会重新 spawn,旧 Pointer 失效
         try { AutoPickupGuard.DroppedAt.Clear(); } catch { }
         // v2.7.64 清 BreakDown snapshot —— 跨 scene 后 BreakDown 组件重新 spawn,stale ptr

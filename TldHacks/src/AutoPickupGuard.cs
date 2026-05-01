@@ -13,6 +13,10 @@ namespace TldHacks;
 //        PlayerManager.ProcessPickupItemInteraction Prefix 在 InAutoPickup + dict 命中时 skip
 internal static class AutoPickupGuard
 {
+    private const string HARMONY_ID = "TldHacks.AutoPickupGuard.Dynamic";
+    private static HarmonyLib.Harmony _h;
+    private static bool _itemPickerPatched;
+
     public static readonly Dictionary<IntPtr, float> DroppedAt = new Dictionary<IntPtr, float>();
     public static bool InAutoPickup;
 
@@ -21,6 +25,38 @@ internal static class AutoPickupGuard
     internal static bool _logDropPM;
     internal static bool _logOnUpdate;
     internal static bool _logSkip;
+
+    private static HarmonyLib.Harmony H { get { if (_h == null) _h = new HarmonyLib.Harmony(HARMONY_ID); return _h; } }
+
+    public static void ReconcileItemPickerPatch()
+    {
+        try
+        {
+            bool wanted = CheatState.BlockAutoPickupOwnDrops;
+            if (wanted == _itemPickerPatched) return;
+
+            var target = Patch_ItemPicker_OnUpdate_Guard.ResolveTargetMethod();
+            if (target == null) return;
+
+            if (wanted)
+            {
+                H.Patch(target,
+                    new HarmonyMethod(AccessTools.Method(typeof(Patch_ItemPicker_OnUpdate_Guard), "Prefix")),
+                    new HarmonyMethod(AccessTools.Method(typeof(Patch_ItemPicker_OnUpdate_Guard), "Postfix")));
+                _itemPickerPatched = true;
+                ModMain.Log?.Msg("[AutoPickupGuard] ON ItemPickerMain.OnUpdate");
+            }
+            else
+            {
+                H.Unpatch(target, HarmonyPatchType.All, HARMONY_ID);
+                _itemPickerPatched = false;
+                InAutoPickup = false;
+                DroppedAt.Clear();
+                ModMain.Log?.Msg("[AutoPickupGuard] OFF ItemPickerMain.OnUpdate");
+            }
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[AutoPickupGuard.Dynamic] {ex.Message}"); }
+    }
 }
 
 // ——— 1) GearItem.Drop(int, bool, bool, bool) → GearItem ———
@@ -31,6 +67,7 @@ internal static class Patch_GearItem_Drop_Track
     {
         try
         {
+            if (!CheatState.BlockAutoPickupOwnDrops) return;
             float t = Time.time;
             if (__instance != null) AutoPickupGuard.DroppedAt[__instance.Pointer] = t;
             if (__result != null)   AutoPickupGuard.DroppedAt[__result.Pointer]   = t;
@@ -52,6 +89,7 @@ internal static class Patch_PlayerManager_Drop_Track
     {
         try
         {
+            if (!CheatState.BlockAutoPickupOwnDrops) return;
             if (go == null) return;
             var gi = go.GetComponent<GearItem>();
             if (gi == null) return;
@@ -67,13 +105,12 @@ internal static class Patch_PlayerManager_Drop_Track
 }
 
 // ——— 3) 动态解析 ItemPickerMain.OnUpdate,置 InAutoPickup flag ———
-[HarmonyPatch]
 internal static class Patch_ItemPicker_OnUpdate_Guard
 {
     private static bool _resolved;
     private static MethodBase _target;
 
-    private static MethodBase TargetMethod()
+    internal static MethodBase ResolveTargetMethod()
     {
         if (_resolved) return _target;
         _resolved = true;
