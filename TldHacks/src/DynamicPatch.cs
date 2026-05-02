@@ -22,26 +22,27 @@ internal static class DynamicPatch
     private static readonly Type[] TwoCookingFloats = { typeof(float), typeof(float) };
     private static readonly Type[] PanelBreakDownEnableArgs = { typeof(bool) };
     private static readonly Type[] ContainerEnableArgs = { typeof(bool), typeof(bool), typeof(Il2CppSystem.Action) };
+    private static readonly Type[] FloatFatigueFlags = { typeof(float), typeof(FatigueFlags) };
 
     private static HarmonyLib.Harmony H { get { if (_h == null) _h = new HarmonyLib.Harmony(HARMONY_ID); return _h; } }
 
     private static readonly PatchSpec[] Specs =
     {
         Spec(typeof(Condition), "AddHealth", typeof(Patch_Condition_AddHealth_2),
-            "Prefix", null, () => CheatState.GodMode || CheatState.TrueInvisible || CheatState.NoFallDamage || CheatState.NoSuffocating || CheatState.ImmuneAnimalDamage,
+            "Prefix", null, () => CheatState.GodMode || CheatState.TrueInvisible || CheatState.NoFallDamage || CheatState.NoSuffocating || CheatState.ImmuneAnimalDamage || CheatState.NoFrostbiteRisk,
             null, HealthDamageArgs),
         Spec(typeof(Condition), "AddHealth", typeof(Patch_Condition_AddHealth_3),
-            "Prefix", null, () => CheatState.GodMode || CheatState.TrueInvisible || CheatState.NoFallDamage || CheatState.NoSuffocating || CheatState.ImmuneAnimalDamage,
+            "Prefix", null, () => CheatState.GodMode || CheatState.TrueInvisible || CheatState.NoFallDamage || CheatState.NoSuffocating || CheatState.ImmuneAnimalDamage || CheatState.NoFrostbiteRisk,
             null, HealthDamageBoolArgs),
         Spec(typeof(Condition), "AddHealthWithNoHudNotification", typeof(Patch_Condition_AddHealthNoHud),
-            "Prefix", null, () => CheatState.GodMode || CheatState.TrueInvisible || CheatState.NoFallDamage || CheatState.NoSuffocating || CheatState.ImmuneAnimalDamage,
+            "Prefix", null, () => CheatState.GodMode || CheatState.TrueInvisible || CheatState.NoFallDamage || CheatState.NoSuffocating || CheatState.ImmuneAnimalDamage || CheatState.NoFrostbiteRisk,
             null, HealthDamageArgs),
 
         Spec(typeof(EvolveItem), "Update", typeof(Patch_EvolveItem_Update),
             "Prefix", null, () => CheatState.QuickEvolve),
 
         Spec(typeof(BaseAi), "CanSeeTarget", typeof(Patch_BaseAi_CanSeeTarget),
-            null, "Postfix", () => CheatState.Stealth || CheatState.TrueInvisible),
+            "Prefix", null, () => CheatState.Stealth || CheatState.TrueInvisible),
         Spec(typeof(BaseAi), "ScanForSmells", typeof(Patch_BaseAi_ScanForSmells),
             "Prefix", null, () => CheatState.Stealth || CheatState.TrueInvisible),
 
@@ -160,8 +161,7 @@ internal static class DynamicPatch
             "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f || CheatState.NoAimSway),
         Spec(typeof(vp_FPSWeapon), "Update", typeof(Patch_FPSWeapon_SteadyAim),
             "Prefix", "Postfix", () => CheatState.NoAimSway || CheatState.SuperAccuracy),
-        Spec(typeof(vp_FPSWeapon), "LateUpdate", typeof(Patch_FPSWeapon_SteadyAim_Late),
-            "Prefix", "Postfix", () => CheatState.NoAimSway || CheatState.SuperAccuracy),
+        // vp_FPSWeapon.LateUpdate 在 IL2CPP 中不存在,已移除
 
         // v2.7.86 新增功能
         Spec(typeof(InputManager), "CanStartFireIndoors", typeof(Patch_FireAnywhere),
@@ -174,6 +174,20 @@ internal static class DynamicPatch
             null, "Postfix", () => CheatState.TechBackpack),
         Spec(typeof(TorchItem), "Update", typeof(Patch_TorchFullValue),
             "Prefix", null, () => CheatState.TorchFullValue),
+
+        // CT 复刻:无冻伤/饱饱/温度/疲劳
+        Spec(typeof(Frostbite), "DealFrostbiteDamageToLocation", typeof(Patch_Frostbite_DealDamage),
+            "Prefix", null, () => CheatState.NoFrostbiteRisk),
+        Spec(typeof(Frostbite), "DealFrostbiteDamageToRegion", typeof(Patch_Frostbite_DealDamage),
+            "Prefix", null, () => CheatState.NoFrostbiteRisk),
+        Spec(typeof(Frostbite), "FrostbiteStart", typeof(Patch_Frostbite_DealDamage),
+            "Prefix", null, () => CheatState.NoFrostbiteRisk),
+        Spec(typeof(WellFed), "Update", typeof(Patch_WellFed_Update),
+            "Prefix", null, () => CheatState.WellFedBuff),
+        Spec(typeof(PlayerManager), "FreezingBuffActive", typeof(Patch_PlayerManager_FreezingBuffActive),
+            null, "Postfix", () => CheatState.FreezingBuff),
+        Spec(typeof(PlayerManager), "FatigueBuffActive", typeof(Patch_PlayerManager_FatigueBuffActive),
+            null, "Postfix", () => CheatState.FatigueBuff),
     };
 
     public static void Reconcile()

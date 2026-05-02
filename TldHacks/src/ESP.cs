@@ -23,13 +23,15 @@ internal static class CheatStateESP
 internal static class AiCache
 {
     private static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<BaseAi> _cached;
-    private static int _frame = -1;
+    private static float _lastRefresh = -999f;
+    private const float RefreshInterval = 0.5f;
 
     public static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<BaseAi> Get()
     {
-        if (Time.frameCount != _frame)
+        float t = Time.time;
+        if (t - _lastRefresh >= RefreshInterval)
         {
-            _frame = Time.frameCount;
+            _lastRefresh = t;
             _cached = UnityEngine.Object.FindObjectsOfType<BaseAi>();
         }
         return _cached;
@@ -45,6 +47,7 @@ internal static class ESPOverlay
 
     public static void OnGUI()
     {
+        if (Event.current.type != EventType.Repaint) return;
         if (!CheatStateESP.ESP && !CheatStateESP.AutoAim && !CheatStateESP.MagicBullet) return;
         var cam = Camera.main;
         if (cam == null) return;
@@ -444,11 +447,15 @@ internal static class WeaponTuning
 internal static class MagicBulletSystem
 {
     private static BaseAi _previewTarget;
+    private static float _lastPreview = -999f;
     public static BaseAi PreviewTarget => _previewTarget;
 
     public static void UpdatePreview()
     {
         if (!CheatStateESP.MagicBullet) { _previewTarget = null; return; }
+        float t = Time.time;
+        if (t - _lastPreview < 0.25f) return;
+        _lastPreview = t;
         _previewTarget = AutoAimSystem.LockedTarget ?? FindNearest();
     }
 

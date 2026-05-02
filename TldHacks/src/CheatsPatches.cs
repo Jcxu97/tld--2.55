@@ -44,6 +44,8 @@ internal static class DamageFilter
         //   之前只在 GodMode 时拦全部,Now 每个 toggle 拦自己的源,减少 TickStatus "先掉再补"的 HUD 闪烁
         if (CheatState.AlwaysWarm && (cause == DamageSource.Freezing || cause == DamageSource.Hypothermia || cause == DamageSource.FrostBite))
             return true;
+        if (CheatState.NoFrostbiteRisk && cause == DamageSource.FrostBite)
+            return true;
         if (CheatState.NoHunger && cause == DamageSource.Starving) return true;
         if (CheatState.NoThirst && cause == DamageSource.Dehydrated) return true;
         if (CheatState.NoFatigue && cause == DamageSource.Exhausted) return true;
@@ -481,9 +483,10 @@ internal static class Patch_Craft_OnSuccess_ArmFade
 // v2.7.75 DynamicPatch: 去掉 [HarmonyPatch] attribute,由 DynamicPatch.Reconcile 按 toggle 挂卸
 internal static class Patch_BaseAi_CanSeeTarget
 {
-    internal static void Postfix(ref bool __result)
+    internal static bool Prefix(ref bool __result)
     {
-        if (CheatState.Stealth || CheatState.TrueInvisible) __result = false;
+        if (CheatState.Stealth || CheatState.TrueInvisible) { __result = false; return false; }
+        return true;
     }
 }
 
@@ -542,9 +545,14 @@ internal static class Patch_BaseAi_OnDisable_Unregister
 // v2.7.75 DynamicPatch: 去 [HarmonyPatch] attribute —— TLD 里锁查询高频(AI/物理/视线)
 internal static class Patch_Lock_IsLocked
 {
-    internal static void Postfix(ref bool __result)
+    internal static void Postfix(Lock __instance, ref bool __result)
     {
-        if (CheatState.IgnoreLock) __result = false;
+        if (CheatState.IgnoreLock)
+        {
+            __result = false;
+            // Actually unlock so the lock icon disappears (same as prying open)
+            try { __instance.m_LockState = LockState.Unlocked; } catch { }
+        }
     }
 }
 // Lock.RequiresToolToUnlock + PlayerHasRequiredToolToUnlock, Breath.GetBreathTimePercent,
@@ -932,9 +940,10 @@ internal static class Patch_TorchFullValue
 internal static class CheatsTick
 {
     // ——— 武器:无限弹药 / 永不卡壳 / 快速射击 / 无后坐(字段层 fallback)———
+    // v2.7.92 性能:InfiniteAmmo/NoJam 需扫全场景;其余只需手持武器,避免 FindObjectsOfType
     public static void TickGuns()
     {
-        if (!CheatState.InfiniteAmmo && !CheatState.NoJam && !CheatState.FastFire && !CheatState.NoRecoil && !CheatState.SuperAccuracy) return;
+        if (!CheatState.InfiniteAmmo && !CheatState.NoJam && !CheatState.FastFire && !CheatState.NoRecoil && !CheatState.SuperAccuracy && !CheatState.NoAimSway) return;
         try
         {
             if (CheatState.NoJam)
@@ -942,49 +951,51 @@ internal static class CheatsTick
                 try { GunItem.m_ForceNoJam = true; } catch { }
             }
 
-            var guns = UnityEngine.Object.FindObjectsOfType<GunItem>();
-            if (guns == null) return;
-            foreach (var g in guns)
+            // 只有 InfiniteAmmo/NoJam 需要遍历所有枪(补满全部弹夹/清卡壳)
+            if (CheatState.InfiniteAmmo || CheatState.NoJam)
             {
-                if (g == null) continue;
-                try
+                var guns = UnityEngine.Object.FindObjectsOfType<GunItem>();
+                if (guns != null)
                 {
-                    if (CheatState.NoJam)
+                    foreach (var g in guns)
                     {
-                        try { g.m_IsJammed = false; } catch { }
+                        if (g == null) continue;
+                        try
+                        {
+                            if (CheatState.NoJam) try { g.m_IsJammed = false; } catch { }
+                            if (CheatState.InfiniteAmmo && g.m_ClipSize > 0 && g.m_RoundsInClip < g.m_ClipSize)
+                                g.m_RoundsInClip = g.m_ClipSize;
+                        }
+                        catch { }
                     }
-                    if (CheatState.InfiniteAmmo && g.m_ClipSize > 0)
-                    {
-                        if (g.m_RoundsInClip < g.m_ClipSize)
-                            g.m_RoundsInClip = g.m_ClipSize;
-                    }
+                }
+            }
+
+            // NoRecoil/FastFire/NoAimSway 只需手持武器
+            if (CheatState.FastFire || CheatState.NoRecoil || CheatState.SuperAccuracy || CheatState.NoAimSway)
+            {
+                var pm = GameManager.GetPlayerManagerComponent();
+                var gi = pm?.m_ItemInHands;
+                var g = gi != null ? gi.GetComponent<GunItem>() : null;
+                if (g != null)
+                {
                     if (CheatState.FastFire)
                     {
-                        // 强制覆盖 —— 不要 if 守卫,游戏可能在 weapon 切换时重置为 prefab 值
-                        // 注意:m_FiringRateSeconds = 0 会卡死 state machine,0.05 是安全最小(20/秒)
                         try { g.m_FiringRateSeconds     = 0.05f; } catch { }
                         try { g.m_FireDelayOnAim        = 0f;    } catch { }
                         try { g.m_FireDelayAfterReload  = 0f;    } catch { }
                     }
-                    if (CheatState.NoRecoil)
+                    if (CheatState.NoRecoil || CheatState.SuperAccuracy)
                     {
                         try { g.m_PitchRecoilMin = 0f; } catch { }
                         try { g.m_PitchRecoilMax = 0f; } catch { }
                         try { g.m_YawRecoilMin = 0f; } catch { }
                         try { g.m_YawRecoilMax = 0f; } catch { }
-                        // 其 sway 也顺带归零,aim 稳定
                         try { g.m_SwayValueZeroFatigue = 0f; } catch { }
                         try { g.m_SwayValueMaxFatigue = 0f; } catch { }
                     }
-                    // v2.7.84 超级精准:散布归零 + 后坐归零,子弹 100% 命中准星中心
                     if (CheatState.SuperAccuracy)
                     {
-                        try { g.m_PitchRecoilMin = 0f; } catch { }
-                        try { g.m_PitchRecoilMax = 0f; } catch { }
-                        try { g.m_YawRecoilMin = 0f; } catch { }
-                        try { g.m_YawRecoilMax = 0f; } catch { }
-                        try { g.m_SwayValueZeroFatigue = 0f; } catch { }
-                        try { g.m_SwayValueMaxFatigue = 0f; } catch { }
                         try { g.m_SwayValue = 0f; } catch { }
                     }
                     if (CheatState.NoAimSway)
@@ -994,7 +1005,6 @@ internal static class CheatsTick
                         try { g.m_SwayValue = 0f; } catch { }
                     }
                 }
-                catch { }
             }
         }
         catch { }
@@ -1249,65 +1259,31 @@ internal static class CheatsTick
             try { vp_FPSWeapon.m_DisableAimStamina   = CheatState.NoAimStamina; } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] SetAimStamina: {ex.Message}"); }
             try { vp_FPSCamera.m_DisableAmbientSway   = CheatState.NoAimSway;    } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] m_DisableAmbientSway: {ex.Message}"); }
 
-            // 浮点字段:只在 toggle 开时归零(关掉后不可逆,靠 bool 开关控制即可)
+            // v2.7.92 性能:camera sway + recoil spring 清零已由 DynamicPatch 每帧 Prefix 覆盖,
+            //   此处只保留 weapon 实例反射(DynamicPatch 的 SteadyAim 也做,但这里是兜底)
             if (!anyOn)
             {
                 _lastAnyAimToggle = false;
                 return;
             }
 
-            if (CheatState.NoAimSway)
-            {
-                // Camera sway 实例字段 —— 直接赋值,不需要反射
-                try { cam.m_MaxAmbientSwayAngleDegreesA       = 0f; } catch { }
-                try { cam.m_MaxAmbientAimingSwayAngleDegreesA  = 0f; } catch { }
-                try { cam.m_AmbientSwaySpeedA                  = 0f; } catch { }
-                try { cam.m_AmbientAimingSwaySpeedA            = 0f; } catch { }
-                try { cam.m_CurrentMaxAmbientSwayAngle         = 0f; } catch { }
-                try { cam.m_CurrentAmbientSwaySpeed            = 0f; } catch { }
-                // Camera shake 实例字段(ShakeAmplitude 是 Vector3)
-                try { cam.ShakeAmplitude = UnityEngine.Vector3.zero; } catch { }
-                try { cam.ShakeSpeed     = 0f; } catch { }
-                // Camera bob 实例字段(BobAmplitude 是 Vector4)
-                try { cam.BobAmplitude = UnityEngine.Vector4.zero; } catch { }
-
-                // v2.7.84:武器实例 bob/shake 归零 —— static bool 只禁用 aim sway 逻辑,
-                //  但武器模型的 BobAmplitude/ShakeAmplitude 是 vp_Component 继承的实例字段,
-                //  需要直接写武器实例才能消除呼吸时武器模型晃动
-                if (weapon != null)
-                {
-                    try
-                    {
-                        var wBob = weapon.GetType().GetField("BobAmplitude", BindingFlags.Instance | BindingFlags.Public);
-                        if (wBob != null) wBob.SetValue(weapon, UnityEngine.Vector4.zero);
-                    } catch { }
-                    try
-                    {
-                        var wShake = weapon.GetType().GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public);
-                        if (wShake != null) wShake.SetValue(weapon, UnityEngine.Vector3.zero);
-                    } catch { }
-                    try
-                    {
-                        var wShakeSpd = weapon.GetType().GetField("ShakeSpeed", BindingFlags.Instance | BindingFlags.Public);
-                        if (wShakeSpd != null) wShakeSpd.SetValue(weapon, 0f);
-                    } catch { }
-                }
-            }
-
-            if (CheatState.NoRecoil && _fi_recoilSpring != null)
+            if (CheatState.NoAimSway && weapon != null)
             {
                 try
                 {
-                    var rs = _fi_recoilSpring.GetValue(cam);
-                    if (rs != null)
-                    {
-                        if (_fi_rsCur != null) try { _fi_rsCur.SetValue(rs, 0f); } catch { }
-                        if (_fi_rsTgt != null) try { _fi_rsTgt.SetValue(rs, 0f); } catch { }
-                        if (_fi_rsVel != null) try { _fi_rsVel.SetValue(rs, 0f); } catch { }
-                        _fi_recoilSpring.SetValue(cam, rs); // struct 复制回去
-                    }
-                }
-                catch { }
+                    var wBob = weapon.GetType().GetField("BobAmplitude", BindingFlags.Instance | BindingFlags.Public);
+                    if (wBob != null) wBob.SetValue(weapon, UnityEngine.Vector4.zero);
+                } catch { }
+                try
+                {
+                    var wShake = weapon.GetType().GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public);
+                    if (wShake != null) wShake.SetValue(weapon, UnityEngine.Vector3.zero);
+                } catch { }
+                try
+                {
+                    var wShakeSpd = weapon.GetType().GetField("ShakeSpeed", BindingFlags.Instance | BindingFlags.Public);
+                    if (wShakeSpd != null) wShakeSpd.SetValue(weapon, 0f);
+                } catch { }
             }
 
             _lastAnyAimToggle = true;
@@ -1529,11 +1505,34 @@ internal static class CheatsTick
     //   - Thirst: 0 —— UI 显示不渴即可,喝水仍能触发(游戏不 check "thirst > 0 才能喝")
     //   - Freezing: 0 —— 同上
     //   - GodMode 走 max HP 路径(玩家不会死,与吃喝睡 UI 无关)
+    private static bool _frostbiteWasOn;
     public static void TickStatus()
     {
+        // NoFrostbiteRisk: 只用 m_SuppressFrostbite 标志,不清列表(清列表会破坏游戏状态导致关不掉)
+        if (CheatState.NoFrostbiteRisk)
+        {
+            _frostbiteWasOn = true;
+            try
+            {
+                var fb = GameManager.GetFrostbiteComponent();
+                if (fb != null) fb.m_SuppressFrostbite = true;
+            }
+            catch { }
+        }
+        else if (_frostbiteWasOn)
+        {
+            _frostbiteWasOn = false;
+            try
+            {
+                var fb = GameManager.GetFrostbiteComponent();
+                if (fb != null) fb.m_SuppressFrostbite = false;
+            }
+            catch { }
+        }
+
         if (!CheatState.NoFatigue && !CheatState.NoHunger
             && !CheatState.NoThirst && !CheatState.AlwaysWarm
-            && !CheatState.GodMode) return;
+            && !CheatState.GodMode && !CheatState.FatigueBuff) return;
 
         try
         {
@@ -1541,6 +1540,16 @@ internal static class CheatsTick
             {
                 var fat = GameManager.GetFatigueComponent();
                 if (fat != null) { try { fat.m_CurrentFatigue = 10f; } catch { } }
+            }
+            else if (CheatState.FatigueBuff)
+            {
+                // 保持原生 buff 的剩余时间不归零,防止游戏倒计时关掉 buff
+                try
+                {
+                    var pm = GameManager.GetPlayerManagerComponent();
+                    if (pm != null) pm.m_FatigueBuffHoursRemaining = 100f;
+                }
+                catch { }
             }
             if (CheatState.NoHunger || CheatState.GodMode)
             {
@@ -1831,9 +1840,19 @@ internal static class Patch_SafeCracking_Update
 // v2.7.75 DynamicPatch
 internal static class Patch_LockedInteraction_IsLocked_Unlock
 {
-    internal static void Postfix(ref bool __result)
+    internal static void Postfix(LockedInteraction __instance, ref bool __result)
     {
-        if (CheatState.UnlockSafes || CheatState.IgnoreLock) __result = false;
+        if (CheatState.UnlockSafes || CheatState.IgnoreLock)
+        {
+            __result = false;
+            // Actually unlock the underlying Lock component so the lock icon disappears
+            try
+            {
+                var lk = __instance.Lock;
+                if (lk != null) lk.m_LockState = LockState.Unlocked;
+            }
+            catch { }
+        }
     }
 }
 
@@ -2070,6 +2089,77 @@ internal static class Patch_CougarManager_Update_ForceActivate
             }
         }
         catch { }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   CT 复刻 —— 无冻伤风险 / 饱饱 buff / 温度加成 / 疲劳加成 / 坏血病查看
+// ═══════════════════════════════════════════════════════════════════
+
+// —— 无冻伤风险:Frostbite.DealFrostbiteDamageToLocation → skip ——
+// CT 做法:hook +100 处,设 [rcx+rbx*4+20]=(float)0(伤害归零)
+// Harmony:Prefix return false = skip entire method
+internal static class Patch_Frostbite_DealDamage
+{
+    internal static bool Prefix() => !CheatState.NoFrostbiteRisk;
+}
+
+// —— 饱饱 buff:WellFed.Update Prefix 强制 m_Active=true ——
+// CT 做法:NOP WellFed.Update 前 2 字节(跳过退出条件),条件:饥饿不为0
+// Harmony:Prefix 设 m_Active = true,原方法继续正常跑
+internal static class Patch_WellFed_Update
+{
+    internal static void Prefix(WellFed __instance)
+    {
+        if (!CheatState.WellFedBuff) return;
+        try { __instance.m_Active = true; } catch { }
+    }
+}
+
+// —— 温度加成:FreezingBuff getter → __result = true ——
+// CT 做法:hook PlayerManager.FreezingBuffActive,设 [rbx+50]=(float)1
+// Harmony:Postfix 强制 __result = true
+internal static class Patch_PlayerManager_FreezingBuffActive
+{
+    internal static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreezingBuff) __result = true;
+    }
+}
+
+// —— 疲劳加成:PlayerManager.FatigueBuffActive → true ——
+// CT 做法:hook StatusBar.IsBuffActive,设 [rax+3C]=(float)1
+// 游戏原生: PlayerManager.FatigueBuffActive() 返回 true 时,Fatigue 系统自动降低积累速率
+// 与 FreezingBuffActive 完全对称的 Postfix 模式
+internal static class Patch_PlayerManager_FatigueBuffActive
+{
+    internal static void Postfix(ref bool __result)
+    {
+        if (CheatState.FatigueBuff) __result = true;
+    }
+}
+
+// —— 坏血病查看:直接读 ScurvyManager 属性(Menu 打开时调用,零 patch 开销)——
+internal static class ScurvyViewer
+{
+    public static float VitaminC;
+    public static float Threshold;
+    public static string Status = "";
+
+    public static void Poll()
+    {
+        try
+        {
+            var mgr = GameManager.GetScurvyComponent();
+            if (mgr == null) { Status = "—"; return; }
+            VitaminC = mgr.GetVitaminCNormalized();
+            Threshold = 1f;
+            int state = (int)mgr.m_ScurvyState;
+            Status = state >= 2 ? (I18n.IsEnglish ? "SCURVY" : "坏血病!")
+                   : state == 1 ? (I18n.IsEnglish ? "Risk" : "风险")
+                   :              (I18n.IsEnglish ? "OK" : "正常");
+        }
+        catch { Status = "err"; }
     }
 }
 

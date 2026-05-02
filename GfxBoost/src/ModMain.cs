@@ -2,6 +2,7 @@ using System;
 using MelonLoader;
 using ModSettings;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [assembly: MelonInfo(typeof(GfxBoost.ModMain), "GfxBoost", "1.0.0", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
@@ -18,9 +19,9 @@ public class GfxSettings : JsonModSettings
     public bool Enabled = true;
 
     [Name("阴影距离(米)")]
-    [Description("超过此距离的物体不画阴影。野外省最多。默认 TLD 约 150m,推 50")]
+    [Description("超过此距离的物体不画阴影。野外省最多。默认 TLD 约 150m,推 30")]
     [Slider(20, 200, 18)]
-    public int ShadowDistance = 50;
+    public int ShadowDistance = 30;
 
     [Name("阴影级联数 (Cascades)")]
     [Description("Directional Light 阴影切片。1 = 一级(最快);2/4 = 多级(质量好但慢)")]
@@ -57,6 +58,10 @@ public class GfxSettings : JsonModSettings
     [Name("实时反射探针")]
     [Description("关闭 realtime reflection probe 更新。TLD 可能用于水面/金属,视觉小损")]
     public bool DisableRealtimeReflections = true;
+
+    [Name("关闭远处树 billboard 阴影")]
+    [Description("LODGroup 最低层(billboard)不投影。视觉几乎无损但减少大量 draw call")]
+    public bool DisableBillboardShadows = true;
 
     [Name("Log 一次生效值到 log")]
     public bool LogOnce = true;
@@ -99,9 +104,9 @@ public class ModMain : MelonMod
 
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
     {
-        // scene load 后立刻 apply 一次,防首帧默认值
         if (Settings == null || !Settings.Enabled) return;
         Apply();
+        if (Settings.DisableBillboardShadows) StripBillboardShadows();
     }
 
     private void Apply()
@@ -137,6 +142,40 @@ public class ModMain : MelonMod
             }
         }
         catch (Exception ex) { Log?.Warning($"[Apply] {ex.Message}"); }
+    }
+
+    private void StripBillboardShadows()
+    {
+        try
+        {
+            var lodGroups = UnityEngine.Object.FindObjectsOfType<LODGroup>();
+            if (lodGroups == null) return;
+            int stripped = 0;
+            for (int i = 0; i < lodGroups.Length; i++)
+            {
+                var lg = lodGroups[i];
+                if (lg == null) continue;
+                var lods = lg.GetLODs();
+                if (lods == null || lods.Length < 2) continue;
+                // 最后一级 LOD 的所有 renderer 关阴影
+                var lastLod = lods[lods.Length - 1];
+                var renderers = lastLod.renderers;
+                if (renderers == null) continue;
+                for (int r = 0; r < renderers.Length; r++)
+                {
+                    var rend = renderers[r];
+                    if (rend == null) continue;
+                    if (rend.shadowCastingMode != ShadowCastingMode.Off)
+                    {
+                        rend.shadowCastingMode = ShadowCastingMode.Off;
+                        stripped++;
+                    }
+                }
+            }
+            if (stripped > 0)
+                Log?.Msg($"[GfxBoost] billboard shadow stripped: {stripped} renderers across {lodGroups.Length} LODGroups");
+        }
+        catch (Exception ex) { Log?.Warning($"[StripBillboard] {ex.Message}"); }
     }
 
     private static int IdxToCascades(int i) => i switch { 0 => 1, 1 => 2, 2 => 4, _ => 1 };

@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.91", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.94", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -46,7 +46,7 @@ public class ModMain : MelonMod
 
             // v2.7.64 加载 scene transition 历史记录
             TransitionRecorder.Init();
-            Log.Msg($"TldHacks v2.7.91 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
+            Log.Msg($"TldHacks v2.7.94 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -98,6 +98,10 @@ public class ModMain : MelonMod
         CheatState.InfiniteContainer = Settings.InfiniteContainer;
         CheatState.FireTemp300 = Settings.FireTemp300;
         CheatState.FireNeverDie = Settings.FireNeverDie;
+        CheatState.NoFrostbiteRisk = Settings.NoFrostbiteRisk;
+        CheatState.WellFedBuff = Settings.WellFedBuff;
+        CheatState.FreezingBuff = Settings.FreezingBuff;
+        CheatState.FatigueBuff = Settings.FatigueBuff;
         CheatState.CureFrostbite = Settings.CureFrostbite;
         CheatState.ClearDeathPenalty = Settings.ClearDeathPenalty;
         CheatState.QuickFishing = Settings.QuickFishing;
@@ -108,6 +112,7 @@ public class ModMain : MelonMod
         CheatState.TorchFullValue = Settings.TorchFullValue;
         CheatState.FreeSprint = Settings.FreeSprint;
         CheatState.InfiniteStamina = Settings.InfiniteStamina;
+        CheatState.MapClickTP = Settings.MapClickTP;
         // v2.7.64 商人 + 美洲狮
         CheatState.TraderUnlimitedList = Settings.TraderUnlimitedList;
         CheatState.TraderMaxTrust = Settings.TraderMaxTrust;
@@ -115,9 +120,9 @@ public class ModMain : MelonMod
         CheatState.TraderAlwaysAvailable = Settings.TraderAlwaysAvailable;
         CheatState.CougarInstantActivate = Settings.CougarInstantActivate;
         CheatState.BlockAutoPickupOwnDrops = Settings.BlockAutoPickupOwnDrops;
-        // v2.7.90 ESP/AutoAim 持久化
-        CheatStateESP.ESP = Settings.ESP;
-        CheatStateESP.AutoAim = Settings.AutoAim;
+        // v2.7.92 ESP/AutoAim UI 已删 → 强制 false,防 JSON 残留值激活每帧重扫
+        CheatStateESP.ESP = false;
+        CheatStateESP.AutoAim = false;
         CheatStateESP.MagicBullet = Settings.MagicBullet;
         CheatStateESP.AutoAimFOV = Settings.AutoAimFOV;
         CheatStateESP.AutoAimSpeed = Settings.AutoAimSpeed;
@@ -218,10 +223,14 @@ public class ModMain : MelonMod
             // 跨场景传送 pending tick
             Teleport.TickPendingTeleport();
 
-            // v2.7.90 自动瞄准 + 武器调参 + 魔法子弹预览(每帧)
-            AutoAimSystem.Tick();
-            WeaponTuning.Tick();
-            MagicBulletSystem.UpdatePreview();
+            // v2.7.94 MotionTrackerLite 持续强制启用(5s)
+            if ((_frame % 300) == 50) MotionTrackerLiteHelper.EnsureVisible();
+
+            // v2.7.94 双击地图图标传送
+            MapClickTeleport.Tick();
+
+            // v2.7.92 性能:ESP/AutoAim UI 已删,只保留 MagicBullet 预览(降频 0.25s)
+            if (CheatStateESP.MagicBullet) MagicBulletSystem.UpdatePreview();
         }
         catch (Exception ex) { Log?.Error($"[OnUpdate] {ex}"); }
     }
@@ -260,5 +269,29 @@ public class ModMain : MelonMod
         try { Patch_BreakDown_UpdateDuration.Snapshots.Clear(); } catch { }
         // v2.7.84 清 vp_FPSCamera 缓存 + 重置 aim 诊断 —— 跨场景相机实例重建
         try { CheatsTick.InvalidateCameraCache(); } catch { }
+        // v2.7.94 MotionTrackerLite 默认启用雷达
+        try { MotionTrackerLiteHelper.EnsureVisible(); } catch { }
+        // v2.7.94 地图传送缓存清理
+        try { MapClickTeleport.OnSceneChange(); } catch { }
+    }
+}
+
+internal static class MotionTrackerLiteHelper
+{
+    private static System.Reflection.FieldInfo _visField;
+    private static bool _resolved;
+
+    public static void EnsureVisible()
+    {
+        if (!_resolved)
+        {
+            _resolved = true;
+            var t = System.Type.GetType("MotionTrackerLite.Tracker, MotionTrackerLite")
+                 ?? HarmonyLib.AccessTools.TypeByName("MotionTrackerLite.Tracker")
+                 ?? HarmonyLib.AccessTools.TypeByName("MotionTrackerLite.ModMain");
+            if (t != null)
+                _visField = t.GetField("Visible", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        }
+        if (_visField != null) _visField.SetValue(null, true);
     }
 }

@@ -9,18 +9,18 @@ internal static class Menu
 {
     public static bool Open;
 
-    private const float W = 1280f;
-    private const float H = 760f;
-    // v2.7.46:CT 复刻加了 16 toggle 分布三列,列最长 ~900 + Console 区 ~500 → 1600f 防截断
-    // v2.7.82:uConsole 区已删,三列内容 ~500px,降到 800f 防止滚轮拉到底都是空白
-    private const float ContentH_Main = 800f;
-    // v2.7.55: Spawner content = viewport 等高,无滚动;物品行数动态填满
-    private const float ContentH_Spawner = H - 108f;
+    private static float W = 1280f;
+    private static float H = 760f;
+    private const float W_MIN = 600f, W_MAX = 2400f;
+    private const float H_MIN = 400f, H_MAX = 1200f;
+    private static float _measuredMainH = 800f;
+    private static float ContentH_Spawner => H - 130f;
     private static Vector2 _mainScroll;
     private static Rect _window = new Rect(30f, 30f, W, H);
     private const int WindowId = 0x71D4_AC;
 
     private static float _scale = 1f;
+    private static int _cols = 3;
 
     private static bool _prevCursorVisible;
     private static CursorLockMode _prevCursorLock;
@@ -87,6 +87,7 @@ internal static class Menu
 
     private static bool _stylesReady;
     private static Texture2D _bgTex;
+    private static Texture2D _transparentTex;
     private static Texture2D _panelTex;
     private static Texture2D _panelHiTex;
     private static Texture2D _accentTex;
@@ -127,6 +128,7 @@ internal static class Menu
         if (!_stylesReady)
         {
             _bgTex = Tex(CursorBG);
+            _transparentTex = Tex(new Color(0f, 0f, 0f, 0f));
             _panelTex = Tex(CursorPanel);
             _panelHiTex = Tex(CursorPanelHi);
             _accentTex = Tex(CursorAccent);
@@ -151,10 +153,19 @@ internal static class Menu
         int h1 = Mathf.Max(12, Mathf.RoundToInt(15f * _scale));
         int h2 = Mathf.Max(11, Mathf.RoundToInt(13f * _scale));
 
-        _windowStyle.normal.background = _bgTex;
-        _windowStyle.normal.textColor = CursorText;
+        _windowStyle.normal = State(_bgTex, CursorText);
+        _windowStyle.hover = State(_bgTex, CursorText);
+        _windowStyle.active = State(_bgTex, CursorText);
+        _windowStyle.focused = State(_bgTex, CursorText);
+        _windowStyle.onNormal = State(_bgTex, CursorText);
+        _windowStyle.onHover = State(_bgTex, CursorText);
+        _windowStyle.onActive = State(_bgTex, CursorText);
+        _windowStyle.onFocused = State(_bgTex, CursorText);
         _windowStyle.padding = new RectOffset(0, 0, 0, 0);
         _windowStyle.border = new RectOffset(0, 0, 0, 0);
+        _windowStyle.margin = new RectOffset(0, 0, 0, 0);
+        _windowStyle.overflow = new RectOffset(0, 0, 0, 0);
+        _windowStyle.contentOffset = Vector2.zero;
         _windowStyle.fontSize = h1;
 
         ConfigureLabel(_labelStyle, body, CursorText);
@@ -270,52 +281,31 @@ internal static class Menu
 
     private static float _prevWinX, _prevWinY;
     private static int _saveCooldown = 0; // 拖动停止后延迟保存,避免每帧写磁盘
-    // v2.7.83:窗口缩放拖拽
+    // v2.7.94:自定义拖动(屏幕坐标驱动,鼠标出界仍能拖)
+    private static bool _dragging = false;
+    private static Vector2 _dragStartScreenMouse;
+    private static float _dragStartWinX, _dragStartWinY;
+    // v2.7.91:窗口尺寸拖拽(宽高独立)
     private static bool _resizing = false;
     private static Vector2 _resizeStartMouse;
+    private static Vector2 _resizeStartScreenMouse;
     private static float _resizeStartScale;
-
-    private static void HandleResize(TldHacksSettings s)
-    {
-        // 缩放手柄:窗口右下角 18×18 区域
-        const float grip = 18f;
-        var gripRect = new Rect(_window.x + _window.width - grip, _window.y + _window.height - grip, grip, grip);
-        var e = Event.current;
-
-        if (e.type == EventType.MouseDown && gripRect.Contains(e.mousePosition))
-        {
-            _resizing = true;
-            _resizeStartMouse = e.mousePosition;
-            _resizeStartScale = _scale;
-            e.Use();
-        }
-        else if (_resizing && e.type == EventType.MouseDrag)
-        {
-            // 用鼠标水平拖动距离算新缩放(比对角线更稳定)
-            float dx = e.mousePosition.x - _resizeStartMouse.x;
-            float newScale = Mathf.Clamp(_resizeStartScale + dx / W, 0.6f, 3.0f);
-            if (Mathf.Abs(newScale - _scale) > 0.005f)
-            {
-                _scale = newScale;
-                s.MenuScale = Mathf.Round(_scale * 10f) / 10f; // 对齐到 0.1 步长
-            }
-            e.Use();
-        }
-        else if (_resizing && e.type == EventType.MouseUp)
-        {
-            _resizing = false;
-            s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
-            s.Save();
-            e.Use();
-        }
-    }
+    private static float _resizeStartW, _resizeStartH;
+    private enum ResizeEdge { None, Right, Bottom, Corner }
+    private static ResizeEdge _resizeEdge = ResizeEdge.None;
 
     public static void Draw()
     {
         if (!Open) return;
 
         var s = ModMain.Settings;
-        if (s != null) _scale = Mathf.Clamp(s.MenuScale, 0.6f, 3.0f);
+        if (s != null)
+        {
+            _scale = Mathf.Clamp(s.MenuScale, 0.6f, 3.0f);
+            W = Mathf.Clamp(s.MenuWidth, W_MIN, W_MAX);
+            H = Mathf.Clamp(s.MenuHeight, H_MIN, H_MAX);
+        }
+        _cols = W >= 1100f ? 3 : W >= 700f ? 2 : 1;
 
         _window.width = W * _scale;
         _window.height = H * _scale;
@@ -324,9 +314,41 @@ internal static class Menu
 
         InitStyles();
 
-        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "");
+        // v2.7.94:自定义拖动(屏幕坐标驱动,鼠标出界仍能丝滑拖动)
+        if (_dragging)
+        {
+            Vector2 screenMouse = Input.mousePosition;
+            screenMouse.y = Screen.height - screenMouse.y;
+            _window.x = Mathf.Clamp(_dragStartWinX + (screenMouse.x - _dragStartScreenMouse.x), 0f, Screen.width - 120f);
+            _window.y = Mathf.Clamp(_dragStartWinY + (screenMouse.y - _dragStartScreenMouse.y), 0f, Screen.height - 60f);
+            if (!Input.GetMouseButton(0)) _dragging = false;
+        }
 
-        // v2.7.84:HandleResize 已移入 DrawContents 内(DragWindow 之前),此处不再调用
+        // resize 用 Input.mousePosition(屏幕坐标,不受窗口裁剪)驱动,
+        // 鼠标跑出窗口边界也能丝滑拖拽
+        if (_resizing)
+        {
+            Vector2 screenMouse = Input.mousePosition;
+            screenMouse.y = Screen.height - screenMouse.y;
+            float dx = (screenMouse.x - _resizeStartScreenMouse.x) / _scale;
+            float dy = (screenMouse.y - _resizeStartScreenMouse.y) / _scale;
+            if (_resizeEdge == ResizeEdge.Right || _resizeEdge == ResizeEdge.Corner)
+                W = Mathf.Clamp(_resizeStartW + dx, W_MIN, W_MAX);
+            if (_resizeEdge == ResizeEdge.Bottom || _resizeEdge == ResizeEdge.Corner)
+                H = Mathf.Clamp(_resizeStartH + dy, H_MIN, H_MAX);
+            _window.width = W * _scale;
+            _window.height = H * _scale;
+            if (!Input.GetMouseButton(0))
+            {
+                _resizing = false;
+                _resizeEdge = ResizeEdge.None;
+                W = Mathf.Round(W / 10f) * 10f;
+                H = Mathf.Round(H / 10f) * 10f;
+                if (s != null) { s.MenuWidth = W; s.MenuHeight = H; s.Save(); }
+            }
+        }
+
+        _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "");
 
         // v2.7.83:检测拖动 → 延迟保存(位置稳定 30 帧后才写磁盘)
         if (s != null)
@@ -372,19 +394,18 @@ internal static class Menu
         if (s == null)
         {
             GUI.Label(R(10f, 30f, W - 20f, 20f), "Settings not initialized.");
-            GUI.DragWindow(R(0f, 0f, W, 24f));
             return;
         }
 
         GUI.Box(R(0f, 0f, W, H), "", _windowStyle);
-        GUI.Label(R(16f, 8f, 400f, 24f), "TldHacks v2.7.90  [drag title | resize corner ↘]", _titleStyle);
+        GUI.Label(R(16f, 8f, 400f, 24f), "TldHacks v2.7.94  [drag title | resize corner ↘]", _titleStyle);
         GUI.Label(R(16f, 30f, 500f, 18f), "Cursor Ink UI / IL2CPP IMGUI", _mutedLabelStyle);
 
         // 标题栏右侧:scale - / x1.0 / + / Close (v2.7.83 统一间距 4px)
         if (CBtn(W - 148f, 8f, 28f, 24f, "-"))
         { s.MenuScale = Mathf.Max(0.6f, s.MenuScale - 0.1f); s.Save(); }
-        // label 居中在 -(W-148..W-120) 和 +(W-88..W-60) 之间:中心=W-90,宽48→x=W-114
-        GUI.Label(R(W - 114f, 14f, 48f, 18f), $"x{s.MenuScale:F1}", _mutedLabelStyle);
+        // label 居中在 -(W-148..W-120) 和 +(W-88..W-60) 之间:中心=W-104,宽48→x=W-128
+        GUI.Label(R(W - 128f, 14f, 48f, 18f), $"x{s.MenuScale:F1}", _mutedLabelStyle);
         if (CBtn(W - 88f, 8f, 28f, 24f, "+"))
         { s.MenuScale = Mathf.Min(3.0f, s.MenuScale + 0.1f); s.Save(); }
         if (CBtn(W - 56f, 8f, 44f, 24f, I18n.T("关闭", "Close"), false, true)) Close();
@@ -399,14 +420,18 @@ internal static class Menu
         }
 
         // ScrollView viewport:顶部 title/tab 下到 底部状态栏上
-        Rect viewport = R(OUTER_PAD, 92f, W - OUTER_PAD * 2f, H - 128f);
-        float ch = _activeTab == 0 ? ContentH_Main : ContentH_Spawner;
-        Rect content  = R(0f, 0f, W - OUTER_PAD * 2f, ch);
-        _mainScroll = GUI.BeginScrollView(viewport, _mainScroll, content, false, true);
+        float viewH = H - 128f;
+        Rect viewport = R(OUTER_PAD, 92f, W - OUTER_PAD * 2f, viewH);
+        float measuredH = _activeTab == 0 ? _measuredMainH + 20f : ContentH_Spawner;
+        bool needScroll = measuredH > viewH + 4f; // 4px 容差,防浮点抖动导致滚轮条闪烁
+        float ch = needScroll ? measuredH : viewH - 2f; // 内容比视口略小,确保不触发自动滚轮
+        Rect content  = R(0f, 0f, W - OUTER_PAD * 2f - (needScroll ? 16f : 0f), ch);
+        if (!needScroll) _mainScroll = Vector2.zero; // 不需要滚动时重置偏移
+        _mainScroll = GUI.BeginScrollView(viewport, _mainScroll, content, false, needScroll);
 
         if (_activeTab == 0)
         {
-            DrawMainTab(s);
+            _measuredMainH = DrawMainTab(s);
         }
         else DrawSpawnerTab(s);
 
@@ -414,57 +439,78 @@ internal static class Menu
 
         // 底部状态栏(在 scroll 区外,始终显示)
         GUI.Box(R(0f, H - 34f, W, 34f), "");
-        GUI.Label(R(16f, H - 28f, W - 32f, 22f),
+        GUI.Label(R(16f, H - 28f, W - 200f, 22f),
             $"Pos: {(string.IsNullOrEmpty(CheatState.PositionText) ? "-" : CheatState.PositionText)}   |   Last: {CheatState.LastActionLog}",
             _statusStyle);
+        GUI.Label(R(W - 130f, H - 28f, 120f, 22f), I18n.T("↘ 拖拽缩放", "↘ Drag resize"), _mutedLabelStyle);
 
-        // v2.7.87:右下角缩放手柄交互 + 视觉
-        // mousePosition 在 window callback 内是实际像素坐标(窗口左上=0,0)
-        // 窗口尺寸是 W*_scale × H*_scale, 所以命中区域用缩放后的坐标
+        // v2.7.91:边缘+角落拖拽调整宽高(宽边缘便于抓取)
         {
-            const float grip = 22f;
+            const float edgeW = 20f;
             var e = Event.current;
             float winW = W * _scale, winH = H * _scale;
-            if (e.type == EventType.MouseDown && e.mousePosition.x >= winW - grip
-                && e.mousePosition.y >= winH - grip)
+
+            if (e.type == EventType.MouseDown && !_resizing)
             {
-                _resizing = true;
-                _resizeStartMouse = e.mousePosition;
-                _resizeStartScale = _scale;
-                e.Use();
-            }
-            else if (_resizing && e.type == EventType.MouseDrag)
-            {
-                float dx = e.mousePosition.x - _resizeStartMouse.x;
-                float newScale = Mathf.Clamp(_resizeStartScale + dx / W, 0.6f, 3.0f);
-                if (Mathf.Abs(newScale - _scale) > 0.005f)
+                bool onRight = e.mousePosition.x >= winW - edgeW && e.mousePosition.y > 50f;
+                bool onBottom = e.mousePosition.y >= winH - edgeW;
+                if (onRight || onBottom)
                 {
-                    _scale = newScale;
-                    s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
+                    _resizing = true;
+                    _resizeStartMouse = e.mousePosition;
+                    var sm = Input.mousePosition;
+                    _resizeStartScreenMouse = new Vector2(sm.x, Screen.height - sm.y);
+                    _resizeStartW = W;
+                    _resizeStartH = H;
+                    _resizeEdge = (onRight && onBottom) ? ResizeEdge.Corner
+                                : onRight ? ResizeEdge.Right : ResizeEdge.Bottom;
+                    e.Use();
                 }
-                e.Use();
             }
-            else if (_resizing && e.type == EventType.MouseUp)
+            // 视觉:右下角 resize 手柄 + 右边缘/底边缘高亮线
+            if (!_resizing)
             {
-                _resizing = false;
-                s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
-                s.Save();
-                e.Use();
+                GUI.color = new Color(1f, 1f, 1f, 0.15f);
+                GUI.DrawTexture(R(W - 3f, 50f, 3f, H - 84f), Texture2D.whiteTexture);
+                GUI.DrawTexture(R(0f, H - 3f, W, 3f), Texture2D.whiteTexture);
             }
-            // 视觉:3 条斜线标记
+            else
+            {
+                GUI.color = new Color(0.4f, 0.7f, 1f, 0.6f);
+                if (_resizeEdge == ResizeEdge.Right || _resizeEdge == ResizeEdge.Corner)
+                    GUI.DrawTexture(R(W - 3f, 50f, 3f, H - 84f), Texture2D.whiteTexture);
+                if (_resizeEdge == ResizeEdge.Bottom || _resizeEdge == ResizeEdge.Corner)
+                    GUI.DrawTexture(R(0f, H - 3f, W, 3f), Texture2D.whiteTexture);
+            }
             float gx = W - 18f, gy = H - 18f;
-            GUI.color = new Color(1f, 1f, 1f, 0.25f);
+            GUI.color = _resizing ? new Color(0.4f, 0.7f, 1f, 0.9f) : new Color(1f, 1f, 1f, 0.4f);
             for (int i = 0; i < 3; i++)
             {
-                float o = i * 5f;
-                GUI.DrawTexture(R(gx + o, gy + 14f - o, 2f, 2f), Texture2D.whiteTexture);
-                GUI.DrawTexture(R(gx + 2f + o, gy + 12f - o, 2f, 2f), Texture2D.whiteTexture);
-                GUI.DrawTexture(R(gx + 4f + o, gy + 10f - o, 2f, 2f), Texture2D.whiteTexture);
+                float o = i * 6f;
+                GUI.DrawTexture(R(gx + o, gy + 14f - o, 3f, 3f), Texture2D.whiteTexture);
+                GUI.DrawTexture(R(gx + 3f + o, gy + 11f - o, 3f, 3f), Texture2D.whiteTexture);
             }
             GUI.color = Color.white;
         }
 
-        GUI.DragWindow(R(0f, 0f, W - 220f, 44f));
+        // v2.7.94:自定义拖动启动(标题栏区域点击启动,实际拖动在 Draw() 用屏幕坐标驱动)
+        {
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && !_dragging && !_resizing)
+            {
+                float mx = e.mousePosition.x / _scale;
+                float my = e.mousePosition.y / _scale;
+                if (mx < W - 220f && my < 44f)
+                {
+                    _dragging = true;
+                    var sm = Input.mousePosition;
+                    _dragStartScreenMouse = new Vector2(sm.x, Screen.height - sm.y);
+                    _dragStartWinX = _window.x;
+                    _dragStartWinY = _window.y;
+                    e.Use();
+                }
+            }
+        }
     }
 
     // ————————————— Tab 1:主 cheat 面板 —————————————
@@ -474,7 +520,10 @@ internal static class Menu
     //   Settings 字段一律保留,兼容旧存档
     private static float DrawMainTab(TldHacksSettings s)
     {
-        float c1 = 0f, c2 = COL_W + COL_GAP, c3 = (COL_W + COL_GAP) * 2f;
+        float colW = _cols >= 3 ? COL_W : _cols == 2 ? (W - OUTER_PAD * 2f - COL_GAP) / 2f : (W - OUTER_PAD * 2f);
+        float c1 = 0f;
+        float c2 = _cols >= 2 ? colW + COL_GAP : 0f;
+        float c3 = _cols >= 3 ? (colW + COL_GAP) * 2f : _cols == 2 ? 0f : 0f;
         float y1 = 0f, y2 = 0f, y3 = 0f;
 
         // ═════════ 列 1:玩家状态 ═════════
@@ -505,7 +554,7 @@ internal static class Menu
         bool nthir = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.NoThirst,   I18n.T(" 无口渴", " No Thirst"));
         bool nfat  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.NoFatigue,  I18n.T(" 无疲劳", " No Fatigue"));
         y1 += ROW_ADV;
-        bool ista  = GUI.Toggle(R(c1, y1, TOG_W, ROW_H), s.InfiniteStamina, I18n.T(" 无限体力", " Inf. Stamina"));
+        bool ista  = GUI.Toggle(R(c1, y1, TOG_W, ROW_H), s.InfiniteStamina, I18n.T(" 无限体力(含冲刺)", " Infinite Stamina"));
         y1 += ROW_ADV + SECTION_END_ADV;
         if (warm != s.AlwaysWarm || nhun != s.NoHunger || nthir != s.NoThirst || nfat != s.NoFatigue
             || ista != s.InfiniteStamina)
@@ -515,6 +564,31 @@ internal static class Menu
             CheatState.AlwaysWarm = warm;
             CheatState.NoHunger = nhun; CheatState.NoThirst = nthir; CheatState.NoFatigue = nfat;
             CheatState.InfiniteStamina = ista;
+            s.Save();
+        }
+
+        // —— Buff / 增益(CT 复刻)——
+        y1 = Section(c1, y1, I18n.T("增益 Buff(CT)", "Buffs (CT)"));
+        bool nfrost = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.NoFrostbiteRisk, I18n.T(" 免疫冻伤", " No Frostbite"));
+        bool wfbuf  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.WellFedBuff,     I18n.T(" 吃得饱饱", " Well Fed"));
+        y1 += ROW_ADV;
+        bool fzbuf  = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.FreezingBuff,    I18n.T(" 加热", " Warming Buff"));
+        bool ftbuf  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.FatigueBuff,     I18n.T(" 疲劳减缓", " Less Fatigue"));
+        y1 += ROW_ADV;
+        // 坏血病状态显示(只读信息)
+        ScurvyViewer.Poll();
+        CLabel(c1, y1, TOG_WIDE, ROW_H,
+            I18n.IsEnglish
+                ? $"  Scurvy: {ScurvyViewer.Status}  VitC={ScurvyViewer.VitaminC:F1}/{ScurvyViewer.Threshold:F1}"
+                : $"  坏血病: {ScurvyViewer.Status}  维C={ScurvyViewer.VitaminC:F1}/{ScurvyViewer.Threshold:F1}", true);
+        y1 += ROW_ADV + SECTION_END_ADV;
+        if (nfrost != s.NoFrostbiteRisk || wfbuf != s.WellFedBuff
+            || fzbuf != s.FreezingBuff || ftbuf != s.FatigueBuff)
+        {
+            s.NoFrostbiteRisk = nfrost; s.WellFedBuff = wfbuf;
+            s.FreezingBuff = fzbuf; s.FatigueBuff = ftbuf;
+            CheatState.NoFrostbiteRisk = nfrost; CheatState.WellFedBuff = wfbuf;
+            CheatState.FreezingBuff = fzbuf; CheatState.FatigueBuff = ftbuf;
             s.Save();
         }
 
@@ -577,15 +651,17 @@ internal static class Menu
             s.Save();
         }
 
+
         // v2.7.80 UI 重排 —— "瞄准"搬到列 3 和"武器/射击"合并成"武器 & 瞄准"
 
         // ═════════ 列 2:世界 & 环境 & 一次性 ═════════
+        if (_cols < 2) { c2 = c1; y2 = y1; }
         y2 = Section(c2, y2, I18n.T("动物", "Animals"));
-        bool kill    = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.InstantKillAnimals, I18n.T(" 一击必杀", " Instant Kill"));
-        bool frz     = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FreezeAnimals,      I18n.T(" 动物冰冻", " Freeze Animals"));
+        bool kill    = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.InstantKillAnimals, I18n.T(" 一击必杀", " One Hit Kill"));
+        bool frz     = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FreezeAnimals,      I18n.T(" 冻结动物", " Freeze Animals"));
         y2 += ROW_ADV;
-        bool stealth = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.Stealth,            I18n.T(" 动物逃跑", " Animals Flee"));
-        bool tinv    = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TrueInvisible,      I18n.T(" 真·隐身", " True Invisible"));
+        bool stealth = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.Stealth,            I18n.T(" 动物逃离", " Animals Flee"));
+        bool tinv    = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TrueInvisible,      I18n.T(" 完全隐形", " Full Invisible"));
         y2 += ROW_ADV + SECTION_END_ADV;
         if (kill != s.InstantKillAnimals || frz != s.FreezeAnimals || stealth != s.Stealth || tinv != s.TrueInvisible)
         {
@@ -630,7 +706,9 @@ internal static class Menu
 
         // 世界时钟 — 地图 + 天气(3行) + 时间(1行)合并一块
         y2 = Section(c2, y2, I18n.T("世界时钟 — 地图 / 天气 / 时间", "World Clock — Map / Weather / Time"));
-        if (GUI.Button(R(c2, y2, TOG_WIDE, ROW_H), I18n.T("全开地图", "Reveal Map"))) Cheats.RevealFullMap();
+        if (GUI.Button(R(c2, y2, TOG_W, ROW_H), I18n.T("全开地图", "Reveal Map"))) Cheats.RevealFullMap();
+        bool mtp = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.MapClickTP, I18n.T(" 地图双击传送", " Map Click TP"));
+        if (mtp != s.MapClickTP) { s.MapClickTP = mtp; CheatState.MapClickTP = mtp; }
         y2 += ROW_ADV + 2f;
         // 天气 — 每行 5 个 + 最后一行剩余
         float bx2 = c2;
@@ -650,27 +728,15 @@ internal static class Menu
         }
         y2 += ROW_ADV + SECTION_END_ADV;
 
-        y2 = Section(c2, y2, I18n.T("一次性操作", "One-shot Actions"));
-        if (GUI.Button(R(c2,             y2, TOG_W, ROW_H), I18n.T("清除所有负面", "Clear Afflictions"))) Cheats.ClearAllAfflictions();
-        if (GUI.Button(R(c2 + TOG2_OFF,  y2, TOG_W, ROW_H), I18n.T("解锁全部壮举", "Unlock Feats")))       Feats.UnlockAllFeats();
-        y2 += ROW_ADV;
-        if (GUI.Button(R(c2,             y2, TOG_W, ROW_H), I18n.T("恢复全部耐久", "Restore Durability"))) Cheats.RestoreAllSceneGear();
-        if (GUI.Button(R(c2 + TOG2_OFF,  y2, TOG_W, ROW_H), I18n.T("修复背包", "Repair Inventory")))       QuickActions.RepairAllInventory();
-        y2 += ROW_ADV;
-        if (GUI.Button(R(c2,             y2, TOG_W, ROW_H), I18n.T("修复手持", "Repair Held")))            Cheats.RepairItemInHands();
-        // v2.7.80 一键全关 —— ModSettings "Disable All" 5 秒同步绕过,立即生效
-        if (GUI.Button(R(c2 + TOG2_OFF,  y2, TOG_W, ROW_H), I18n.T("★ 全关并同步", "★ Disable All")))     Cheats.DisableAllCheats();
-        y2 += ROW_ADV + SECTION_END_ADV;
-
         // 商人 & 美洲狮(CT 复刻 v2.7.55)
         y2 = Section(c2, y2, I18n.T("商人 & 美洲狮", "Trader & Cougar"));
-        bool tul = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.TraderUnlimitedList,   I18n.T(" 交易清单上限 64", " Trader List 64"));
-        bool tmt = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TraderMaxTrust,        I18n.T(" 信任值最大化", " Max Trust"));
+        bool tul = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.TraderUnlimitedList,   I18n.T(" 交易列表扩充", " More Trades"));
+        bool tmt = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TraderMaxTrust,        I18n.T(" 信任满值", " Max Trust"));
         y2 += ROW_ADV;
-        bool tix = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.TraderInstantExchange, I18n.T(" 交易秒完成", " Instant Trade"));
-        bool taa = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TraderAlwaysAvailable, I18n.T(" 随时可联系商人", " Trader Anytime"));
+        bool tix = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.TraderInstantExchange, I18n.T(" 交易即完成", " Instant Trade"));
+        bool taa = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TraderAlwaysAvailable, I18n.T(" 商人常驻", " Always Online"));
         y2 += ROW_ADV;
-        bool cia = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.CougarInstantActivate, I18n.T(" 美洲狮秒激活", " Instant Cougar"));
+        bool cia = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.CougarInstantActivate, I18n.T(" 美洲狮立即出现", " Spawn Cougar"));
         y2 += ROW_ADV + SECTION_END_ADV;
         if (tul != s.TraderUnlimitedList || tmt != s.TraderMaxTrust
             || tix != s.TraderInstantExchange || taa != s.TraderAlwaysAvailable
@@ -685,19 +751,32 @@ internal static class Menu
             s.Save();
         }
 
+        // —— 商人 uConsole 命令(从列 3 搬来,紧跟商人 toggle) ——
+        y2 = Section(c2, y2, I18n.T("商人 uConsole 命令", "Trader uConsole"));
+        const float cgap2 = 5f;
+        float cbw2 = (COL_W - 2f * cgap2) / 3f;
+        if (GUI.Button(R(c2,                       y2, cbw2, ROW_H), I18n.T("秒完成交易", "Finish Trade"))) ConsoleBridge.Run("trader_trade_force_completed");
+        if (GUI.Button(R(c2 + cbw2 + cgap2,        y2, cbw2, ROW_H), I18n.T("刷新清单", "Refresh List")))   ConsoleBridge.Run("trader_reset_drawn_exchanges");
+        if (GUI.Button(R(c2 + 2*(cbw2 + cgap2),    y2, cbw2, ROW_H), I18n.T("信任 +100", "Trust +100")))    ConsoleBridge.Run("trader_trust_add 100");
+        y2 += ROW_ADV;
+        if (GUI.Button(R(c2,                       y2, cbw2, ROW_H), I18n.T("解锁对话", "Unlock Convo")))   ConsoleBridge.Run("trader_unlock_conversation_all");
+        if (GUI.Button(R(c2 + cbw2 + cgap2,        y2, cbw2, ROW_H), I18n.T("解锁交易", "Unlock Trade")))   ConsoleBridge.Run("trader_unlock_exchange_all");
+        if (GUI.Button(R(c2 + 2*(cbw2 + cgap2),    y2, cbw2, ROW_H), I18n.T("解锁改进", "Unlock Improve"))) ConsoleBridge.Run("trader_unlock_improvement_all");
+        y2 += ROW_ADV + SECTION_END_ADV;
+
         // ═════════ 列 3:物品 & 武器 ═════════
+        if (_cols < 3) { c3 = _cols == 2 ? c1 : c1; y3 = _cols == 2 ? y1 : y2; }
         y3 = Section(c3, y3, I18n.T("快速操作(CT 复刻)", "Quick Actions (CT)"));
-        bool qcook = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickCook,      I18n.T(" 秒烤肉", " Instant Cook"));
-        bool qsrch = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickSearch,    I18n.T(" 秒搜刮/采摘", " Instant Search"));
+        bool qcook = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickCook,      I18n.T(" 秒烹饪", " Instant Cook"));
+        bool qsrch = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickSearch,    I18n.T(" 秒搜刮", " Instant Loot"));
         y3 += ROW_ADV;
         bool qhv   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickHarvest,   I18n.T(" 秒割肉", " Instant Harvest"));
-        bool qbd   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickBreakDown, I18n.T(" 秒打碎", " Instant Breakdown"));
+        bool qbd   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickBreakDown, I18n.T(" 秒拆解", " Instant Break"));
         y3 += ROW_ADV;
-        bool qev   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickEvolve,    I18n.T(" 加工秒完成", " Instant Evolve"));
-        bool qcl   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickClimb,     I18n.T(" 爬绳 ×5", " Rope Climb ×5"));
+        bool qev   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickEvolve,    I18n.T(" 秒风干/腌制", " Instant Cure"));
+        bool qcl   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickClimb,     I18n.T(" 爬绳加速", " Fast Climb"));
         y3 += ROW_ADV;
-        // v2.7.82 生火 100% 从"环境/篝火"搬到此处
-        bool qf    = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickFire,      I18n.T(" 生火 100%", " Fire 100%"));
+        bool qf    = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickFire,      I18n.T(" 生火必成功", " 100% Fire"));
         y3 += ROW_ADV + SECTION_END_ADV;
         if (qcook != s.QuickCook || qsrch != s.QuickSearch || qhv != s.QuickHarvest
             || qbd != s.QuickBreakDown || qev != s.QuickEvolve || qcl != s.QuickClimb
@@ -715,16 +794,16 @@ internal static class Menu
 
         y3 = Section(c3, y3, I18n.T("物品 & 装备", "Items & Gear"));
         bool stk   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.StackingEnabled,    I18n.T(" UI 堆叠", " UI Stacking"));
-        bool dur   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.InfiniteDurability, I18n.T(" 物品不损耗", " No Wear"));
+        bool dur   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.InfiniteDurability, I18n.T(" 无限耐久", " No Degrade"));
         y3 += ROW_ADV;
-        bool wet   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoWetClothes,       I18n.T(" 衣物不潮湿", " No Wet Clothes"));
+        bool wet   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoWetClothes,       I18n.T(" 衣物防潮", " Dry Clothes"));
         bool lamp  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.LampFuelNoDrain,    I18n.T(" 油灯不耗油", " Lamp No Drain"));
         y3 += ROW_ADV;
-        bool flsk1 = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.FlaskNoHeatLoss,    I18n.T(" 保温杯不失温", " Flask Keeps Heat"));
-        bool flsk2 = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.FlaskInfiniteVol,   I18n.T(" 保温杯无限容量", " Flask Infinite"));
+        bool flsk1 = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.FlaskNoHeatLoss,    I18n.T(" 保温杯恒温", " Flask No Cool"));
+        bool flsk2 = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.FlaskInfiniteVol,   I18n.T(" 保温杯无限", " Flask Infinite"));
         y3 += ROW_ADV;
-        bool flsk3 = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.FlaskAnyItem,            I18n.T(" 保温瓶装任意液体", " Flask Any"));
-        bool bnop  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.BlockAutoPickupOwnDrops, I18n.T(" 不捡自己丢的", " Skip Own Drops"));
+        bool flsk3 = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.FlaskAnyItem,            I18n.T(" 保温杯装任何", " Flask Any Liquid"));
+        bool bnop  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.BlockAutoPickupOwnDrops, I18n.T(" 不捡自丢物", " Skip Own Drops"));
         y3 += ROW_ADV + SECTION_END_ADV;
         if (stk != s.StackingEnabled || dur != s.InfiniteDurability || wet != s.NoWetClothes
             || lamp != s.LampFuelNoDrain || flsk1 != s.FlaskNoHeatLoss
@@ -780,17 +859,16 @@ internal static class Menu
         if (GUI.Button(R(c3 + 3*(wbw + wgap),     y3, wbw, ROW_H), I18n.T("左轮弹 ×50", "Rev. ×50"))) Cheats.SpawnItem("GEAR_RevolverAmmoSingle", 50);
         y3 += ROW_ADV + SECTION_END_ADV;
 
-        // —— 从列 2 搬来:商人 uConsole 命令 ——
-        // CT toggle 不覆盖的功能:刷新清单 / 解锁对话/交易/改进 —— 每按一次
-        y3 = Section(c3, y3, I18n.T("商人 uConsole 命令", "Trader uConsole"));
-        const float cbw = 120f, cgap = 5f;
-        if (GUI.Button(R(c3,                       y3, cbw, ROW_H), I18n.T("秒完成交易", "Finish Trade"))) ConsoleBridge.Run("trader_trade_force_completed");
-        if (GUI.Button(R(c3 + cbw + cgap,          y3, cbw, ROW_H), I18n.T("刷新清单", "Refresh List")))   ConsoleBridge.Run("trader_reset_drawn_exchanges");
-        if (GUI.Button(R(c3 + 2*(cbw + cgap),      y3, cbw, ROW_H), I18n.T("信任 +100", "Trust +100")))    ConsoleBridge.Run("trader_trust_add 100");
+        // —— 一次性操作 ——
+        y3 = Section(c3, y3, I18n.T("一次性操作", "One-shot Actions"));
+        if (GUI.Button(R(c3,             y3, TOG_W, ROW_H), I18n.T("清除所有负面", "Clear Afflictions"))) Cheats.ClearAllAfflictions();
+        if (GUI.Button(R(c3 + TOG2_OFF,  y3, TOG_W, ROW_H), I18n.T("一键解锁勋章", "Unlock Feats")))       Feats.UnlockAllFeats();
         y3 += ROW_ADV;
-        if (GUI.Button(R(c3,                       y3, cbw, ROW_H), I18n.T("解锁对话", "Unlock Convo")))   ConsoleBridge.Run("trader_unlock_conversation_all");
-        if (GUI.Button(R(c3 + cbw + cgap,          y3, cbw, ROW_H), I18n.T("解锁交易", "Unlock Trade")))   ConsoleBridge.Run("trader_unlock_exchange_all");
-        if (GUI.Button(R(c3 + 2*(cbw + cgap),      y3, cbw, ROW_H), I18n.T("解锁改进", "Unlock Improve"))) ConsoleBridge.Run("trader_unlock_improvement_all");
+        if (GUI.Button(R(c3,             y3, TOG_W, ROW_H), I18n.T("恢复全部耐久", "Restore Durability"))) Cheats.RestoreAllSceneGear();
+        if (GUI.Button(R(c3 + TOG2_OFF,  y3, TOG_W, ROW_H), I18n.T("修复背包", "Repair Inventory")))       QuickActions.RepairAllInventory();
+        y3 += ROW_ADV;
+        if (GUI.Button(R(c3,             y3, TOG_W, ROW_H), I18n.T("修复手持", "Repair Held")))            Cheats.RepairItemInHands();
+        if (GUI.Button(R(c3 + TOG2_OFF,  y3, TOG_W, ROW_H), I18n.T("★ 全关并同步", "★ Disable All")))     Cheats.DisableAllCheats();
         y3 += ROW_ADV + SECTION_END_ADV;
 
         return Mathf.Max(y1, Mathf.Max(y2, y3));
@@ -807,8 +885,8 @@ internal static class Menu
             ? $"—— Quick Teleport ({Teleport.Destinations.Count} targets) ——"
             : $"—— 快速传送({Teleport.Destinations.Count} 个目的地) ——");
         y += ROW_ADV;
-        const int teleCols = 5;
-        float teleW = (W - 30f) / teleCols;    // 每列宽度
+        int teleCols = W >= 1000f ? 5 : W >= 700f ? 3 : 2;
+        float teleW = (W - 30f) / teleCols;
         for (int i = 0; i < Teleport.Destinations.Count; i++)
         {
             var d = Teleport.Destinations[i];
@@ -894,15 +972,16 @@ internal static class Menu
         }
         y += ROW_ADV * _pageRows + SECTION_END_ADV;
 
-        // 分页控制
+        // 分页控制(右对齐,跟随窗口宽度)
+        float pw = W - 20f;
         if (GUI.Button(R(10f, y, 100f, ROW_H), I18n.T("◀ 上一页", "◀ Prev"))) { if (_page > 0) _page--; }
-        GUI.Label(R(120f, y, 500f, ROW_H),
+        GUI.Label(R(120f, y, 400f, ROW_H),
             I18n.IsEnglish
                 ? $"Page {_page + 1}/{totalPages}   Total {_filtered.Count}   /page {_pageSize}"
                 : $"页 {_page + 1}/{totalPages}   共 {_filtered.Count} 个   每页 {_pageSize}");
-        if (GUI.Button(R(630f, y, 100f, ROW_H), I18n.T("下一页 ▶", "Next ▶"))) { if (_page < totalPages - 1) _page++; }
-        if (GUI.Button(R(750f, y, 80f, ROW_H), I18n.T("⏮ 首页", "⏮ First")))   _page = 0;
-        if (GUI.Button(R(840f, y, 80f, ROW_H), I18n.T("末页 ⏭", "Last ⏭")))    _page = totalPages - 1;
+        if (GUI.Button(R(pw - 280f, y, 100f, ROW_H), I18n.T("下一页 ▶", "Next ▶"))) { if (_page < totalPages - 1) _page++; }
+        if (GUI.Button(R(pw - 170f, y, 80f, ROW_H), I18n.T("⏮ 首页", "⏮ First")))   _page = 0;
+        if (GUI.Button(R(pw - 80f, y, 80f, ROW_H), I18n.T("末页 ⏭", "Last ⏭")))    _page = totalPages - 1;
     }
 
     private static float Section(float x, float y, string title)

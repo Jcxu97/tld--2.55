@@ -37,6 +37,14 @@ internal class TldHacksSettings : JsonModSettings
     [Name("Menu UI Scale(菜单缩放,4K 可设 2-3)")]
     public float MenuScale = 1f;
 
+    [Slider(600f, 2400f, 36)]
+    [Name("Menu Width(菜单宽度,拖拽右边缘调整)")]
+    public float MenuWidth = 1280f;
+
+    [Slider(400f, 1200f, 32)]
+    [Name("Menu Height(菜单高度,拖拽下边缘调整)")]
+    public float MenuHeight = 760f;
+
     // v2.7.83:窗口位置持久化(拖动自动保存,重启保留)
     [Name("Menu X Position(窗口 X,拖动自动存)")]
     public float MenuX = 30f;
@@ -214,6 +222,22 @@ internal class TldHacksSettings : JsonModSettings
     [Name("篝火永不熄灭")]
     public bool FireNeverDie = false;
 
+    [Name("无冻伤风险")]
+    [Description("完全阻止冻伤伤害(CT: DealFrostbiteDamageToLocation=0)")]
+    public bool NoFrostbiteRisk = false;
+
+    [Name("饱饱 buff(Well Fed 常驻)")]
+    [Description("强制 Well Fed 状态激活。CT: WellFed.Update NOP")]
+    public bool WellFedBuff = false;
+
+    [Name("温度加成 buff")]
+    [Description("强制温度 buff 激活(CT: FreezingBuffActive=true)")]
+    public bool FreezingBuff = false;
+
+    [Name("疲劳加成 buff")]
+    [Description("强制疲劳 buff 激活(CT: StatusBar fatigue buff=1)")]
+    public bool FatigueBuff = false;
+
     [Name("治愈永久冻伤")]
     public bool CureFrostbite = false;
 
@@ -247,6 +271,10 @@ internal class TldHacksSettings : JsonModSettings
     [Name("无限体力")]
     [Description("体力条永远满,不影响疲劳值")]
     public bool InfiniteStamina = false;
+
+    [Name("地图双击传送")]
+    [Description("双击游戏地图图标传送到该位置(同区内,按M打开地图)")]
+    public bool MapClickTP = true;
 
     // ——— v2.7.55 商人 + 美洲狮 ———
     [Section("商人 Trader")]

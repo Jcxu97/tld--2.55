@@ -1,6 +1,580 @@
 # TldHacks — 交接文档
 
-## 🆕 2026-05-02 session #2 v2.7.90 — ESP/AutoAim 9/10 品质升级 + 编译修复
+## 🆕 2026-05-03 session #4 v2.7.97 — MapClickTP 高度终极修复 + UI 列平衡 + 按钮对齐
+
+### 背景
+
+v2.7.96 用户实测：
+- MapClickTP XZ 精度已完美（仿射变换 maxResidual=0.0m）
+- **Y 高度有严重问题**：部分位置传送到 900m+（MapDetail.transform.position.y 坏数据）、部分正常
+- 改用 Raycast 后：从 1000m 单 ray 命中天空隐形 trigger（Y=300+）；改 RaycastAll 取最低又打到地下（Y=16 穿地）
+- UI 列高度不平衡（左列太长、右下空白大）；"商人 uConsole" 按钮右边没对齐
+
+### 本轮修复
+
+1. **MapClickTP Y 高度 — RaycastAll + isTrigger 过滤（最终方案）**
+   - **迭代历程**:
+     1. ❌ 最近 MapDetail 的 Y 直接用 → 有些 MapDetail Y=933/857（坏数据）
+     2. ❌ 单 Raycast 从 Y=1000 → 命中天空隐形 trigger（天气层/区域触发器），Y=300+
+     3. ❌ RaycastAll 取最低 Y → 打到地下 trigger（kill plane/洞穴地板），穿地
+     4. ✅ **RaycastAll + 跳过 isTrigger + 取最高非 trigger 命中**
+   - **原理**: 从 Y=1000 向下的所有命中中，trigger collider（天气层、区域检测、地下杀死面）被跳过，剩余实体碰撞面中取最高的 = 真实地面/屋顶
+   - **已知限制**: 会落在树冠/屋顶上（可接受，用户确认为最优解）
+   - **偏移**: +1.5m
+
+2. **UI 列高度平衡**
+   - "一次性操作" section 从列 1 → 列 3 底部（减少左列高度，填充右列空白）
+   - 列 1 从 8 个 section 减到 7 个；列 3 从 4 个 section 增到 5 个
+
+3. **"商人 uConsole 命令" 按钮宽度对齐**
+   - 按钮宽度从硬编码 `cbw2 = 120f` → 动态计算 `(COL_W - 2f * cgap2) / 3f`
+   - 3 个按钮刚好填满列宽（405px），右边框对齐
+
+### 关键经验教训
+
+| 问题 | 原因 | 有效方案 |
+|------|------|---------|
+| MapDetail Y=933 | 部分 MapDetail.transform 放在不合理的高度（可能是 UI/标记用途非世界位置） | 不信任 MapDetail 的 Y，改用物理 raycast |
+| 单 Raycast 命中天空 trigger | TLD 场景中有高空隐形 trigger collider（天气区/事件区） | RaycastAll + `collider.isTrigger` 过滤 |
+| RaycastAll 最低 Y 穿地 | 地下存在 trigger（kill plane、洞穴检测等） | 跳过 trigger，取最高的**非 trigger**命中 = 实体表面 |
+| 按钮右边不对齐 | 硬编码宽度 120×3+5×2=370 < 列宽 405 | 动态计算: `(COL_W - 2*gap) / 3` |
+
+### 改动文件
+
+```
+src/MapClickTeleport.cs  — EstimateGroundY 简化为直接调 RaycastGroundY;
+                           RaycastGroundY 重写: RaycastAll + isTrigger 过滤 + 取最高非 trigger 面
+src/Menu.cs              — "一次性操作" 从列1移到列3;
+                           "商人 uConsole" 按钮宽度改动态计算;
+                           删除列3残留的重复"商人 uConsole"区块
+HANDOFF.md               — 本段
+```
+
+### 编译
+
+```powershell
+dotnet build "D:\Github\tld--2.55\TldHacks\src\TldHacks.csproj" --no-restore -c Release
+```
+0 errors, 8 warnings (pre-existing)。DLL 已部署。
+
+### 测试结果（用户实测）
+
+| # | 功能 | 结果 |
+|---|------|------|
+| 1 | MapClickTP XZ 精度 | ✅ maxResidual=0.0m，所有图标精确到位 |
+| 2 | MapClickTP Y 高度 | ✅ 大多数位置正确落地；少量落在树冠（可接受） |
+| 3 | FatigueBuff 原生 buff | ✅ 已确认生效 |
+| 4 | NoFrostbiteRisk ON/OFF | ✅ 已确认可正常开关 |
+
+### 下次继续
+
+- CT 对比表剩余建议加入项: 治愈所有疾病、药品/食物不减、手电筒常亮、篝火燃烧时间可控
+- MapClickTP 树冠问题如需进一步优化：可尝试 LayerMask 排除 vegetation layer（需确认 TLD 的 layer 编号）
+
+---
+
+## 2026-05-03 session #3 v2.7.96 — FatigueBuff 原生 buff + MapClickTP 仿射变换精度修复
+
+### 背景
+
+v2.7.95 用户实测反馈：
+- FatigueBuff 的"钳制增量"方案被拒 — 用户要求和 WellFedBuff/FreezingBuff 一样，调用游戏**原生 buff 系统**
+- MapClickTP 基本可用但精度仍有问题 — 瞭望塔偏差、多个相似图标时传错位置
+- NoFrostbiteRisk 关闭后仍永久生效（上轮修复后用户再次确认）
+
+### 本轮修复
+
+1. **FatigueBuff — 改用原生 buff（和 FreezingBuff/WellFedBuff 同模式）**
+   - **最终方案**: `PlayerManager.FatigueBuffActive()` Postfix → `__result = true`
+   - DynamicPatch 新 Spec 替换旧的两条 `Fatigue.AddFatigue` Spec
+   - TickStatus 中保留 `pm.m_FatigueBuffHoursRemaining = 100f`（让游戏 UI 显示 buff 图标）
+   - **原理**: 游戏调 `FatigueBuffActive()` 决定是否应用减缓效果，我们强制返回 true 就是激活原生 buff
+
+2. **MapClickTP — 仿射变换精确坐标计算（替代"最近匹配"）**
+   - **根因**: "FindClosestMapDetail" 方案在多个相似图标共存时匹配错误（如多个树林图标），且 MapDetail 位置不一定精确对应图标位置
+   - **新方案 — 最小二乘法 2D 仿射变换**:
+     1. 从 MapDetail 缓存的 N 个 (mapPos, worldPos) 对，拟合仿射变换参数：
+        `worldX = ax*mapX + bx*mapY + tx`
+        `worldZ = az*mapX + bz*mapY + tz`
+     2. 用 3x3 正规方程（克拉默法则）求解 6 个参数
+     3. 残差校验：maxResidual > 100m 时放弃仿射走 fallback
+     4. 对任意 `m_PositionOnMap` 直接数学计算精确世界 XZ 坐标
+   - **策略优先级**（4 层 fallback）:
+     1. 仿射变换（数学精确，不受图标重复影响）
+     2. 名称匹配（locID → MapDetail.gameObject.name 子串）
+     3. 最近 MapDetail（距离阈值 1.0）
+     4. Teleport.Destinations waypoint 匹配
+   - **关键优势**: 每个图标有唯一 `m_PositionOnMap`，仿射变换直接从该坐标算出世界位置，彻底消除"匹配到相邻图标"的问题
+
+3. **NoFrostbiteRisk 修复（延续上轮）**
+   - 逻辑移到 TickStatus 的 early-return gate **之前**
+   - 用 `_frostbiteWasOn` flag 跟踪状态，toggle OFF 时恢复 `m_SuppressFrostbite = false`
+   - 不再清 risk/damage 列表（清列表会破坏游戏状态）
+
+### 关键经验教训
+
+| 问题 | 原因 | 有效方案 |
+|------|------|---------|
+| Harmony Prefix/Postfix 对 Fatigue 不 fire | IL2CPP 原生 C++ 直调，绕过 managed | Patch getter 方法(`FatigueBuffActive`)而非 setter |
+| 钳制 m_CurrentFatigue 增量 | 用户拒绝 — 不是原生 buff，没有 buff 图标 | Patch `FatigueBuffActive` Postfix = true（原生 buff 激活） |
+| MapClickTP 精度差（多图标） | "最近 MapDetail" 匹配依赖距离阈值，相邻图标混淆 | 仿射变换：从 map 坐标数学计算精确世界坐标 |
+| MapClickTP 高度问题 | 之前用固定 +1m / +50m | Raycast 从 200m 高向下找地面 +2m |
+| NoFrostbiteRisk 关不掉 | early-return gate 阻止 else 分支执行 | 移到 gate 之前 + flag 跟踪 |
+| `WorldPositionToMapPosition` 正向可用 | 游戏内部正常实现 | 用正向函数建 cache，再从 cache 反推变换 |
+
+### 改动文件
+
+```
+src/MapClickTeleport.cs  — 新增仿射变换: ComputeAffineTransform + TryAffineTransform; 策略重排为 4 层
+src/CheatsPatches.cs     — FatigueBuff: 新 Patch_PlayerManager_FatigueBuffActive (Postfix __result=true)
+                           NoFrostbiteRisk: 移到 early-return gate 前 + _frostbiteWasOn flag
+                           TickStatus: FatigueBuff 改为维持 m_FatigueBuffHoursRemaining=100f
+src/DynamicPatch.cs      — 删两条 Fatigue.AddFatigue Spec，新增 PlayerManager.FatigueBuffActive Spec
+HANDOFF.md               — 本段
+```
+
+### 编译
+
+```powershell
+dotnet build "D:\Github\tld--2.55\TldHacks\src\TldHacks.csproj" --no-restore
+```
+0 errors, 8 warnings (pre-existing)。DLL 已部署到 `D:\Steam\steamapps\common\TheLongDark\Mods\TldHacks.dll`。
+
+### 测试清单
+
+| # | 功能 | 验证方法 | 日志关键词 |
+|---|------|----------|-----------|
+| 1 | FatigueBuff | 开 toggle → 状态页应出现"疲劳减缓"buff 图标 | `[DynPatch] ON PlayerManager.FatigueBuffActive` |
+| 2 | MapClickTP 精度 | 打开地图 → 双击瞭望塔/营地等图标 → 应精确传送到该位置地面 | `[MapTP] affine transform computed: maxResidual=XXm` |
+| 3 | MapClickTP 重复图标 | 双击地图上多次出现的同类图标（如树林标记）→ 应传到点击的那个 | `[MapTP] (affine) → locName mapPos=... world=...` |
+| 4 | NoFrostbiteRisk ON/OFF | 开启 → 不冻伤；关闭 → 冻伤恢复正常 | — |
+| 5 | 仿射变换质量 | 日志中 maxResidual 应 < 50m（理想 < 20m） | `[MapTP] affine transform computed` |
+
+### 下次继续
+
+- 如果仿射变换 residual > 100m（某些 region 的 WorldPositionToMapPosition 不线性），需要改用分段仿射或 RBF 插值
+- CT 对比表剩余建议加入项: 治愈所有疾病、药品/食物不减、手电筒常亮、篝火燃烧时间可控
+
+---
+
+## 2026-05-03 session #2 v2.7.95 — FatigueBuff 增量钳制 + MapClickTP MapDetail 重写
+
+### 背景
+
+v2.7.94 用户实测发现：FatigueBuff（疲劳减缓）完全无效、MapClickTP 传送到虚空（坐标错误）、NoFrostbiteRisk 关闭后仍永久生效。
+
+### 本轮修复（已被 v2.7.96 替代）
+
+1. **FatigueBuff — 直接钳制 m_CurrentFatigue 增量**（❌ 被用户拒绝，v2.7.96 改用原生 buff）
+   - **失败方案1**: Harmony Prefix `ref float fatigueValue *= 0.1f` → IL2CPP 原生调用绕过 managed wrapper，patch 永远不 fire
+   - **失败方案2**: 每帧 tick `m_CurrentFatigueBurnPerHour *= 0.05f` → 原生代码每帧重算该字段，我们的写入被立刻覆盖
+   - **尝试方案**: 直接钳制 `m_CurrentFatigue` 增量 → 用户拒绝：不是原生 buff，没有游戏内 buff 图标
+   - **最终方案（v2.7.96）**: Patch `PlayerManager.FatigueBuffActive()` Postfix
+
+2. **MapClickTP 彻底重写 — 放弃 MapPositionToWorldPosition**
+   - **根因**: `Panel_Map.MapPositionToWorldPosition()` 在 IL2CPP 下返回完全错误的世界坐标（如 mapPos=(-17.86, -4.36) → world=(-19874, 0, -4318)，正常应该在 ±1500 范围内）
+   - **CT 表参考**: CT 根本没有 map→world 坐标转换，它用的是**硬编码世界坐标直写玩家位置**
+   - **方案 — MapDetail 三层 fallback**（v2.7.96 加了仿射变换作为第一策略）:
+     1. **MapDetail 位置匹配**: 遍历场景中所有 `MapDetail` MonoBehaviour，用 `WorldPositionToMapPosition()` 正向转换得到 map 坐标，找最近的
+     2. **名称子串匹配**: locID → MapDetail.gameObject.name
+     3. **已知 waypoint 匹配**: Teleport.Destinations
+
+3. **NoFrostbiteRisk 关闭时恢复**
+   - 加 else 分支：toggle OFF 时 `fb.m_SuppressFrostbite = false` 恢复正常
+
+### 关键经验教训（IL2CPP 限制）
+
+| 问题 | 原因 | 有效方案 |
+|------|------|---------|
+| Harmony Prefix/Postfix 不 fire | IL2CPP 原生 C++ 代码直接调方法，不走 managed wrapper | 改用 tick-based 字段写入 |
+| 写 `m_CurrentFatigueBurnPerHour` 无效 | 原生代码每帧从内部状态重算该字段 | 直接写 `m_CurrentFatigue`（结果字段）而非 rate 字段 |
+| `MapPositionToWorldPosition` 返回错误值 | IL2CPP interop 可能传参不正确或方法内部有未满足的前置条件 | 用正向转换 `WorldPositionToMapPosition` + 反向查找 |
+| 写入有效的字段 | NoFatigue 的 `m_CurrentFatigue = 10f` 能生效 → **直接写结果字段可行** | 优先写结果字段，不写 rate/config 字段 |
+
+### 改动文件
+
+```
+src/CheatsPatches.cs     — FatigueBuff: 新 _prevFatigue + 增量钳制(替换无效的 BurnPerHour *= 0.05f); NoFrostbiteRisk: else 恢复
+src/MapClickTeleport.cs  — 完全重写: 删除 MapPositionToWorldPosition 方案, 改用 MapDetail 三层 fallback
+HANDOFF.md               — 本段
+```
+
+### 编译
+
+```powershell
+dotnet build "D:\Github\tld--2.55\TldHacks\src\TldHacks.csproj" --no-restore -c Release
+```
+0 errors, 8 warnings (pre-existing)。DLL 已部署到 `D:\Steam\steamapps\common\TheLongDark\Mods\TldHacks.dll`。
+
+### 测试清单
+
+| # | 功能 | 验证方法 |
+|---|------|----------|
+| 1 | FatigueBuff | 开 toggle → 跑/砍一段时间 → 疲劳增长应明显减慢(仅 20% 正常速度) |
+| 2 | MapClickTP | 打开地图 → 悬停已发现图标 → 双击 → 应传送到该图标对应的实际位置 |
+| 3 | NoFrostbiteRisk 关闭 | 开启后关闭 → 冻伤应恢复正常风险 |
+| 4 | 观察 Latest.log | `[MapTP] scene XXX: cached N MapDetail positions` + `closest MapDetail dist=...` 确认策略生效 |
+
+### 下次继续
+
+- 用户验收 FatigueBuff + MapClickTP
+- 如果 MapTP 的 MapDetail 策略在某些 region 找不到匹配(log 报 "no world position found")，需要扩大阈值或加更多 fallback
+- CT 对比表剩余建议加入项: 治愈所有疾病、药品/食物不减、手电筒常亮、篝火燃烧时间可控
+
+---
+
+## 🆕 2026-05-03 session v2.7.94 — CT 复刻 6 项 + UI 修复 + MapClickTP + 标签重命名
+
+### 背景
+
+v2.7.93 交付后用户实测发现: FatigueBuff 无效(Ambiguous match 报错)、MapClickTeleport 无效、FreeSprint 与 InfiniteStamina 重复、UI 拖拽白框/滚轮条/缩放标签偏移、cheat 标签命名不够准确。
+
+### 本轮改动
+
+1. **FatigueBuff 修复 — Ambiguous match 解决**
+   - **根因**: `Fatigue.AddFatigue` 有两个重载 `(float)` 和 `(float, FatigueFlags)`,DynamicPatch Spec 未指定参数类型 → Harmony 报 Ambiguous match → patch 静默失效
+   - **修法**: 新增 `FloatFatigueFlags = { typeof(float), typeof(FatigueFlags) }` 类型数组,拆成两条 Spec 分别绑定 `OneFloat` 和 `FloatFatigueFlags`
+   - Patch 逻辑: `Patch_Fatigue_AddFatigue_Buff.Prefix` 将 fatigue 增量乘以 0.3(模拟咖啡/强心针效果)
+
+2. **MapClickTeleport 重写 — 使用正确的坐标转换**
+   - **根因**: 原方案试图从 MapIcon 组件上反射找 Vector3 世界坐标 → MapIcon 根本没有 world position 字段
+   - **修法**: 发现并使用 `Panel_Map.MapPositionToWorldPosition(region, mapPos, 0f, out worldPos, out worldRadius)` 做 map→world 坐标转换
+   - 数据来源: `panel.m_TransformToMapData` 字典,用 hovered icon 的 transform 查 `MapElementSaveData.m_PositionOnMap`
+   - 流程: 打开地图(M) → 鼠标悬停图标 → 双击(0.4s 内) → 关闭地图 → 传送
+
+3. **FreeSprint 删除**
+   - InfiniteStamina 已覆盖冲刺功能,FreeSprint 纯重复
+   - Menu.cs 删除 toggle,CheatState 字段保留(兼容旧 JSON)
+
+4. **UI 修复**
+   - **拖拽白框消除**: 使用屏幕坐标系统做拖拽判定
+   - **滚轮条智能隐藏**: 内容不超出视口时 `alwaysShowVertical=false`
+   - **缩放标签居中**: 标签位置从 `W-114f` 改为 `W-128f`,精确居中于 `-`(W-148..W-120) 和 `+`(W-88..W-60) 之间
+
+5. **标签重命名** — 所有 cheat toggle 的中英文描述更准确简洁
+   - 例: "不饥饿" → "无饥饿感", "动物冰冻" → "冻结动物", "爬绳×5" → "快速爬绳"
+
+6. **CT 复刻新功能(v2.7.94)**
+   - **NoFrostbiteRisk**: patch `Frostbite.DealFrostbiteDamageToLocation/DealFrostbiteDamageToRegion/FrostbiteStart` 三个方法 Prefix skip
+   - **WellFedBuff**: patch `WellFed.Update` Prefix 强制 `m_Active=true`
+   - **FreezingBuff**: patch `PlayerManager.FreezingBuffActive` Postfix `__result=true`
+   - **FatigueBuff**: patch `Fatigue.AddFatigue` 两个重载,增量 ×0.3
+
+7. **MotionTrackerLite 默认启用**
+   - 反射找 `MotionTrackerLite.Tracker.Visible` 静态字段,强制 `true`
+   - 每 300 帧(5s) + 场景切换时调用
+
+8. **vp_FPSWeapon.LateUpdate Spec 移除**
+   - IL2CPP 中该方法不存在,之前 Spec 每 0.5s 报 `method not found` 刷日志
+
+### 改动文件
+
+```
+src/DynamicPatch.cs      — 新增 FloatFatigueFlags 类型数组; 两条 Fatigue.AddFatigue Spec; 删 vp_FPSWeapon.LateUpdate Spec; 新增 Frostbite/WellFed/FreezingBuff/FatigueBuff 6 条 Spec
+src/MapClickTeleport.cs  — 完全重写: m_TransformToMapData + MapPositionToWorldPosition
+src/Menu.cs              — 删 FreeSprint toggle; 标签重命名; 缩放标签居中(W-128f); 滚轮条智能隐藏; 拖拽白框修复; MapClickTP toggle
+src/ModMain.cs           — v2.7.94; SyncState 加 MapClickTP/NoFrostbiteRisk/WellFedBuff/FreezingBuff/FatigueBuff; MotionTrackerLiteHelper; MapClickTeleport.Tick/OnSceneChange
+src/CheatsPatches.cs     — 新增 Patch_Frostbite_DealDamage/Patch_WellFed_Update/Patch_PlayerManager_FreezingBuffActive/Patch_Fatigue_AddFatigue_Buff 四个 patch 类
+src/CheatState.cs        — 新增 NoFrostbiteRisk/WellFedBuff/FreezingBuff/FatigueBuff/MapClickTP 字段
+src/Settings.cs          — 新增对应 Settings 字段
+CT_vs_Mod_Compare.md     — 更新 v2.7.94 变更汇总
+HANDOFF.md               — 本段
+```
+
+### 编译
+
+```powershell
+dotnet build "D:\Github\tld--2.55\TldHacks\src\TldHacks.csproj" --no-incremental
+```
+0 errors, 8 warnings (pre-existing)。DLL 已部署到 `D:\Steam\steamapps\common\TheLongDark\Mods\TldHacks.dll`。
+
+### 测试清单
+
+| # | 功能 | 验证方法 |
+|---|------|----------|
+| 1 | FatigueBuff | 开 toggle → 跑/砍一段时间 → 疲劳增长应明显减慢(×0.3) |
+| 2 | MapClickTP | 打开地图 → 鼠标悬停已发现图标 → 双击 → 应传送到该位置 |
+| 3 | NoFrostbiteRisk | 极寒室外待足够长时间 → 不应触发冻伤 |
+| 4 | WellFedBuff | 开 toggle → 检查状态页"吃得饱饱"buff 是否常驻 |
+| 5 | FreezingBuff | 开 toggle → 检查"抗冻增益"是否激活 |
+| 6 | 缩放标签居中 | 看 `-` 和 `+` 之间的 `x1.0` 标签视觉是否居中 |
+| 7 | 滚轮条隐藏 | 窗口拖大到能显示全部内容时滚轮条应消失 |
+| 8 | 标签命名 | 各 toggle 文字是否更准确简洁 |
+
+### 下次继续
+
+- 用户验收上述 8 项功能
+- CT 对比表剩余建议加入项: 治愈所有疾病(一键清负面细项)、药品/食物不减、手电筒常亮、篝火燃烧时间可控
+
+---
+
+## 🆕 2026-05-02 session #5 — 性能二分法定位 + 两个卡顿 mod 锁定 + GfxBoost billboard 优化
+
+### 背景
+
+用户反馈室外体感卡顿（GPU 利用率低 = CPU bound）。本轮目标：用二分法精确定位哪个 mod 拖性能。
+
+### 关键发现
+
+**两个 mod 是卡顿元凶：**
+1. **ModSettingsQuickNav**（自制）— OnUpdate IL2CPP bridge + FindObjectsOfType 每帧开销
+2. **MotionTracker**（第三方）— 每帧扫描 100m 范围内所有动物/物品实体 + overlay 渲染
+
+禁掉这两个后，119 个 mod 全开流畅无卡顿。
+
+二分法流程：
+1. 禁 MelonLoader → 不卡 ✅
+2. MelonLoader 空跑(0 mod) → 不卡 ✅
+3. 全部 120 mod → 卡
+4. 第一轮二分锁定 ModSettingsQuickNav.dll（自制 mod）
+5. 禁 QuickNav 后仍卡（120→119）→ 继续二分
+6. 67 基线不卡 → S-Z 组(13)不卡 → T-W 组(13)含问题
+7. T-W 细分：前半(TinyTweaks 系列等)不卡 → 后半(TldHacks~WildFire)不卡
+8. 回测发现 93 mod 不稳定（可能场景相关），全开 120 确认卡
+9. 对 M-S 嫌疑组(27个) 二分：前半(G-P)含问题 → 后 7 个含问题
+10. MotionTracker + PauseInJournal 二选一 → 禁 MotionTracker 不卡 ✅
+
+### 根因分析
+
+`ModSettingsQuickNav v1.2.1` 的 `override OnGUI()` 是罪魁：
+- Unity IMGUI `OnGUI` 每帧被调用 2-4 次（每个 Event 一次）
+- MelonLoader 对每个有 OnGUI override 的 mod 都要过 IL2CPP bridge
+- 即使函数体第一行 return，bridge 调用本身就有显著开销
+- 加上 `RefreshPanelState()` 每 30 帧调一次 `FindObjectsOfType` 遍历全场景
+
+### 修复尝试（v1.3.0）
+
+1. **移除 `override OnGUI()`** — 改用 `MelonEvents.OnGUI.Subscribe/Unsubscribe` 动态订阅
+2. **RefreshPanelState 缓存快速路径** — 已有有效 GUI 对象时跳过 FindObjectsOfType
+3. **轮询频率 30→90 帧**
+4. **Tab 跳转高亮修复** — JumpTo 后同步更新 modTabs 里对应 tab 的视觉状态
+
+**结果：仍卡。** 说明 `override OnUpdate()` 的 IL2CPP bridge 开销也是问题。
+
+### 当前状态
+
+- **ModSettingsQuickNav.dll.disabled** — 已禁用，等待进一步优化（自制，有源码）
+- **MotionTracker.dll.disabled** — 已禁用（第三方，无源码，390KB）
+  - 功能：按 U 显示雷达环，实时标注 100m 内动物/物品/喷漆
+  - 卡顿原因：每帧扫描场景实体 + OnGUI overlay 渲染（和 QuickNav 同类问题）
+  - 如需使用，可研究是否有 ModSettings 的"仅手动激活"选项
+- 源码在 `D:\Github\tld--2.55\ModSettingsQuickNav\src\ModSettingsQuickNav.cs`（v1.3.0）
+- 编译产物在 `bin\Release\ModSettingsQuickNav.dll`（游戏关后需手动复制）
+- **最终验证**：119 mod 全开（仅禁 QuickNav + MotionTracker）→ 流畅 ✅
+
+### 下次继续方向
+
+彻底消除 IL2CPP bridge 开销的方案：
+1. **去掉 `override OnUpdate()`** — 改用 `MelonEvents.OnUpdate.Subscribe/Unsubscribe`，只在 ModSettings 面板可能打开时才订阅（比如场景切换到 MainMenu 时订阅，离开时取消）
+2. **或 Harmony patch ModSettings 面板的 OnEnable/OnDisable** — 只在面板真正打开时才激活整个 mod 逻辑
+3. **或改为纯 Harmony patch 架构** — patch `ModSettingsGUI.OnEnable` 注入 QuickNav UI，不需要任何 per-frame 回调
+
+### GfxBoost v2 — billboard 阴影剥离
+
+同一 session 早些时候还做了 GfxBoost 优化（已部署）：
+- `ShadowDistance` 默认 50→30m（视觉几乎无损）
+- 新增 `DisableBillboardShadows` 设置：场景加载时遍历所有 LODGroup，最低层（billboard）的 renderer 关闭 shadowCastingMode
+- 原理：billboard 级别的树/物体投影本身就极粗糙，关掉省大量 draw call
+
+### Tab 跳转 bug（未验证）
+
+v1.3.0 加了 tab 高亮同步代码（通过反射 `modTabs` 字典获取 tab 对象并切换高亮），但因 mod 被禁用未能测试。逻辑在 `JumpTo()` → `GetTabForMod()` → `SetTabHighlight()`。
+
+### 改动文件
+```
+ModSettingsQuickNav/src/ModSettingsQuickNav.cs  — v1.2.1→v1.3.0; 去 OnGUI override; 动态订阅; 缓存; tab 高亮
+GfxBoost/src/ModMain.cs                         — ShadowDistance 50→30; 新增 StripBillboardShadows()
+GfxBoost/src/GfxBoost.csproj                    — 加 Il2CppInterop.Runtime + Il2Cppmscorlib 引用
+```
+
+### 构建
+```powershell
+dotnet build "D:\Github\tld--2.55\ModSettingsQuickNav\src\ModSettingsQuickNav.csproj" -c Release
+dotnet build "D:\Github\tld--2.55\GfxBoost\src\GfxBoost.csproj" -c Release
+```
+
+---
+
+## 🆕 2026-05-02 session #4 v2.7.92 — 性能崩溃修复 + 多方位优化
+
+### 背景
+
+v2.7.91 上线后室内 FPS 从 180 暴跌到 70，GPU 占用仅 10%（CPU 饿死 GPU）。
+稳定瞄准（NoAimSway）确认仍不可用，标记待修。
+
+### 根因
+
+Settings JSON 残留值 `ESP=true, AutoAim=true, MagicBullet=true`：
+- v2.7.91 删了 UI 但 SyncStateFromSettings 仍把 JSON 值同步到 runtime
+- `ESPOverlay.OnGUI` 每帧 DrawAnimals + **DrawContainers（FindObjectsOfType<Container> 无 cache！）**
+- `AutoAimSystem.Tick` 每帧 FindBestTarget + Physics.Raycast
+- `MagicBulletSystem.UpdatePreview` 每帧 FindNearest → `AiCache.Get()` → FindObjectsOfType<BaseAi>
+
+三者叠加 = 每帧 3 次全场景对象扫描 = CPU 爆炸。
+
+### 本轮改动
+
+1. **SyncStateFromSettings 强制 ESP=false, AutoAim=false**
+   - 防 JSON 残留值激活已删 UI 的功能
+   - MagicBullet 保留（有 UI）
+
+2. **AiCache 降频：每帧 → 0.5s 最小间隔**
+   - `FindObjectsOfType<BaseAi>` 从 60-180 次/秒降到 2 次/秒
+
+3. **MagicBulletSystem.UpdatePreview 降频 0.25s**
+   - 预览目标不需要每帧刷新
+
+4. **OnUpdate 移除 AutoAimSystem.Tick + WeaponTuning.Tick**
+   - ESP/AutoAim UI 已删，这些调用无意义
+
+5. **BaseAi.CanSeeTarget：Postfix → Prefix（室外最大优化）**
+   - 之前：游戏跑完 LOS raycast → 我们覆盖结果为 false
+   - 现在：Prefix `return false` 直接跳过原方法
+   - **每只动物每次视线检测省 50-200μs**（跳过游戏自身 raycast）
+   - 室外 20-40 只动物 = 省 2-5ms/帧
+
+6. **TickGuns 拆分：手持武器 vs 全场景**
+   - InfiniteAmmo/NoJam 仍扫全场景（需所有枪的弹夹）
+   - NoRecoil/FastFire/NoAimSway 只取 `pm.m_ItemInHands.GetComponent<GunItem>()`
+
+7. **ESPOverlay.OnGUI 加 EventType.Repaint 过滤**
+   - OnGUI 每帧被调 2-3 次，只 Repaint 时画
+
+8. **TickCamera 去重**
+   - 删除 camera sway 清零 + recoil spring 反射（DynamicPatch 每帧已做）
+   - 只保留独有操作：static bool 设置 + weapon 实例反射
+
+### 改动文件
+```
+src/ModMain.cs        — v2.7.92; SyncState 强制 ESP/AutoAim=false; 删 AutoAim/WeaponTuning Tick
+src/ESP.cs            — AiCache 0.5s 缓存; UpdatePreview 0.25s 降频; OnGUI Repaint 过滤
+src/CheatsPatches.cs  — CanSeeTarget Postfix→Prefix; TickGuns 拆分; TickCamera 去重
+src/DynamicPatch.cs   — CanSeeTarget spec 改 Prefix
+HANDOFF.md            — 本文档
+```
+
+### 性能对比
+
+| 指标 | v2.7.91 (崩溃) | v2.7.92 (修复) |
+|------|---------------|---------------|
+| 室内 FPS | 70 | 预期 150-180 |
+| 室内 GPU | 10% | 预期 80-90% |
+| 室外 AI 开销 | 每 AI 跑完 raycast+覆盖 | 每 AI 直接跳过(省 50-200μs) |
+| FindObjectsOfType/秒 | 180-540次 | 2-4次 |
+
+### 功能状态
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 魔法子弹 | ✅ 可用 | 武器区 UI,降频预览 |
+| 无后坐力 | ✅ 可用 | RecoilWindow 0.7s |
+| **稳定瞄准** | ❌ 不可用 | 用户确认仍抖,标记待修 |
+| ESP/自瞄 | ⏸️ 代码保留 | JSON 值被强制 false,重做时改 SyncState |
+
+### 下次继续
+
+1. **验证性能恢复**：室内 FPS 是否回到 150+？室外是否改善？
+2. **修稳定瞄准**：
+   - 当前路径：DynamicPatch 每帧清 camera sway + SteadyAim 锁 weapon transform
+   - 为什么不生效？可能原因：
+     - 游戏在我们清零之后、渲染之前又写回了 sway 值（某个我们没 patch 的方法）
+     - vp_FPSWeapon 的 transform 被某个 LateUpdate 之后的系统覆盖
+     - IL2CPP 值类型写入对某些字段无效（struct 复制问题）
+   - 排查思路：用 `DiagPauseRuntime` 确认是否纯游戏原生 sway；对比 BetterCamera mod 的做法
+3. **ESP/自瞄恢复**：改 SyncState 恢复同步 + 重新加回 Menu section
+
+### 构建
+```powershell
+dotnet build "D:\tld--2.55\TldHacks\src\TldHacks.csproj" --no-incremental
+```
+
+---
+
+## 2026-05-02 session #3 v2.7.91 — 魔法子弹定稿 / 删 ESP+自瞄 UI / 修稳定瞄准
+
+### 决策记录
+
+用户明确表示 ESP 透视和自动瞄准"都没用"、"放弃吧"：
+- **保留**：魔法子弹（MagicBullet）— 确认可用，移至"武器 & 瞄准"区
+- **删除 UI**：ESP 方框、自动瞄准、FOV 圆圈、武器调参滑块全部从 Menu.cs 移除
+- **代码保留**：ESP.cs 内所有类（ESPOverlay / AutoAimSystem / WeaponTuning / MagicBulletSystem）完整保留，标记待做
+- **Settings 保留**：JSON 字段仍存在，重启不丢失，未来恢复 UI 即可复活
+
+### 本轮改动
+
+1. **Menu.cs — 删除 "ESP & 自动瞄准" section**
+   - 约 60 行 toggle/slider/save 逻辑全部移除
+   - 魔法子弹 toggle 搬到武器区第三列，和"稳定瞄准"同行
+
+2. **稳定瞄准修复（NoAimSway）— 根因 + 修法**
+   - **根因**：TickCamera 每 30 帧清一次 sway 参数，但游戏每帧重设 → 30 帧间隔内完全无效
+   - **修法**：DynamicPatch.cs 的 `vp_FPSCamera.Update` 和 `vp_FPSCamera.LateUpdate` spec 条件扩展加 `|| CheatState.NoAimSway`
+   - CheatsPatches.cs `Patch_FPSCamera_ClearRecoil.Prefix` 新增 sway 归零逻辑（每帧）：
+     ```
+     m_MaxAmbientSwayAngleDegreesA = 0
+     m_MaxAmbientAimingSwayAngleDegreesA = 0
+     m_AmbientSwaySpeedA = 0
+     m_AmbientAimingSwaySpeedA = 0
+     m_CurrentMaxAmbientSwayAngle = 0
+     m_CurrentAmbientSwaySpeed = 0
+     ShakeAmplitude = Vector3.zero
+     ShakeSpeed = 0
+     BobAmplitude = Vector4.zero
+     ```
+   - `Patch_FPSCamera_LateUpdate.Postfix` 也追加清零（双重保险）
+
+3. **后坐力窗口 RecoilWindow = 0.7s**（CheatsPatches.cs）
+   - 之前 0.5s → 0.25s（太短,后坐力泄漏）→ 0.15s（更糟）→ **0.7s**
+   - 用户反馈"按住瞄准打完会抖一下" = 弹簧恢复动画 ~0.6s，窗口 0.7s 刚好覆盖
+
+4. **魔法子弹增强**
+   - 弓箭检测：`IsHoldingBow()` 判断 `m_ItemInHands.GetComponent<BowItem>()`
+   - 箭矢抛物线补偿：`CompensateArrowDrop()` 按 `0.5*g*t²` 抬高瞄点
+   - 弓用左键激活 / 枪用右键激活（区分操作）
+   - 紫色十字准心 + 角标 + [MAGIC] 文字预览（仅开启时显示）
+
+5. **ModMain.cs v2.7.91**
+   - `MagicBulletSystem.UpdatePreview()` 加入 OnUpdate 每帧调用
+   - `SyncStateFromSettings` 补充 ESPRange / FireRateScale / ReloadScale 同步
+
+### 改动文件
+```
+src/Menu.cs           — 删"ESP & 自动瞄准"section; 魔法子弹 toggle 移到武器区
+src/CheatsPatches.cs  — RecoilWindow 0.7s; Prefix 加 sway 归零; LateUpdate Postfix 加 sway 清零
+src/DynamicPatch.cs   — FPSCamera.Update/LateUpdate 条件加 || CheatState.NoAimSway
+src/ESP.cs            — IsHoldingBow + CompensateArrowDrop + MagicBulletSystem.UpdatePreview + DrawPreview
+src/ModMain.cs        — v2.7.91; OnUpdate 加 MagicBulletSystem.UpdatePreview; SyncState 补字段
+src/Settings.cs       — SuperAccuracy 标记弃用; 补 FireRateScale/ReloadScale/ESPRange 字段
+```
+
+### 功能状态对比表
+
+| 功能 | 状态 | 位置 | 说明 |
+|------|------|------|------|
+| 魔法子弹 | ✅ 完成 | 武器区 UI | 开枪自动命中锁定目标；弓箭有抛物补偿 |
+| 稳定瞄准 | ✅ 修复 | 武器区 UI | 每帧清 sway（DynamicPatch 条件扩展） |
+| 无后坐力 | ✅ 完成 | 武器区 UI | RecoilWindow 0.7s 覆盖弹簧回弹 |
+| ESP 透视 | ⏸️ 待做 | 无 UI（代码在 ESP.cs） | 方框+血条+距离,功能写好但未打磨 |
+| 自动瞄准 | ⏸️ 待做 | 无 UI（代码在 ESP.cs） | 右键锁定+Slerp追踪,功能写好但体验粗糙 |
+| 武器调参 | ⏸️ 待做 | 无 UI（代码在 ESP.cs） | 射速/换弹/后坐力滑块,IL2Cpp 写入不稳定 |
+| FOV 圆圈 | ⏸️ 待做 | 无 UI（代码在 ESP.cs） | 自瞄搜索范围可视化 |
+
+### 下次继续
+
+1. **验证稳定瞄准**：开 NoAimSway + 步枪开镜 → 准心完全不动？（用户上次仍报抖）
+   - 若仍抖 → 可能是 `vp_FPSWeapon` 层面的 bob 没清干净，检查 `Patch_FPSWeapon_SteadyAim`
+2. **ESP/自瞄恢复**：如果要重做，Menu.cs 加回 section + CheatStateESP 字段已在 Settings 持久化
+3. **室外帧数**：根因是 CPU draw call 瓶颈（GPU 只用 40-60%），非 mod 层面可解；建议游戏设置降阴影/draw distance
+
+### 构建 & 部署
+```powershell
+dotnet build "D:\tld--2.55\TldHacks\src\TldHacks.csproj" --no-incremental
+cp "D:\tld--2.55\TldHacks\src\bin\Debug\net6.0\TldHacks.dll" "D:\SteamLibrary\steamapps\common\TheLongDark\Mods\"
+```
+
+---
+
+## 2026-05-02 session #2 v2.7.90 — ESP/AutoAim 9/10 品质升级 + 编译修复
 
 ### 本次改动
 

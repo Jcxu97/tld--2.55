@@ -68,6 +68,10 @@ internal static class CheatState
     public static bool InfiniteContainer;  // 容器无限
     public static bool FireTemp300;        // 篝火 300℃
     public static bool FireNeverDie;       // 篝火永不熄
+    public static bool NoFrostbiteRisk;    // 无冻伤风险(CT: DealFrostbiteDamageToLocation=0)
+    public static bool WellFedBuff;        // 饱饱 buff(CT: WellFed.Update NOP)
+    public static bool FreezingBuff;       // 温度加成(CT: FreezingBuffActive=true)
+    public static bool FatigueBuff;        // 疲劳加成(CT: StatusBar fatigue buff=1)
     public static bool CureFrostbite;      // 治愈永久冻伤
     public static bool ClearDeathPenalty;  // 清除死亡惩罚
     public static bool QuickFishing;       // 钓鱼 100%
@@ -84,6 +88,7 @@ internal static class CheatState
     public static bool TraderInstantExchange; // 交易秒完成
     public static bool TraderAlwaysAvailable; // 随时可联系商人
     public static bool CougarInstantActivate; // 新档首次立即激活美洲狮
+    public static bool MapClickTP = true; // 双击地图图标传送
     // v2.7.58 与 ItemPicker mod 交互 —— 不让 W 键自动拾取捡回玩家自己丢的物品
     public static bool BlockAutoPickupOwnDrops;
     // Display
@@ -162,6 +167,10 @@ internal static class Cheats
             s.InfiniteContainer = false;
             s.FireTemp300 = false;
             s.FireNeverDie = false;
+            s.NoFrostbiteRisk = false;
+            s.WellFedBuff = false;
+            s.FreezingBuff = false;
+            s.FatigueBuff = false;
             s.CureFrostbite = false;
             s.ClearDeathPenalty = false;
             s.QuickFishing = false;
@@ -234,6 +243,10 @@ internal static class Cheats
         CheatState.InfiniteContainer = s.InfiniteContainer;
         CheatState.FireTemp300 = s.FireTemp300;
         CheatState.FireNeverDie = s.FireNeverDie;
+        CheatState.NoFrostbiteRisk = s.NoFrostbiteRisk;
+        CheatState.WellFedBuff = s.WellFedBuff;
+        CheatState.FreezingBuff = s.FreezingBuff;
+        CheatState.FatigueBuff = s.FatigueBuff;
         CheatState.CureFrostbite = s.CureFrostbite;
         CheatState.ClearDeathPenalty = s.ClearDeathPenalty;
         CheatState.QuickFishing = s.QuickFishing;

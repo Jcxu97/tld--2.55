@@ -9,3 +9,6 @@ ModSettingsQuickNav/src/obj/
 *.moddata
 *.backup_*
 *.log
+analysis/il/
+GfxBoost/src/bin/
+GfxBoost/src/obj/

@@ -85,11 +85,11 @@
 | 一键解锁所有勋章 | 解锁成就 | 中 |
 | 查看/更改生存时间 | 显示并修改游戏内时间 | 低 |
 | 显示生存时间 (TAB 切换) | HUD 显示存活天数 | 低 |
-| 温度加成/疲劳加成 | 给状态加 buff 滑块 | 低 |
-| 饱饱 buff | 长按 F2 开启 | 低 |
-| 坏血病查看 | 显示维C 相关数值 | 中 |
+| ~~温度加成/疲劳加成~~ | ~~给状态加 buff 滑块~~ | ~~低~~ → **已实现** v2.7.94 FreezingBuff/FatigueBuff |
+| ~~饱饱 buff~~ | ~~长按 F2 开启~~ | ~~低~~ → **已实现** v2.7.94 WellFedBuff |
+| ~~坏血病查看~~ | ~~显示维C 相关数值~~ | ~~中~~ → **已实现** v2.7.93 ScurvyViewer |
 | 强制改人物视角 | 改 FOV / 第三人称 | 低 |
-| 无冻伤风险 | 室外开启，阻止冻伤发生 | 低 |
+| ~~无冻伤风险~~ | ~~室外开启，阻止冻伤发生~~ | ~~低~~ → **已实现** v2.7.94 NoFrostbiteRisk |
 | 治愈体温过低 | 体温过低 → 正常 | 低 |
 | 头疼/化学品中毒 | 个别疾病治愈 | 低 |
 | 无条件制作 DLC 食物 | 包含未拥有的特殊食谱 | 中 |
@@ -137,19 +137,35 @@
 ## 四、总结
 
 - **CT 总功能数**: ~70+ 项 (含子项约 100+)
-- **Mod 总功能数**: ~50 项 (v2.7.87)
-- **两边重叠**: ~47 项
-- **CT 独有**: ~28 项 (其中约 7 项值得加)
-- **Mod 独有**: ~14 项 (CT 没有的高质量功能)
+- **Mod 总功能数**: ~55 项 (v2.7.94)
+- **两边重叠**: ~50 项
+- **CT 独有**: ~24 项 (其中约 5 项值得加)
+- **Mod 独有**: ~16 项 (CT 没有的高质量功能)
 
-**v2.7.86→v2.7.87 新增/修复**:
-- ✅ 无限体力 (InfiniteStamina) — 已验证
-- ✅ 随意生火含室内 (FireAnywhere) — 编译通过待测
-- ✅ 生火材料不减 (FreeFireFuel) — v2.7.87 签名修复
-- ✅ 科技背包 +50kg (TechBackpack) — v2.7.87 返回类型修复
-- ✅ 火把满值 (TorchFullValue) — 编译通过待测
-- ✅ 无后坐力/超级精准/稳定瞄准 — v2.7.87 DLL 字段名确认后彻底重写
+**v2.7.97 变更汇总** (2026-05-03):
+- ✅ 地图传送高度终极修复 — RaycastAll + isTrigger 过滤 + 取最高非 trigger 面(跳过天空/地下 trigger)
+- ✅ UI 列平衡 — "一次性操作"从列1→列3; 商人按钮宽度动态填满列宽
+- ✅ 疲劳减缓 (FatigueBuff) — Patch PlayerManager.FatigueBuffActive() 原生 buff
+- ✅ 地图双击传送精度 (MapClickTP) — 最小二乘仿射变换, maxResidual=0.0m
+- ✅ 免疫冻伤开关修复 (NoFrostbiteRisk) — _frostbiteWasOn flag + early-return gate 前执行
+
+**v2.7.95 变更汇总** (2026-05-03):
+- ✅ 疲劳减缓修复 (FatigueBuff) — 改用直接钳制 m_CurrentFatigue 增量(×0.2),替代无效的 BurnPerHour 方案
+- ✅ 地图双击传送修复 (MapClickTP) — 彻底重写:放弃 MapPositionToWorldPosition,改用 MapDetail 位置匹配三层 fallback
+- ✅ 免疫冻伤关闭恢复 (NoFrostbiteRisk) — 加 else 分支恢复 m_SuppressFrostbite=false
+
+**v2.7.94 变更汇总** (2026-05-03):
+- ✅ 免疫冻伤 (NoFrostbiteRisk) — tick-based m_SuppressFrostbite + 清 risk/damage 列表
+- ✅ 常驻饱腹 (WellFedBuff) — patch WellFed.Update
+- ✅ 抗冻增益 (FreezingBuff) — patch PlayerManager.FreezingBuffActive
+- ✅ 地图双击传送 (MapClickTP) — 初版(v2.7.95 重写修复)
+- ✅ MotionTrackerLite 默认启用 — 反射强制 Visible=true
+- ✅ UI 拖拽修复 — 屏幕坐标系 + 白框消除
+- ✅ 滚动条智能隐藏 — 内容不超出时隐藏 scrollbar
+- ✅ 缩放标签居中 — - 和 + 之间精确居中
+- ✅ 标签重命名 — 更准确简洁的中英文描述
 - 🗑️ 无条件冲刺 (FreeSprint) — 与无限体力重复,已删除
+- 🗑️ vp_FPSWeapon.LateUpdate Spec — IL2CPP 中不存在,移除避免刷日志
 
 **建议优先加的 4 项** (玩家高频需求 + 实现简单):
 1. 治愈所有疾病 (一键清负面效果细项)
