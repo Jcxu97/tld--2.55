@@ -1,0 +1,624 @@
+using System;
+using System.Runtime.CompilerServices;
+using Il2CppAK.Wwise;
+using Il2CppInterop.Common.Attributes;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.Runtime;
+using Il2CppSystem;
+using UnityEngine;
+
+namespace Il2Cpp;
+
+public class Breath : MonoBehaviour
+{
+	[System.Serializable]
+	public class HeavyBreathingAudio : Il2CppSystem.Object
+	{
+		private static readonly System.IntPtr NativeFieldInfoPtr_m_Light;
+
+		private static readonly System.IntPtr NativeFieldInfoPtr_m_Medium;
+
+		private static readonly System.IntPtr NativeFieldInfoPtr_m_Heavy;
+
+		private static readonly System.IntPtr NativeMethodInfoPtr__ctor_Public_Void_0;
+
+		public unsafe Il2CppAK.Wwise.Event m_Light
+		{
+			get
+			{
+				nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Light);
+				System.IntPtr intPtr = *(System.IntPtr*)num;
+				return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Il2CppAK.Wwise.Event>(intPtr) : null;
+			}
+			set
+			{
+				System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+				IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Light)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+			}
+		}
+
+		public unsafe Il2CppAK.Wwise.Event m_Medium
+		{
+			get
+			{
+				nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Medium);
+				System.IntPtr intPtr = *(System.IntPtr*)num;
+				return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Il2CppAK.Wwise.Event>(intPtr) : null;
+			}
+			set
+			{
+				System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+				IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Medium)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+			}
+		}
+
+		public unsafe Il2CppAK.Wwise.Event m_Heavy
+		{
+			get
+			{
+				nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Heavy);
+				System.IntPtr intPtr = *(System.IntPtr*)num;
+				return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Il2CppAK.Wwise.Event>(intPtr) : null;
+			}
+			set
+			{
+				System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+				IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Heavy)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+			}
+		}
+
+		static HeavyBreathingAudio()
+		{
+			Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr = IL2CPP.GetIl2CppNestedType(Il2CppClassPointerStore<Breath>.NativeClassPtr, "HeavyBreathingAudio");
+			IL2CPP.il2cpp_runtime_class_init(Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr);
+			NativeFieldInfoPtr_m_Light = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr, "m_Light");
+			NativeFieldInfoPtr_m_Medium = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr, "m_Medium");
+			NativeFieldInfoPtr_m_Heavy = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr, "m_Heavy");
+			NativeMethodInfoPtr__ctor_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr, 100683246);
+		}
+
+		[CallerCount(0)]
+		public unsafe HeavyBreathingAudio()
+			: this(IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<HeavyBreathingAudio>.NativeClassPtr))
+		{
+			System.IntPtr* ptr = null;
+			Unsafe.SkipInit(out System.IntPtr intPtr);
+			System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr__ctor_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		}
+
+		public HeavyBreathingAudio(System.IntPtr pointer)
+			: base(pointer)
+		{
+		}
+	}
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_NormalBreathSeconds;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_HeavyBreathSeconds;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_ColdBreathTempThreshold;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_VeryColdBreathTempThreshold;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_FreezingBreathTempThreshold;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathColdPrefab;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathVeryColdPrefab;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathFreezingPrefab;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_TooInjuredToSprintAudio;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_HeavyBreathingAudio;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathCold;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathVeryCold;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathFreezing;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathColdParticleSystem;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathVeryColdParticleSystem;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathFreezingParticleSystem;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_NextBreathTime;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_EffectsParented;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathTimePercent;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BreathTime;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_SuppressEffects;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_Start_Public_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_OnDestroy_Private_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_StopBreathEffectImmediate_Public_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_GetBreathTimePercent_Public_Single_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_PlayBreathEffect_Private_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_GetBreathingStatePercent_Public_Static_Single_HeavyBreathingState_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_Update_Public_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_ParentEffectToCamera_Private_Void_GameObject_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_ShouldSuppressBreathEffect_Private_Boolean_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_ShouldSuppressBreathingParticleEffects_Private_Boolean_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr__ctor_Public_Void_0;
+
+	public unsafe float m_NormalBreathSeconds
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NormalBreathSeconds);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NormalBreathSeconds)) = value;
+		}
+	}
+
+	public unsafe float m_HeavyBreathSeconds
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_HeavyBreathSeconds);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_HeavyBreathSeconds)) = value;
+		}
+	}
+
+	public unsafe float m_ColdBreathTempThreshold
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_ColdBreathTempThreshold);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_ColdBreathTempThreshold)) = value;
+		}
+	}
+
+	public unsafe float m_VeryColdBreathTempThreshold
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_VeryColdBreathTempThreshold);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_VeryColdBreathTempThreshold)) = value;
+		}
+	}
+
+	public unsafe float m_FreezingBreathTempThreshold
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_FreezingBreathTempThreshold);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_FreezingBreathTempThreshold)) = value;
+		}
+	}
+
+	public unsafe GameObject m_BreathColdPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathColdPrefab);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathColdPrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_BreathVeryColdPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathVeryColdPrefab);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathVeryColdPrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_BreathFreezingPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathFreezingPrefab);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathFreezingPrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe Il2CppAK.Wwise.Event m_TooInjuredToSprintAudio
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_TooInjuredToSprintAudio);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Il2CppAK.Wwise.Event>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_TooInjuredToSprintAudio)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe HeavyBreathingAudio m_HeavyBreathingAudio
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_HeavyBreathingAudio);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<HeavyBreathingAudio>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_HeavyBreathingAudio)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_BreathCold
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathCold);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathCold)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_BreathVeryCold
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathVeryCold);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathVeryCold)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_BreathFreezing
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathFreezing);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathFreezing)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe ParticleSystem m_BreathColdParticleSystem
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathColdParticleSystem);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<ParticleSystem>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathColdParticleSystem)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe ParticleSystem m_BreathVeryColdParticleSystem
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathVeryColdParticleSystem);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<ParticleSystem>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathVeryColdParticleSystem)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe ParticleSystem m_BreathFreezingParticleSystem
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathFreezingParticleSystem);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<ParticleSystem>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathFreezingParticleSystem)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe float m_NextBreathTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NextBreathTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NextBreathTime)) = value;
+		}
+	}
+
+	public unsafe bool m_EffectsParented
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_EffectsParented);
+			return *(bool*)num;
+		}
+		set
+		{
+			*(bool*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_EffectsParented)) = value;
+		}
+	}
+
+	public unsafe float m_BreathTimePercent
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathTimePercent);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathTimePercent)) = value;
+		}
+	}
+
+	public unsafe float m_BreathTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BreathTime)) = value;
+		}
+	}
+
+	public unsafe bool m_SuppressEffects
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_SuppressEffects);
+			return *(bool*)num;
+		}
+		set
+		{
+			*(bool*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_SuppressEffects)) = value;
+		}
+	}
+
+	static Breath()
+	{
+		Il2CppClassPointerStore<Breath>.NativeClassPtr = IL2CPP.GetIl2CppClass("Assembly-CSharp.dll", "", "Breath");
+		IL2CPP.il2cpp_runtime_class_init(Il2CppClassPointerStore<Breath>.NativeClassPtr);
+		NativeFieldInfoPtr_m_NormalBreathSeconds = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_NormalBreathSeconds");
+		NativeFieldInfoPtr_m_HeavyBreathSeconds = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_HeavyBreathSeconds");
+		NativeFieldInfoPtr_m_ColdBreathTempThreshold = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_ColdBreathTempThreshold");
+		NativeFieldInfoPtr_m_VeryColdBreathTempThreshold = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_VeryColdBreathTempThreshold");
+		NativeFieldInfoPtr_m_FreezingBreathTempThreshold = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_FreezingBreathTempThreshold");
+		NativeFieldInfoPtr_m_BreathColdPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathColdPrefab");
+		NativeFieldInfoPtr_m_BreathVeryColdPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathVeryColdPrefab");
+		NativeFieldInfoPtr_m_BreathFreezingPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathFreezingPrefab");
+		NativeFieldInfoPtr_m_TooInjuredToSprintAudio = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_TooInjuredToSprintAudio");
+		NativeFieldInfoPtr_m_HeavyBreathingAudio = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_HeavyBreathingAudio");
+		NativeFieldInfoPtr_m_BreathCold = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathCold");
+		NativeFieldInfoPtr_m_BreathVeryCold = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathVeryCold");
+		NativeFieldInfoPtr_m_BreathFreezing = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathFreezing");
+		NativeFieldInfoPtr_m_BreathColdParticleSystem = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathColdParticleSystem");
+		NativeFieldInfoPtr_m_BreathVeryColdParticleSystem = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathVeryColdParticleSystem");
+		NativeFieldInfoPtr_m_BreathFreezingParticleSystem = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathFreezingParticleSystem");
+		NativeFieldInfoPtr_m_NextBreathTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_NextBreathTime");
+		NativeFieldInfoPtr_m_EffectsParented = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_EffectsParented");
+		NativeFieldInfoPtr_m_BreathTimePercent = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathTimePercent");
+		NativeFieldInfoPtr_m_BreathTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_BreathTime");
+		NativeFieldInfoPtr_m_SuppressEffects = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<Breath>.NativeClassPtr, "m_SuppressEffects");
+		NativeMethodInfoPtr_Start_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683235);
+		NativeMethodInfoPtr_OnDestroy_Private_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683236);
+		NativeMethodInfoPtr_StopBreathEffectImmediate_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683237);
+		NativeMethodInfoPtr_GetBreathTimePercent_Public_Single_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683238);
+		NativeMethodInfoPtr_PlayBreathEffect_Private_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683239);
+		NativeMethodInfoPtr_GetBreathingStatePercent_Public_Static_Single_HeavyBreathingState_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683240);
+		NativeMethodInfoPtr_Update_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683241);
+		NativeMethodInfoPtr_ParentEffectToCamera_Private_Void_GameObject_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683242);
+		NativeMethodInfoPtr_ShouldSuppressBreathEffect_Private_Boolean_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683243);
+		NativeMethodInfoPtr_ShouldSuppressBreathingParticleEffects_Private_Boolean_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683244);
+		NativeMethodInfoPtr__ctor_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<Breath>.NativeClassPtr, 100683245);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 398185, XrefRangeEnd = 398229, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void Start()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_Start_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 398229, XrefRangeEnd = 398286, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void OnDestroy()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_OnDestroy_Private_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(1)]
+	[CachedScanResults(RefRangeStart = 398314, RefRangeEnd = 398315, XrefRangeStart = 398286, XrefRangeEnd = 398314, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void StopBreathEffectImmediate()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_StopBreathEffectImmediate_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	public unsafe float GetBreathTimePercent()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_GetBreathTimePercent_Public_Single_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		return *(float*)IL2CPP.il2cpp_object_unbox(intPtr2);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 398315, XrefRangeEnd = 398364, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void PlayBreathEffect()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_PlayBreathEffect_Private_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	public unsafe static float GetBreathingStatePercent(HeavyBreathingState hbs)
+	{
+		System.IntPtr* ptr = stackalloc System.IntPtr[1];
+		*ptr = (nint)(&hbs);
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_GetBreathingStatePercent_Public_Static_Single_HeavyBreathingState_0, (System.IntPtr)0, (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		return *(float*)IL2CPP.il2cpp_object_unbox(intPtr2);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 398364, XrefRangeEnd = 398400, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void Update()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_Update_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 398431, RefRangeEnd = 398434, XrefRangeStart = 398400, XrefRangeEnd = 398431, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void ParentEffectToCamera(GameObject instance)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = stackalloc System.IntPtr[1];
+		*ptr = IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)instance);
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_ParentEffectToCamera_Private_Void_GameObject_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(1)]
+	[CachedScanResults(RefRangeStart = 398481, RefRangeEnd = 398482, XrefRangeStart = 398434, XrefRangeEnd = 398481, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe bool ShouldSuppressBreathEffect()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_ShouldSuppressBreathEffect_Private_Boolean_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		return *(bool*)IL2CPP.il2cpp_object_unbox(intPtr2);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 398482, XrefRangeEnd = 398486, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe bool ShouldSuppressBreathingParticleEffects()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_ShouldSuppressBreathingParticleEffects_Private_Boolean_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		return *(bool*)IL2CPP.il2cpp_object_unbox(intPtr2);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 0, XrefRangeEnd = 0, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe Breath()
+		: this(IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<Breath>.NativeClassPtr))
+	{
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr__ctor_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	public Breath(System.IntPtr pointer)
+		: base(pointer)
+	{
+	}
+}
+You are not using the latest version of the tool, please update.
+Latest version is '10.0.1.8346' (yours is '8.2.0.7535-95108c96')

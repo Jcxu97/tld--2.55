@@ -136,8 +136,6 @@ internal static class DynamicPatch
             "Prefix", null, () => CheatState.ThinIceNoBreak),
         Spec(typeof(FireManager), "CalculateFireStartSuccess", typeof(Patch_FireMgr_Success),
             null, "Postfix", () => CheatState.QuickFire),
-        Spec(typeof(CameraEffects), "EnableCameraWeaponPostEffects", typeof(Patch_CamEffects_WeaponPost),
-            "Prefix", null, () => CheatState.NoAimDOF, null, OneBool),
         Spec(typeof(Panel_Container), "EnableAfterDelay", typeof(Patch_Container_EnableAfterDelay),
             "Prefix", null, () => CheatState.QuickOpenContainer, null, OneFloat),
         Spec(typeof(Panel_Container), "Enable", typeof(Patch_Container_Enable),
@@ -152,6 +150,30 @@ internal static class DynamicPatch
         Spec(typeof(Il2CppTLD.Trader.ExchangeItem), "IsFullyExchanged",
             typeof(Patch_ExchangeItem_IsFullyExchanged),
             "Prefix", null, () => CheatState.TraderInstantExchange),
+
+        // v2.7.89 无后坐力:零化 GunItem 后坐参数(Prefix 归零 + Postfix 恢复)
+        Spec(typeof(vp_FPSWeapon), "PlayFireAnimation", typeof(Patch_FPSWeapon_PlayFireAnimation),
+            "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f),
+        Spec(typeof(vp_FPSCamera), "Update", typeof(Patch_FPSCamera_ClearRecoil),
+            "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f || CheatState.NoAimSway),
+        Spec(typeof(vp_FPSCamera), "LateUpdate", typeof(Patch_FPSCamera_LateUpdate),
+            "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f || CheatState.NoAimSway),
+        Spec(typeof(vp_FPSWeapon), "Update", typeof(Patch_FPSWeapon_SteadyAim),
+            "Prefix", "Postfix", () => CheatState.NoAimSway || CheatState.SuperAccuracy),
+        Spec(typeof(vp_FPSWeapon), "LateUpdate", typeof(Patch_FPSWeapon_SteadyAim_Late),
+            "Prefix", "Postfix", () => CheatState.NoAimSway || CheatState.SuperAccuracy),
+
+        // v2.7.86 新增功能
+        Spec(typeof(InputManager), "CanStartFireIndoors", typeof(Patch_FireAnywhere),
+            "Prefix", null, () => CheatState.FireAnywhere),
+        Spec(typeof(PlayerMovement), "AddSprintStamina", typeof(Patch_AddSprintStamina),
+            null, "Postfix", () => CheatState.InfiniteStamina),
+        Spec(typeof(PlayerManager), "ConsumeUnitFromInventory", typeof(Patch_ConsumeUnit),
+            "Prefix", null, () => CheatState.FreeFireFuel),
+        Spec(typeof(PlayerManager), "GetCarryCapacityKGBuff", typeof(Patch_TechBackpack),
+            null, "Postfix", () => CheatState.TechBackpack),
+        Spec(typeof(TorchItem), "Update", typeof(Patch_TorchFullValue),
+            "Prefix", null, () => CheatState.TorchFullValue),
     };
 
     public static void Reconcile()

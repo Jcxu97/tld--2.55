@@ -249,14 +249,16 @@ internal static class Menu
 
     private static void Close()
     {
-        // v2.7.83:关闭时保存窗口位置
+        // v2.7.83:关闭时保存窗口位置 + 缩放
         var s = ModMain.Settings;
         if (s != null)
         {
             s.MenuX = _window.x;
             s.MenuY = _window.y;
+            s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
             s.Save();
         }
+        _resizing = false;
         Open = false;
         if (_cursorSaved)
         {
@@ -268,6 +270,45 @@ internal static class Menu
 
     private static float _prevWinX, _prevWinY;
     private static int _saveCooldown = 0; // 拖动停止后延迟保存,避免每帧写磁盘
+    // v2.7.83:窗口缩放拖拽
+    private static bool _resizing = false;
+    private static Vector2 _resizeStartMouse;
+    private static float _resizeStartScale;
+
+    private static void HandleResize(TldHacksSettings s)
+    {
+        // 缩放手柄:窗口右下角 18×18 区域
+        const float grip = 18f;
+        var gripRect = new Rect(_window.x + _window.width - grip, _window.y + _window.height - grip, grip, grip);
+        var e = Event.current;
+
+        if (e.type == EventType.MouseDown && gripRect.Contains(e.mousePosition))
+        {
+            _resizing = true;
+            _resizeStartMouse = e.mousePosition;
+            _resizeStartScale = _scale;
+            e.Use();
+        }
+        else if (_resizing && e.type == EventType.MouseDrag)
+        {
+            // 用鼠标水平拖动距离算新缩放(比对角线更稳定)
+            float dx = e.mousePosition.x - _resizeStartMouse.x;
+            float newScale = Mathf.Clamp(_resizeStartScale + dx / W, 0.6f, 3.0f);
+            if (Mathf.Abs(newScale - _scale) > 0.005f)
+            {
+                _scale = newScale;
+                s.MenuScale = Mathf.Round(_scale * 10f) / 10f; // 对齐到 0.1 步长
+            }
+            e.Use();
+        }
+        else if (_resizing && e.type == EventType.MouseUp)
+        {
+            _resizing = false;
+            s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
+            s.Save();
+            e.Use();
+        }
+    }
 
     public static void Draw()
     {
@@ -284,6 +325,8 @@ internal static class Menu
         InitStyles();
 
         _window = GUI.Window(WindowId, _window, (GUI.WindowFunction)DrawContents, "");
+
+        // v2.7.84:HandleResize 已移入 DrawContents 内(DragWindow 之前),此处不再调用
 
         // v2.7.83:检测拖动 → 延迟保存(位置稳定 30 帧后才写磁盘)
         if (s != null)
@@ -334,7 +377,7 @@ internal static class Menu
         }
 
         GUI.Box(R(0f, 0f, W, H), "", _windowStyle);
-        GUI.Label(R(16f, 8f, 260f, 24f), "TldHacks v2.7.83", _titleStyle);
+        GUI.Label(R(16f, 8f, 400f, 24f), "TldHacks v2.7.90  [drag title | resize corner ↘]", _titleStyle);
         GUI.Label(R(16f, 30f, 500f, 18f), "Cursor Ink UI / IL2CPP IMGUI", _mutedLabelStyle);
 
         // 标题栏右侧:scale - / x1.0 / + / Close (v2.7.83 统一间距 4px)
@@ -374,6 +417,52 @@ internal static class Menu
         GUI.Label(R(16f, H - 28f, W - 32f, 22f),
             $"Pos: {(string.IsNullOrEmpty(CheatState.PositionText) ? "-" : CheatState.PositionText)}   |   Last: {CheatState.LastActionLog}",
             _statusStyle);
+
+        // v2.7.87:右下角缩放手柄交互 + 视觉
+        // mousePosition 在 window callback 内是实际像素坐标(窗口左上=0,0)
+        // 窗口尺寸是 W*_scale × H*_scale, 所以命中区域用缩放后的坐标
+        {
+            const float grip = 22f;
+            var e = Event.current;
+            float winW = W * _scale, winH = H * _scale;
+            if (e.type == EventType.MouseDown && e.mousePosition.x >= winW - grip
+                && e.mousePosition.y >= winH - grip)
+            {
+                _resizing = true;
+                _resizeStartMouse = e.mousePosition;
+                _resizeStartScale = _scale;
+                e.Use();
+            }
+            else if (_resizing && e.type == EventType.MouseDrag)
+            {
+                float dx = e.mousePosition.x - _resizeStartMouse.x;
+                float newScale = Mathf.Clamp(_resizeStartScale + dx / W, 0.6f, 3.0f);
+                if (Mathf.Abs(newScale - _scale) > 0.005f)
+                {
+                    _scale = newScale;
+                    s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
+                }
+                e.Use();
+            }
+            else if (_resizing && e.type == EventType.MouseUp)
+            {
+                _resizing = false;
+                s.MenuScale = Mathf.Round(_scale * 10f) / 10f;
+                s.Save();
+                e.Use();
+            }
+            // 视觉:3 条斜线标记
+            float gx = W - 18f, gy = H - 18f;
+            GUI.color = new Color(1f, 1f, 1f, 0.25f);
+            for (int i = 0; i < 3; i++)
+            {
+                float o = i * 5f;
+                GUI.DrawTexture(R(gx + o, gy + 14f - o, 2f, 2f), Texture2D.whiteTexture);
+                GUI.DrawTexture(R(gx + 2f + o, gy + 12f - o, 2f, 2f), Texture2D.whiteTexture);
+                GUI.DrawTexture(R(gx + 4f + o, gy + 10f - o, 2f, 2f), Texture2D.whiteTexture);
+            }
+            GUI.color = Color.white;
+        }
 
         GUI.DragWindow(R(0f, 0f, W - 220f, 44f));
     }
@@ -415,12 +504,17 @@ internal static class Menu
         y1 += ROW_ADV;
         bool nthir = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.NoThirst,   I18n.T(" 无口渴", " No Thirst"));
         bool nfat  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.NoFatigue,  I18n.T(" 无疲劳", " No Fatigue"));
+        y1 += ROW_ADV;
+        bool ista  = GUI.Toggle(R(c1, y1, TOG_W, ROW_H), s.InfiniteStamina, I18n.T(" 无限体力", " Inf. Stamina"));
         y1 += ROW_ADV + SECTION_END_ADV;
-        if (warm != s.AlwaysWarm || nhun != s.NoHunger || nthir != s.NoThirst || nfat != s.NoFatigue)
+        if (warm != s.AlwaysWarm || nhun != s.NoHunger || nthir != s.NoThirst || nfat != s.NoFatigue
+            || ista != s.InfiniteStamina)
         {
             s.AlwaysWarm = warm; s.NoHunger = nhun; s.NoThirst = nthir; s.NoFatigue = nfat;
+            s.InfiniteStamina = ista;
             CheatState.AlwaysWarm = warm;
             CheatState.NoHunger = nhun; CheatState.NoThirst = nthir; CheatState.NoFatigue = nfat;
+            CheatState.InfiniteStamina = ista;
             s.Save();
         }
 
@@ -473,11 +567,13 @@ internal static class Menu
         bool qc   = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.QuickOpenContainer, I18n.T(" 快速开容器", " Quick Open"));
         y1 += ROW_ADV;
         bool usaf = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.UnlockSafes,       I18n.T(" 解锁保险箱", " Unlock Safes"));
+        bool tbag = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.TechBackpack,     I18n.T(" 科技背包", " Tech Backpack"));
         y1 += ROW_ADV + SECTION_END_ADV;
-        if (lok != s.IgnoreLock || qc != s.QuickOpenContainer || usaf != s.UnlockSafes)
+        if (lok != s.IgnoreLock || qc != s.QuickOpenContainer || usaf != s.UnlockSafes || tbag != s.TechBackpack)
         {
-            s.IgnoreLock = lok; s.QuickOpenContainer = qc; s.UnlockSafes = usaf;
+            s.IgnoreLock = lok; s.QuickOpenContainer = qc; s.UnlockSafes = usaf; s.TechBackpack = tbag;
             CheatState.IgnoreLock = lok; CheatState.QuickOpenContainer = qc; CheatState.UnlockSafes = usaf;
+            CheatState.TechBackpack = tbag;
             s.Save();
         }
 
@@ -514,18 +610,21 @@ internal static class Menu
 
         y2 = Section(c2, y2, I18n.T("环境 / 篝火", "Environment / Fire"));
         bool ice  = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.ThinIceNoBreak, I18n.T(" 冰面不破", " Thin Ice Safe"));
-        bool wnd  = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.StopWind,       I18n.T(" 停止刮风", " Stop Wind"));
+        bool ftmp = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FireTemp300,    I18n.T(" 篝火 300℃", " Fire 300°C"));
         y2 += ROW_ADV;
-        bool ftmp = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.FireTemp300,    I18n.T(" 篝火 300℃", " Fire 300°C"));
-        bool fnev = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FireNeverDie,   I18n.T(" 篝火永不熄灭", " Fire Never Dies"));
+        bool fnev = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.FireNeverDie,   I18n.T(" 篝火永不熄灭", " Fire Never Dies"));
+        bool fany = GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.FireAnywhere,   I18n.T(" 随意生火", " Fire Anywhere"));
+        y2 += ROW_ADV;
+        bool ffue = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.FreeFireFuel,   I18n.T(" 材料不减", " Free Fuel"));
+        bool ftrch= GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TorchFullValue, I18n.T(" 火把满值", " Torch Full"));
         y2 += ROW_ADV + SECTION_END_ADV;
-        if (ice != s.ThinIceNoBreak || wnd != s.StopWind
-            || ftmp != s.FireTemp300 || fnev != s.FireNeverDie)
+        if (ice != s.ThinIceNoBreak || ftmp != s.FireTemp300 || fnev != s.FireNeverDie
+            || fany != s.FireAnywhere || ffue != s.FreeFireFuel || ftrch != s.TorchFullValue)
         {
-            s.ThinIceNoBreak = ice; s.StopWind = wnd;
-            s.FireTemp300 = ftmp; s.FireNeverDie = fnev;
-            CheatState.ThinIceNoBreak = ice; CheatState.StopWind = wnd;
-            CheatState.FireTemp300 = ftmp; CheatState.FireNeverDie = fnev;
+            s.ThinIceNoBreak = ice; s.FireTemp300 = ftmp; s.FireNeverDie = fnev;
+            s.FireAnywhere = fany; s.FreeFireFuel = ffue; s.TorchFullValue = ftrch;
+            CheatState.ThinIceNoBreak = ice; CheatState.FireTemp300 = ftmp; CheatState.FireNeverDie = fnev;
+            CheatState.FireAnywhere = fany; CheatState.FreeFireFuel = ffue; CheatState.TorchFullValue = ftrch;
             s.Save();
         }
 
@@ -643,31 +742,27 @@ internal static class Menu
             s.Save();
         }
 
-        // v2.7.80 "武器 / 射击" + "瞄准" 合并成"武器 & 瞄准",统一 TOG_W 两列布局
+        // v2.7.91 "武器 & 瞄准"
         y3 = Section(c3, y3, I18n.T("武器 & 瞄准", "Weapons & Aiming"));
         bool amm  = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.InfiniteAmmo,   I18n.T(" 无限弹药", " Infinite Ammo"));
         bool jam  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoJam,          I18n.T(" 永不卡壳", " No Jam"));
         y3 += ROW_ADV;
         bool rec  = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoRecoil,       I18n.T(" 无后坐力", " No Recoil"));
-        bool ndof = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoAimDOF,       I18n.T(" 关闭瞄准景深", " No Aim DOF"));
-        y3 += ROW_ADV;
-        bool sway = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoAimSway,      I18n.T(" 瞄准无晃动", " No Aim Sway"));
-        bool shk  = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoAimShake,     I18n.T(" 瞄准无抖动", " No Aim Shake"));
-        y3 += ROW_ADV;
-        bool brth = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoBreathSway,   I18n.T(" 呼吸无晃动", " No Breath Sway"));
         bool nstam= GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.NoAimStamina,   I18n.T(" 瞄准不耗体力", " No Aim Stamina"));
+        y3 += ROW_ADV;
+        bool sway = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.NoAimSway,      I18n.T(" 稳定瞄准", " Steady Aim"));
+        bool magicOn = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), CheatStateESP.MagicBullet, I18n.T(" 魔法子弹", " Magic Bullet"));
         y3 += ROW_ADV + SECTION_END_ADV;
-        if (amm != s.InfiniteAmmo || jam != s.NoJam || rec != s.NoRecoil || ndof != s.NoAimDOF
-            || sway != s.NoAimSway || shk != s.NoAimShake || brth != s.NoBreathSway || nstam != s.NoAimStamina)
+        if (amm != s.InfiniteAmmo || jam != s.NoJam || rec != s.NoRecoil
+            || sway != s.NoAimSway || nstam != s.NoAimStamina)
         {
-            s.InfiniteAmmo = amm; s.NoJam = jam; s.NoRecoil = rec; s.NoAimDOF = ndof;
-            s.NoAimSway = sway; s.NoAimShake = shk; s.NoBreathSway = brth; s.NoAimStamina = nstam;
+            s.InfiniteAmmo = amm; s.NoJam = jam; s.NoRecoil = rec;
+            s.NoAimSway = sway; s.NoAimStamina = nstam;
             CheatState.InfiniteAmmo = amm; CheatState.NoJam = jam; CheatState.NoRecoil = rec;
-            CheatState.NoAimDOF = ndof;
-            CheatState.NoAimSway = sway; CheatState.NoAimShake = shk;
-            CheatState.NoBreathSway = brth; CheatState.NoAimStamina = nstam;
+            CheatState.NoAimSway = sway; CheatState.NoAimStamina = nstam;
             s.Save();
         }
+        if (magicOn != CheatStateESP.MagicBullet) { CheatStateESP.MagicBullet = magicOn; s.MagicBullet = magicOn; s.Save(); }
 
         // v2.7.71 一键获取武器重构 —— 4 列 × 2 行
         //   武器:弓 / 步枪 / 左轮 / 斧头 / 猎刀

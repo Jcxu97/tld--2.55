@@ -45,15 +45,38 @@ internal static class Stacking
             foreach (var kv in StackState.SeenItems)
             {
                 var (item, cachedDi, cachedGiPtr) = kv.Value;
-                // v2.7.29:加 Pointer == Zero 检查,避免 Dispose 后的对象在 m_GearItem 访问 AccessViolation
                 if (item == null || item.Pointer == System.IntPtr.Zero)
                 { (stale ??= new()).Add(kv.Key); continue; }
 
                 Il2Cpp.GearItem curGi = null;
                 try { curGi = item.m_GearItem; } catch { (stale ??= new()).Add(kv.Key); continue; }
-                if (curGi == null || curGi.Pointer != cachedGiPtr) continue;
+                if (curGi == null) continue;
 
-                LabelFix.Reapply(item, cachedDi);
+                if (curGi.Pointer == cachedGiPtr)
+                {
+                    LabelFix.Reapply(item, cachedDi);
+                }
+                else
+                {
+                    // v2.7.89: cell 被复用到新 gi — 用 CountsByGi 回退显示 label
+                    if (StackState.CountsByGi.TryGetValue(curGi.Pointer, out int c) && c > 1)
+                    {
+                        var label = item.m_StackLabel;
+                        if (label != null)
+                        {
+                            string want = "x" + c;
+                            if (label.text != want) label.text = want;
+                            if (label.gameObject != null && !label.gameObject.activeSelf)
+                                label.gameObject.SetActive(true);
+                        }
+                        var unitLabel = item.m_UnitLabel;
+                        if (unitLabel != null && unitLabel.gameObject != null && unitLabel.gameObject.activeSelf)
+                            unitLabel.gameObject.SetActive(false);
+                        var unitSprite = item.m_UnitSprite;
+                        if (unitSprite != null && unitSprite.gameObject != null && unitSprite.gameObject.activeSelf)
+                            unitSprite.gameObject.SetActive(false);
+                    }
+                }
             }
 
             if (stale != null)
@@ -305,6 +328,56 @@ internal static class Patch_Panel_Container_HoverItem
             if (gridItem == null) return;
             if (StackState.SeenItems.TryGetValue(gridItem.Pointer, out var seen))
                 LabelFix.Reapply(gridItem, seen.di);
+        }
+        catch { }
+    }
+}
+
+// v2.7.89 点击堆叠物品后视觉 label 消失修复 ——
+// SelectGridItem 内部刷新 cell 时重置 StackLabel;Postfix 对所有 SeenItems 重新 reapply。
+[HarmonyPatch(typeof(Panel_Container), nameof(Panel_Container.SelectGridItem))]
+internal static class Patch_Panel_Container_SelectGridItem
+{
+    private static void Postfix(Panel_Container __instance)
+    {
+        try
+        {
+            foreach (var kv in StackState.SeenItems)
+            {
+                var (item, di, giPtr) = kv.Value;
+                if (item == null || item.Pointer == System.IntPtr.Zero) continue;
+                try
+                {
+                    var curGi = item.m_GearItem;
+                    if (curGi == null || curGi.Pointer != giPtr) continue;
+                }
+                catch { continue; }
+                LabelFix.Reapply(item, di);
+            }
+        }
+        catch { }
+    }
+}
+
+[HarmonyPatch(typeof(Panel_Container), nameof(Panel_Container.OnMoveItem))]
+internal static class Patch_Panel_Container_OnMoveItem
+{
+    private static void Postfix(Panel_Container __instance)
+    {
+        try
+        {
+            foreach (var kv in StackState.SeenItems)
+            {
+                var (item, di, giPtr) = kv.Value;
+                if (item == null || item.Pointer == System.IntPtr.Zero) continue;
+                try
+                {
+                    var curGi = item.m_GearItem;
+                    if (curGi == null || curGi.Pointer != giPtr) continue;
+                }
+                catch { continue; }
+                LabelFix.Reapply(item, di);
+            }
         }
         catch { }
     }

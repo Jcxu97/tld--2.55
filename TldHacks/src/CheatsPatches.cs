@@ -4,6 +4,7 @@ using HarmonyLib;
 using Il2Cpp;
 using Il2CppInterop.Runtime;
 using Il2CppTLD.Gear;
+using Il2CppTLD.IntBackedUnit;
 using UnityEngine;
 
 namespace TldHacks;
@@ -33,7 +34,19 @@ internal static class DamageFilter
     {
         if (hp > 0f) return false;  // 治疗放行 (v2.7.29 从 >= 改 > 更严格)
 
+        // v2.7.84:GodMode 拦所有伤害源(含 Freezing/Hypothermia/FrostBite/Starving/Dehydrated/Exhausted)
+        //   之前 GodMode 只在 TickStatus 里每帧刷满 HP,但冻伤每帧又扣 → HUD 闪烁
+        //   现在直接在 AddHealth Prefix 拦截,HP 永远不掉,TickStatus 只做兜底
+        if (CheatState.GodMode) return true;
         if (CheatState.TrueInvisible) return true;  // 真隐身 = 绝对无敌
+
+        // v2.7.85:各状态 toggle 独立拦截对应伤害源 —— 修复"GodMode OFF + AlwaysWarm ON 时 HP 条闪烁"
+        //   之前只在 GodMode 时拦全部,Now 每个 toggle 拦自己的源,减少 TickStatus "先掉再补"的 HUD 闪烁
+        if (CheatState.AlwaysWarm && (cause == DamageSource.Freezing || cause == DamageSource.Hypothermia || cause == DamageSource.FrostBite))
+            return true;
+        if (CheatState.NoHunger && cause == DamageSource.Starving) return true;
+        if (CheatState.NoThirst && cause == DamageSource.Dehydrated) return true;
+        if (CheatState.NoFatigue && cause == DamageSource.Exhausted) return true;
 
         if (CheatState.NoFallDamage && cause == DamageSource.Falling) return true;
         if (CheatState.NoSuffocating && cause == DamageSource.Suffocating) return true;
@@ -575,16 +588,6 @@ internal static class Patch_FireMgr_Success
     }
 }
 
-// ——— 关闭瞄准景深(DOF)—— 拦截 EnableCameraWeaponPostEffects(true),强制传 false ———
-// v2.7.29:参数名改 __0 避免 TLD 更新改参数名后 Harmony silently 失配
-internal static class Patch_CamEffects_WeaponPost
-{
-    internal static void Prefix(ref bool __0)
-    {
-        if (CheatState.NoAimDOF) __0 = false;
-    }
-}
-
 // ——— 快速开容器 ——
 // v2.7.13:原 Patch_Container_Enable Postfix 覆盖字段不够 —— 改 EnableAfterDelay Prefix 拦源头
 internal static class Patch_Container_EnableAfterDelay
@@ -610,6 +613,319 @@ internal static class Patch_Container_Enable
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//   v2.7.86 无后坐力根治 —— Hook PlayFireAnimation
+// ═══════════════════════════════════════════════════════════════════
+// CT 实现:hook vp_FPSWeapon.PlayFireAnimation → 设 [rdi+120..12c] = 0
+//   这 4 个偏移 = vp_FPSWeapon 的 recoil 动画参数(继承自 vp_Component 的 float 字段)
+//   之前只改 GunItem 字段(m_PitchRecoilMin/Max)无效——后坐力在 PlayFireAnimation 内施加
+//   现在 Harmony Postfix 在开枪动画触发后立刻归零这些参数,彻底消除后坐力视觉
+
+// —— 无后坐力 + 超级精准:Hook vp_FPSWeapon.PlayFireAnimation ——
+// v2.7.89 无后坐力:零化 GunItem 的后坐力参数,让 PlayFireAnimation 正常播放动画
+// 原理:PlayFireAnimation 读 GunItem.m_PitchRecoilMin/Max + m_YawRecoilMin/Max 计算后坐力。
+// 值为 0 → 不施加力 → 无后坐。Postfix 恢复原值避免持久修改。
+internal static class Patch_FPSWeapon_PlayFireAnimation
+{
+    private static bool _logged;
+    private static GunItem _gun;
+    private static float _pitchMin, _pitchMax, _yawMin, _yawMax;
+
+    internal static bool Prefix(vp_FPSWeapon __instance)
+    {
+        bool fullSuppress = CheatState.NoRecoil || CheatState.SuperAccuracy;
+        bool partialSuppress = CheatStateESP.RecoilScale < 0.99f;
+        if (!fullSuppress && !partialSuppress) return true;
+        Patch_FPSCamera_LateUpdate.LastFireTime = Time.time;
+        _gun = null;
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            var gi = pm?.m_ItemInHands;
+            var gun = gi?.GetComponent<GunItem>();
+            if (gun != null)
+            {
+                _gun = gun;
+                _pitchMin = gun.m_PitchRecoilMin;
+                _pitchMax = gun.m_PitchRecoilMax;
+                _yawMin = gun.m_YawRecoilMin;
+                _yawMax = gun.m_YawRecoilMax;
+                float scale = fullSuppress ? 0f : CheatStateESP.RecoilScale;
+                gun.m_PitchRecoilMin = _pitchMin * scale;
+                gun.m_PitchRecoilMax = _pitchMax * scale;
+                gun.m_YawRecoilMin = _yawMin * scale;
+                gun.m_YawRecoilMax = _yawMax * scale;
+            }
+        }
+        catch { }
+        return true;
+    }
+
+    internal static void Postfix(vp_FPSWeapon __instance)
+    {
+        if (_gun == null) return;
+        try
+        {
+            _gun.m_PitchRecoilMin = _pitchMin;
+            _gun.m_PitchRecoilMax = _pitchMax;
+            _gun.m_YawRecoilMin = _yawMin;
+            _gun.m_YawRecoilMax = _yawMax;
+        }
+        catch { }
+        _gun = null;
+        // v2.7.90 魔法子弹:开枪后直接对目标施加伤害
+        try { MagicBulletSystem.OnFired(); } catch { }
+    }
+}
+
+// v2.7.89 Camera.Update: Prefix 仍尝试归零弹簧参数(阻止弹簧物理运动)
+// 如果归零无效(IL2Cpp struct 限制),LateUpdate Postfix 的 transform 补偿兜底
+internal static class Patch_FPSCamera_ClearRecoil
+{
+    private static bool _logged;
+
+    internal static void Prefix(vp_FPSCamera __instance)
+    {
+        bool recoilOn = CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f;
+        bool swayOn = CheatState.NoAimSway;
+        if (!recoilOn && !swayOn) return;
+
+        if (recoilOn)
+        {
+            try
+            {
+                var spring = __instance.m_RecoilSpring;
+                spring.m_Current = UnityEngine.Vector2.zero;
+                spring.m_Target = UnityEngine.Vector2.zero;
+                spring.m_Velocity = UnityEngine.Vector2.zero;
+                __instance.m_RecoilSpring = spring;
+            }
+            catch { }
+            try { __instance.RecoilPitchStiffness = 0f; } catch { }
+            try { __instance.RecoilYawStiffness = 0f; } catch { }
+            try { __instance.RecoilPitchDamping = 1f; } catch { }
+            try { __instance.RecoilYawDamping = 1f; } catch { }
+        }
+
+        if (swayOn)
+        {
+            try { __instance.m_MaxAmbientSwayAngleDegreesA = 0f; } catch { }
+            try { __instance.m_MaxAmbientAimingSwayAngleDegreesA = 0f; } catch { }
+            try { __instance.m_AmbientSwaySpeedA = 0f; } catch { }
+            try { __instance.m_AmbientAimingSwaySpeedA = 0f; } catch { }
+            try { __instance.m_CurrentMaxAmbientSwayAngle = 0f; } catch { }
+            try { __instance.m_CurrentAmbientSwaySpeed = 0f; } catch { }
+            try { __instance.ShakeAmplitude = UnityEngine.Vector3.zero; } catch { }
+            try { __instance.ShakeSpeed = 0f; } catch { }
+            try { __instance.BobAmplitude = UnityEngine.Vector4.zero; } catch { }
+        }
+    }
+
+    internal static void Postfix(vp_FPSCamera __instance)
+    {
+        if (!_logged && (CheatState.NoRecoil || CheatState.NoAimSway))
+        {
+            _logged = true;
+            try { ModMain.Log?.Msg($"[Aim] Camera Update Prefix active (recoil={CheatState.NoRecoil} sway={CheatState.NoAimSway})"); } catch { }
+        }
+    }
+}
+
+// v2.7.90 无后坐力核心:只在开枪后短时间窗口内覆盖 transform,防止全局鼠标反转
+// 方案:Prefix 记录 transform + m_Pitch/m_Yaw,Postfix 仅保留鼠标 delta、剥离弹簧贡献
+internal static class Patch_FPSCamera_LateUpdate
+{
+    internal static float LastFireTime;
+    private const float RecoilWindow = 0.7f;
+    private static Quaternion _preRot;
+    private static float _prePitch, _preYaw;
+
+    private static bool ShouldActivate()
+    {
+        return CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f;
+    }
+
+    internal static void Prefix(vp_FPSCamera __instance)
+    {
+        if (!ShouldActivate()) return;
+        if (Time.time - LastFireTime > RecoilWindow) return;
+        _preRot = __instance.transform.rotation;
+        _prePitch = __instance.m_Pitch;
+        _preYaw = __instance.m_Yaw;
+    }
+
+    internal static void Postfix(vp_FPSCamera __instance)
+    {
+        if (ShouldActivate() && Time.time - LastFireTime <= RecoilWindow)
+        {
+            try
+            {
+                float dPitch = __instance.m_Pitch - _prePitch;
+                float dYaw = __instance.m_Yaw - _preYaw;
+                var noRecoilRot = _preRot * Quaternion.Euler(dPitch, dYaw, 0f);
+                float suppress = 1f;
+                if (CheatState.NoRecoil || CheatState.SuperAccuracy)
+                    suppress = 1f;
+                else
+                    suppress = 1f - CheatStateESP.RecoilScale;
+                __instance.transform.rotation = Quaternion.Slerp(
+                    __instance.transform.rotation, noRecoilRot, suppress);
+            }
+            catch { }
+        }
+        // 稳定瞄准:LateUpdate 结束后再清一次 sway,防游戏在 LateUpdate 里重写
+        if (CheatState.NoAimSway)
+        {
+            try { __instance.ShakeAmplitude = UnityEngine.Vector3.zero; } catch { }
+            try { __instance.ShakeSpeed = 0f; } catch { }
+            try { __instance.BobAmplitude = UnityEngine.Vector4.zero; } catch { }
+            try { __instance.m_CurrentMaxAmbientSwayAngle = 0f; } catch { }
+            try { __instance.m_CurrentAmbientSwaySpeed = 0f; } catch { }
+        }
+    }
+}
+
+// —— 稳定瞄准:锁定武器位置/旋转 + 归零 bob/shake/sway 参数 ——
+internal static class Patch_FPSWeapon_SteadyAim
+{
+    private static bool _logged;
+    [ThreadStatic] private static Vector3 _savedPos;
+    [ThreadStatic] private static Quaternion _savedRot;
+    [ThreadStatic] private static bool _hasSaved;
+
+    internal static void Prefix(vp_FPSWeapon __instance)
+    {
+        if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) { _hasSaved = false; return; }
+        try
+        {
+            var t = __instance.transform;
+            if (t != null) { _savedPos = t.localPosition; _savedRot = t.localRotation; _hasSaved = true; }
+            else _hasSaved = false;
+        }
+        catch { _hasSaved = false; }
+    }
+
+    internal static void Postfix(vp_FPSWeapon __instance)
+    {
+        if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) return;
+        // 恢复武器 transform:抵消 Update 内 bob/shake/sway 对武器位置的修改
+        if (_hasSaved)
+        {
+            try { __instance.transform.localPosition = _savedPos; } catch { }
+            try { __instance.transform.localRotation = _savedRot; } catch { }
+        }
+        // 也归零参数防止后续帧继续产生运动
+        try { __instance.BobAmplitude = Vector4.zero; } catch { }
+        try { __instance.ShakeAmplitude = Vector3.zero; } catch { }
+        try { __instance.ShakeSpeed = 0f; } catch { }
+        try { __instance.SwayMaxFatigue = 0f; } catch { }
+        try { __instance.SwayStartFatigue = 999f; } catch { }
+
+        if (!_logged)
+        {
+            _logged = true;
+            try { ModMain.Log?.Msg($"[SteadyAim] Weapon transform lock active. hasSaved={_hasSaved}"); } catch { }
+        }
+    }
+}
+
+// v2.7.90 稳定瞄准 LateUpdate 兜底:游戏 LateUpdate 可能再次应用 sway,这里最终覆盖
+internal static class Patch_FPSWeapon_SteadyAim_Late
+{
+    private static Vector3 _savedPos;
+    private static Quaternion _savedRot;
+    private static bool _hasSaved;
+
+    internal static void Prefix(vp_FPSWeapon __instance)
+    {
+        if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) { _hasSaved = false; return; }
+        try
+        {
+            var t = __instance.transform;
+            if (t != null) { _savedPos = t.localPosition; _savedRot = t.localRotation; _hasSaved = true; }
+            else _hasSaved = false;
+        }
+        catch { _hasSaved = false; }
+    }
+
+    internal static void Postfix(vp_FPSWeapon __instance)
+    {
+        if (!_hasSaved) return;
+        try { __instance.transform.localPosition = _savedPos; } catch { }
+        try { __instance.transform.localRotation = _savedRot; } catch { }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   v2.7.86 新增功能 —— 随意生火 / 生火材料不减 / 科技背包 / 火把满值 / 无条件冲刺 / 无限体力
+// ═══════════════════════════════════════════════════════════════════
+
+
+// —— 无限体力:PlayerMovement.AddSprintStamina 设 stamina = 100 ——
+// CT 实现:patch AddSprintStamina → mov [rbx+80],(float)100
+// Harmony 做法:Postfix 设 stamina 字段为满值
+internal static class Patch_AddSprintStamina
+{
+    internal static void Postfix(PlayerMovement __instance)
+    {
+        if (!CheatState.InfiniteStamina) return;
+        try { __instance.m_SprintStamina = 100f; } catch { }
+    }
+}
+
+// —— 随意生火:绕过室内生火限制 ——
+// CT 实现:patch InputManager.CanStartFireIndoors → NOP 2 bytes
+// Harmony 做法:Prefix 强制 return true
+internal static class Patch_FireAnywhere
+{
+    internal static bool Prefix(ref bool __result)
+    {
+        if (CheatState.FireAnywhere)
+        {
+            __result = true;
+            return false; // skip original
+        }
+        return true;
+    }
+}
+
+// —— 生火材料不减:PlayerManager.ConsumeUnitFromInventory(void) skip ——
+internal static class Patch_ConsumeUnit
+{
+    internal static bool Prefix()
+    {
+        if (CheatState.FreeFireFuel) return false; // skip original = 不消耗
+        return true;
+    }
+}
+
+// —— 科技背包:PlayerManager.GetCarryCapacityKGBuff 返回大值 ——
+// 返回类型是 ItemWeight (Il2CppTLD.IntBackedUnit),用 FromKilograms 构造
+internal static class Patch_TechBackpack
+{
+    internal static void Postfix(ref ItemWeight __result)
+    {
+        if (CheatState.TechBackpack) __result = ItemWeight.FromKilograms(50f);
+    }
+}
+
+// —— 火把满值:TorchItem.Update 设 burn time = max ——
+// CT 实现:patch TorchItem.Update → movss xmm2,[max_burn_time]
+//         + 另一个 patch 设 return true for some check
+// Harmony 做法:Prefix 设 m_CurrentBurnTimeSeconds = m_MaxBurnTimeSeconds
+internal static class Patch_TorchFullValue
+{
+    internal static void Prefix(TorchItem __instance)
+    {
+        if (!CheatState.TorchFullValue) return;
+        try
+        {
+            var gi = __instance.GetComponent<GearItem>();
+            if (gi != null) gi.m_CurrentHP = 100f;
+        }
+        catch { }
+    }
+}
 
 // ——————————— Tick-based 补丁 ———————————
 // OnUpdate 每帧/每 N 帧扫一次实例,直接改字段。
@@ -618,7 +934,7 @@ internal static class CheatsTick
     // ——— 武器:无限弹药 / 永不卡壳 / 快速射击 / 无后坐(字段层 fallback)———
     public static void TickGuns()
     {
-        if (!CheatState.InfiniteAmmo && !CheatState.NoJam && !CheatState.FastFire && !CheatState.NoRecoil) return;
+        if (!CheatState.InfiniteAmmo && !CheatState.NoJam && !CheatState.FastFire && !CheatState.NoRecoil && !CheatState.SuperAccuracy) return;
         try
         {
             if (CheatState.NoJam)
@@ -660,6 +976,17 @@ internal static class CheatsTick
                         try { g.m_SwayValueZeroFatigue = 0f; } catch { }
                         try { g.m_SwayValueMaxFatigue = 0f; } catch { }
                     }
+                    // v2.7.84 超级精准:散布归零 + 后坐归零,子弹 100% 命中准星中心
+                    if (CheatState.SuperAccuracy)
+                    {
+                        try { g.m_PitchRecoilMin = 0f; } catch { }
+                        try { g.m_PitchRecoilMax = 0f; } catch { }
+                        try { g.m_YawRecoilMin = 0f; } catch { }
+                        try { g.m_YawRecoilMax = 0f; } catch { }
+                        try { g.m_SwayValueZeroFatigue = 0f; } catch { }
+                        try { g.m_SwayValueMaxFatigue = 0f; } catch { }
+                        try { g.m_SwayValue = 0f; } catch { }
+                    }
                     if (CheatState.NoAimSway)
                     {
                         try { g.m_SwayValueZeroFatigue = 0f; } catch { }
@@ -680,19 +1007,24 @@ internal static class CheatsTick
     // v2.7.83 修:加诊断日志 + 多重 fallback 武器查找 + 降频到 30 帧
     private static bool _lastAnyAimToggle = false;
     private static bool _aimDiagDone = false; // 只打一次诊断日志
-    // Cached reflection members (lazy init on first call)
-    private static FieldInfo _fi_currentWeapon, _fi_recoilSpring;
-    private static FieldInfo[] _fi_camFloats;   // 对应 ShakeAmplitude / ShakeSpeed / BobAmplitude 等
-    private static FieldInfo[] _fi_camSwayFloats; // camera sway 字段
+    // v2.7.84:vp_FPSCamera 缓存 + 兜底查找节流
+    private static vp_FPSCamera _cachedCam = null;
+    private static int _lastCamScanFrame = -999;
+    private static int _camNullLogCount = 0;
+    // v2.7.84 重写:只保留 FindWeapon 需要的 + RecoilSpring struct 操作需要的反射
+    private static FieldInfo _fi_currentWeapon;   // FindWeapon 路径 1 用
+    private static FieldInfo _fi_recoilSpring;    // TickCamera NoRecoil struct 操作用
     private static FieldInfo _fi_rsCur, _fi_rsTgt, _fi_rsVel;
-    private static FieldInfo _fi_weapShake, _fi_weapShakeSpeed, _fi_weapCold, _fi_weapRandom, _fi_weapShakeInst;
-    private static FieldInfo _fi_weapBob, _fi_weapBobRate;
-    private static FieldInfo _fi_weapSwayLim, _fi_weapSwayMax, _fi_weapSwayStart, _fi_weapSwayCrouch, _fi_weapSwayMotion;
-    private static FieldInfo _fi_weapRotLook, _fi_weapRotStrafe, _fi_weapRotFall, _fi_weapRotSlope;
-    private static FieldInfo _fi_weapDisSway, _fi_weapDisShake, _fi_weapDisBreath, _fi_weapDisStam;
     private static bool _reflectionInited = false;
-    // v2.7.29:按武器类型缓存 FieldInfo。之前用 Rifle 的 FieldInfo SetValue 到 Bow 实例 → ArgumentException
-    private static System.Type _cachedWeaponType = null;
+
+    // v2.7.84:跨场景时清相机缓存 + 重置诊断开关 —— 从 ModMain.OnSceneWasInitialized 调
+    public static void InvalidateCameraCache()
+    {
+        _cachedCam = null;
+        _aimDiagDone = false;
+        _camNullLogCount = 0;
+        _lastCamScanFrame = -999;
+    }
 
     // v2.7.83:多路径查找武器实例(反射 → PlayerManager → GetComponentInChildren)
     private static object FindWeapon(vp_FPSCamera cam)
@@ -749,39 +1081,48 @@ internal static class CheatsTick
             }
         }
         catch { }
+        // 路径 4:从 camera 的 GameObject 子层级找 vp_FPSWeapon 组件
+        try
+        {
+            var camGo = cam.gameObject;
+            if (camGo != null)
+            {
+                var weapons = camGo.GetComponentsInChildren<vp_FPSWeapon>(true);
+                if (weapons != null && weapons.Count > 0)
+                {
+                    ModMain.Log?.Msg($"[Aim] Found weapon via GetComponentsInChildren<vp_FPSWeapon> ({weapons.Count})");
+                    return weapons[0];
+                }
+                // 也试 MonoBehaviour 基类搜索
+                var allMono = camGo.GetComponentsInChildren<MonoBehaviour>(true);
+                if (allMono != null)
+                {
+                    foreach (var mb in allMono)
+                    {
+                        if (mb == null) continue;
+                        var n = mb.GetType().Name;
+                        if (n.Contains("Weapon") || n.Contains("Gun") || n.Contains("Rifle"))
+                        {
+                            ModMain.Log?.Msg($"[Aim] Found weapon-like component '{n}' on child");
+                            return mb;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) { ModMain.Log?.Warning($"[Aim] path4 children: {ex.Message}"); }
         return null;
     }
 
-    private static void EnsureReflectionInited(object weapon)
+    // v2.7.84 简化:只初始化 RecoilSpring struct 操作需要的 FieldInfo。
+    //   武器 bool 开关走 SetDisable* 静态方法(反编译确认存在);
+    //   武器/camera float 字段直接通过实例赋值,不需要反射。
+    private static void EnsureReflectionInited()
     {
-        if (_reflectionInited && weapon == null) return;
-        // v2.7.29:武器类型切换(Rifle ↔ Bow ↔ Revolver),全部 weapon field 要重新绑
-        if (weapon != null && weapon.GetType() != _cachedWeaponType)
-        {
-            _fi_weapDisSway = _fi_weapDisShake = _fi_weapDisBreath = _fi_weapDisStam = null;
-            _fi_weapShake = _fi_weapShakeSpeed = _fi_weapCold = _fi_weapRandom = _fi_weapShakeInst = null;
-            _fi_weapBob = _fi_weapBobRate = null;
-            _fi_weapSwayLim = _fi_weapSwayMax = _fi_weapSwayStart = _fi_weapSwayCrouch = _fi_weapSwayMotion = null;
-            _fi_weapRotLook = _fi_weapRotStrafe = _fi_weapRotFall = _fi_weapRotSlope = null;
-            _cachedWeaponType = weapon.GetType();
-        }
+        if (_reflectionInited) return;
         var camT = typeof(vp_FPSCamera);
         _fi_currentWeapon = _fi_currentWeapon ?? camT.GetField("m_CurrentWeapon", BindingFlags.Instance | BindingFlags.Public);
         _fi_recoilSpring  = _fi_recoilSpring  ?? camT.GetField("m_RecoilSpring",  BindingFlags.Instance | BindingFlags.Public);
-        _fi_camFloats ??= new[] {
-            camT.GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("ShakeSpeed",     BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("BobAmplitude",   BindingFlags.Instance | BindingFlags.Public),
-        };
-        _fi_camSwayFloats ??= new[] {
-            camT.GetField("m_MaxAmbientSwayAngleDegreesA",        BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("m_MaxAmbientAimingSwayAngleDegreesA",  BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("m_AmbientSwaySpeedA",                   BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("m_AmbientAimingSwaySpeedA",             BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("m_CurrentMaxAmbientSwayAngle",          BindingFlags.Instance | BindingFlags.Public),
-            camT.GetField("m_CurrentAmbientSwaySpeed",             BindingFlags.Instance | BindingFlags.Public),
-        };
-        // RecoilSpring struct 字段
         if (_fi_recoilSpring != null)
         {
             var rsT = _fi_recoilSpring.FieldType;
@@ -789,155 +1130,126 @@ internal static class CheatsTick
             _fi_rsTgt = _fi_rsTgt ?? rsT.GetField("m_Target",   BindingFlags.Instance | BindingFlags.Public);
             _fi_rsVel = _fi_rsVel ?? rsT.GetField("m_Velocity", BindingFlags.Instance | BindingFlags.Public);
         }
-        // 武器字段(需要一个 weapon 实例才能拿 Type)
-        if (weapon != null && _fi_weapDisSway == null)
-        {
-            var wt = weapon.GetType();
-            _fi_weapDisSway   = wt.GetField("m_DisableAimSway",      BindingFlags.Instance | BindingFlags.Public)
-                             ?? wt.GetField("m_DisableSway",          BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapDisShake  = wt.GetField("m_DisableAimShake",     BindingFlags.Instance | BindingFlags.Public)
-                             ?? wt.GetField("m_DisableShake",         BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapDisBreath = wt.GetField("m_DisableAimBreathing", BindingFlags.Instance | BindingFlags.Public)
-                             ?? wt.GetField("m_DisableBreathing",     BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapDisStam   = wt.GetField("m_DisableAimStamina",   BindingFlags.Instance | BindingFlags.Public)
-                             ?? wt.GetField("m_DisableStamina",       BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapShake      = wt.GetField("ShakeAmplitude",        BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_ShakeAmplitude",      BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapShakeSpeed = wt.GetField("ShakeSpeed",            BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_ShakeSpeed",          BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapCold       = wt.GetField("m_ColdShakeAngle",      BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapRandom     = wt.GetField("m_RandomShakeAngle",    BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapShakeInst  = wt.GetField("m_Shake",               BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapBob        = wt.GetField("BobAmplitude",          BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_BobAmplitude",        BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapBobRate    = wt.GetField("BobRate",               BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_BobRate",              BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayLim    = wt.GetField("SwayLimits",            BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_SwayLimits",           BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayMax    = wt.GetField("SwayMaxFatigue",        BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_SwayMaxFatigue",       BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayStart  = wt.GetField("SwayStartFatigue",      BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_SwayStartFatigue",     BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayCrouch = wt.GetField("SwayCrouchScalar",      BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_SwayCrouchScalar",     BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapSwayMotion = wt.GetField("SwayMotionSpeed",       BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_SwayMotionSpeed",      BindingFlags.Instance | BindingFlags.Public);
-            // Rotation*Sway —— 移动/下蹲/跌倒/侧移时枪的摆动(最关键!)
-            _fi_weapRotLook    = wt.GetField("RotationLookSway",      BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_RotationLookSway",     BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapRotStrafe  = wt.GetField("RotationStrafeSway",    BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_RotationStrafeSway",   BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapRotFall    = wt.GetField("RotationFallSway",      BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_RotationFallSway",     BindingFlags.Instance | BindingFlags.Public);
-            _fi_weapRotSlope   = wt.GetField("RotationSlopeSway",     BindingFlags.Instance | BindingFlags.Public)
-                              ?? wt.GetField("m_RotationSlopeSway",    BindingFlags.Instance | BindingFlags.Public);
-        }
         _reflectionInited = true;
     }
 
-    private static void SetFloatIfNotNull(FieldInfo f, object inst, float v)
-    {
-        if (f == null || inst == null) return;
-        try { f.SetValue(inst, v); } catch { }
-    }
-    private static void SetBoolIfNotNull(FieldInfo f, object inst, bool v)
-    {
-        if (f == null || inst == null) return;
-        try { f.SetValue(inst, v); } catch { }
-    }
-
-    // v2.7.83:用 IL2CPP 批量列举武器对象所有字段名,一次性打到 log
-    private static void DiagLogWeaponFields(object weapon)
-    {
-        try
-        {
-            var wt = weapon.GetType();
-            var fields = wt.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            var sb = new System.Text.StringBuilder();
-            sb.Append($"[AimDiag] Weapon type={wt.FullName}, fields({fields.Length}): ");
-            foreach (var f in fields)
-            {
-                if (f.Name.Contains("Disable") || f.Name.Contains("Sway") || f.Name.Contains("Shake")
-                    || f.Name.Contains("Bob") || f.Name.Contains("Recoil") || f.Name.Contains("Stamina")
-                    || f.Name.Contains("Aim") || f.Name.Contains("Breath"))
-                    sb.Append($"{f.Name}({f.FieldType.Name}),");
-            }
-            ModMain.Log?.Msg(sb.ToString());
-        }
-        catch (Exception ex) { ModMain.Log?.Warning($"[AimDiag] weapon fields: {ex.Message}"); }
-    }
-
-    private static void DiagLogCameraFields(vp_FPSCamera cam)
-    {
-        try
-        {
-            var camT = cam.GetType();
-            var fields = camT.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            var sb = new System.Text.StringBuilder();
-            sb.Append($"[AimDiag] Camera type={camT.FullName}, fields({fields.Length}): ");
-            foreach (var f in fields)
-            {
-                if (f.Name.Contains("Sway") || f.Name.Contains("Shake") || f.Name.Contains("Bob")
-                    || f.Name.Contains("Recoil") || f.Name.Contains("Weapon") || f.Name.Contains("Ambient"))
-                    sb.Append($"{f.Name}({f.FieldType.Name}),");
-            }
-            ModMain.Log?.Msg(sb.ToString());
-        }
-        catch (Exception ex) { ModMain.Log?.Warning($"[AimDiag] camera fields: {ex.Message}"); }
-    }
-
+    // v2.7.84 重写:反编译确认 vp_FPSWeapon 的 Disable* 是 static bool + Set* 静态方法,
+    //   不再需要实例反射。camera float 字段直接写实例属性。只剩 m_RecoilSpring(struct) 需要 FieldInfo。
     public static void TickCamera()
     {
-        bool anyOn = CheatState.NoAimSway || CheatState.NoAimShake || CheatState.NoBreathSway
-                  || CheatState.NoAimStamina || CheatState.NoRecoil;
+        bool anyOn = CheatState.NoAimSway || CheatState.NoAimStamina || CheatState.NoRecoil || CheatState.SuperAccuracy;
         // 全关 AND 上次也全关 → 零开销早退
         if (!anyOn && !_lastAnyAimToggle) return;
 
         try
         {
-            var cam = GameManager.GetVpFPSCamera();
-            if (cam == null) { if (!_aimDiagDone) { _aimDiagDone = true; ModMain.Log?.Warning("[AimDiag] GetVpFPSCamera() = NULL"); } return; }
+            // v2.7.84:先 cache → GameManager getter → scene-wide scan 兜底
+            var cam = _cachedCam;
+            if (cam == null)
+            {
+                cam = GameManager.GetVpFPSCamera();
+                if (cam == null && Time.frameCount - _lastCamScanFrame > 30)
+                {
+                    _lastCamScanFrame = Time.frameCount;
+                    try { cam = UnityEngine.Object.FindObjectOfType<vp_FPSCamera>(); } catch { }
+                    if (cam != null)
+                        ModMain.Log?.Msg("[AimDiag] vp_FPSCamera via FindObjectOfType (GetVpFPSCamera=null)");
+                }
+                if (cam != null) _cachedCam = cam;
+            }
+            if (cam == null)
+            {
+                if ((++_camNullLogCount % 60) == 1)
+                    ModMain.Log?.Warning($"[AimDiag] cam=null (try #{_camNullLogCount}), 未进游戏场景?");
+                return;
+            }
 
             object weapon = null;
-            EnsureReflectionInited(null);
+            EnsureReflectionInited();
             weapon = FindWeapon(cam);
-            if (weapon != null) EnsureReflectionInited(weapon);
 
             // v2.7.83:首次有 toggle ON 时打诊断日志
             if (!_aimDiagDone && anyOn)
             {
                 _aimDiagDone = true;
-                DiagLogCameraFields(cam);
-                if (weapon != null) DiagLogWeaponFields(weapon);
-                else ModMain.Log?.Warning("[AimDiag] weapon = NULL (no weapon equipped?)");
+                // 相机继承链字段 dump
+                try
+                {
+                    var t = cam.GetType(); int depth = 0;
+                    while (t != null && depth < 5)
+                    {
+                        var fields = t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                        var sb = new System.Text.StringBuilder($"[AimDiag] Cam depth={depth} type={t.FullName} fields({fields.Length}):");
+                        foreach (var f in fields) sb.Append($" {f.Name}({f.FieldType.Name})");
+                        ModMain.Log?.Msg(sb.ToString());
+                        t = t.BaseType; depth++;
+                    }
+                }
+                catch (Exception ex) { ModMain.Log?.Warning($"[AimDiag] cam dump: {ex.Message}"); }
 
-                // 诊断:哪些 FieldInfo 为 null
-                var nulls = new System.Text.StringBuilder("[AimDiag] Null fields: ");
-                if (_fi_currentWeapon == null) nulls.Append("currentWeapon,");
-                if (_fi_recoilSpring == null) nulls.Append("recoilSpring,");
-                if (_fi_weapDisSway == null) nulls.Append("DisableAimSway,");
-                if (_fi_weapDisShake == null) nulls.Append("DisableAimShake,");
-                if (_fi_weapDisBreath == null) nulls.Append("DisableAimBreathing,");
-                if (_fi_weapDisStam == null) nulls.Append("DisableAimStamina,");
-                if (_fi_weapShake == null) nulls.Append("weapon.ShakeAmplitude,");
-                if (_fi_weapBob == null) nulls.Append("weapon.BobAmplitude,");
-                if (_fi_weapSwayLim == null) nulls.Append("SwayLimits,");
-                if (_fi_weapRotLook == null) nulls.Append("RotationLookSway,");
-                for (int i = 0; i < _fi_camSwayFloats.Length; i++)
-                    if (_fi_camSwayFloats[i] == null) nulls.Append($"camSway[{i}],");
-                for (int i = 0; i < _fi_camFloats.Length; i++)
-                    if (_fi_camFloats[i] == null) nulls.Append($"camFloat[{i}],");
-                ModMain.Log?.Msg(nulls.ToString());
+                if (weapon != null)
+                {
+                    try
+                    {
+                        var wt = weapon.GetType(); int wd = 0;
+                        while (wt != null && wd < 5)
+                        {
+                            var wfields = wt.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                            var wsb = new System.Text.StringBuilder($"[AimDiag] Weap depth={wd} type={wt.FullName} fields({wfields.Length}):");
+                            foreach (var wf in wfields) wsb.Append($" {wf.Name}({wf.FieldType.Name})");
+                            ModMain.Log?.Msg(wsb.ToString());
+                            wt = wt.BaseType; wd++;
+                        }
+                    }
+                    catch (Exception ex) { ModMain.Log?.Warning($"[AimDiag] weapon dump: {ex.Message}"); }
+                }
+                else ModMain.Log?.Warning("[AimDiag] weapon = NULL — FindWeapon() all 4 paths failed. No weapon equipped?");
+
+                // dump PlayerManager 的 weapon 相关方法
+                try
+                {
+                    var pm = GameManager.GetPlayerManagerComponent();
+                    if (pm != null)
+                    {
+                        var pmT = pm.GetType();
+                        var pmMethods = pmT.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        var pmSb = new System.Text.StringBuilder($"[AimDiag] PlayerManager type={pmT.FullName} methods({pmMethods.Length}):");
+                        foreach (var m in pmMethods)
+                        {
+                            if (m.Name.Contains("Weapon") || m.Name.Contains("Gun") || m.Name.Contains("Rifle")
+                                || m.Name.Contains("Equip") || m.Name.Contains("Active") || m.Name.Contains("Current"))
+                                pmSb.Append($" {m.Name}({m.GetParameters().Length}p)");
+                        }
+                        ModMain.Log?.Msg(pmSb.ToString());
+                    }
+                    else ModMain.Log?.Warning("[AimDiag] PlayerManager = null");
+                }
+                catch (Exception ex) { ModMain.Log?.Warning($"[AimDiag] PM dump: {ex.Message}"); }
+
+                // v2.7.84:静态 bool 字段诊断 —— 确认 Set* 方法可用
+                var diags = new System.Text.StringBuilder("[AimDiag] Static Disable fields: ");
+                try { diags.Append($"Sway={vp_FPSWeapon.m_DisableAimSway} "); } catch (Exception ex) { diags.Append($"Sway=ERR({ex.Message}) "); }
+                try { diags.Append($"Shake={vp_FPSWeapon.m_DisableAimShake} "); } catch (Exception ex) { diags.Append($"Shake=ERR({ex.Message}) "); }
+                try { diags.Append($"Breath={vp_FPSWeapon.m_DisableAimBreathing} "); } catch (Exception ex) { diags.Append($"Breath=ERR({ex.Message}) "); }
+                try { diags.Append($"Stamina={vp_FPSWeapon.m_DisableAimStamina} "); } catch (Exception ex) { diags.Append($"Stamina=ERR({ex.Message}) "); }
+                try { diags.Append($"DOF={vp_FPSWeapon.m_DisableDepthOfField} "); } catch (Exception ex) { diags.Append($"DOF=ERR({ex.Message}) "); }
+                try { diags.Append($"CamAmbSway={vp_FPSCamera.m_DisableAmbientSway} "); } catch (Exception ex) { diags.Append($"CamAmbSway=ERR({ex.Message}) "); }
+                diags.Append($"recoilSpring={(_fi_recoilSpring != null ? "OK" : "null")} ");
+                diags.Append($"weapon={weapon?.GetType().FullName ?? "null"}");
+                ModMain.Log?.Msg(diags.ToString());
             }
 
-            // bool 开关双向同步(包括 toggle 关后恢复)
-            try { vp_FPSCamera.m_DisableAmbientSway = CheatState.NoAimSway; } catch (Exception ex) { if (!_aimDiagDone) ModMain.Log?.Warning($"[AimDiag] m_DisableAmbientSway: {ex.Message}"); }
-            SetBoolIfNotNull(_fi_weapDisSway,   weapon, CheatState.NoAimSway);
-            SetBoolIfNotNull(_fi_weapDisShake,  weapon, CheatState.NoAimShake);
-            SetBoolIfNotNull(_fi_weapDisBreath, weapon, CheatState.NoBreathSway);
-            SetBoolIfNotNull(_fi_weapDisStam,   weapon, CheatState.NoAimStamina);
+            // ——— 静态 bool 开关:每帧同步(toggle ON=true / OFF=false) ———
+            // 反编译确认:vp_FPSWeapon.m_DisableAimSway 等是 static bool,Set* 是 static 方法
+            // 空 weapon 不影响 —— static 字段全局生效,不依赖实例
+            // v2.7.84:NoAimSway 合并了 sway+shake+breath 三个 toggle
+            try { vp_FPSWeapon.m_DisableAimSway      = CheatState.NoAimSway;    } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] SetAimSway: {ex.Message}"); }
+            try { vp_FPSWeapon.m_DisableAimShake     = CheatState.NoAimSway;    } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] SetAimShake: {ex.Message}"); }
+            try { vp_FPSWeapon.m_DisableAimBreathing  = CheatState.NoAimSway;    } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] SetAimBreath: {ex.Message}"); }
+            try { vp_FPSWeapon.m_DisableAimStamina   = CheatState.NoAimStamina; } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] SetAimStamina: {ex.Message}"); }
+            try { vp_FPSCamera.m_DisableAmbientSway   = CheatState.NoAimSway;    } catch (Exception ex) { ModMain.Log?.Warning($"[Aim] m_DisableAmbientSway: {ex.Message}"); }
 
-            // 浮点字段:只在 toggle 开时归零(关掉后不可逆)
+            // 浮点字段:只在 toggle 开时归零(关掉后不可逆,靠 bool 开关控制即可)
             if (!anyOn)
             {
                 _lastAnyAimToggle = false;
@@ -946,37 +1258,40 @@ internal static class CheatsTick
 
             if (CheatState.NoAimSway)
             {
-                // m_Max* / m_Ambient* 6 个 camera sway 字段
-                for (int i = 0; i < _fi_camSwayFloats.Length; i++)
-                    SetFloatIfNotNull(_fi_camSwayFloats[i], cam, 0f);
-                // Weapon sway:SwayLimits/Max/Start/Crouch/Motion + 4 个 Rotation*Sway
-                SetFloatIfNotNull(_fi_weapSwayLim,    weapon, 0f);
-                SetFloatIfNotNull(_fi_weapSwayMax,    weapon, 0f);
-                SetFloatIfNotNull(_fi_weapSwayStart,  weapon, 0f);
-                SetFloatIfNotNull(_fi_weapSwayCrouch, weapon, 0f);
-                SetFloatIfNotNull(_fi_weapSwayMotion, weapon, 0f);
-                SetFloatIfNotNull(_fi_weapRotLook,    weapon, 0f);
-                SetFloatIfNotNull(_fi_weapRotStrafe,  weapon, 0f);
-                SetFloatIfNotNull(_fi_weapRotFall,    weapon, 0f);
-                SetFloatIfNotNull(_fi_weapRotSlope,   weapon, 0f);
-            }
-            if (CheatState.NoAimShake)
-            {
-                // Camera shake
-                SetFloatIfNotNull(_fi_camFloats[0], cam, 0f); // ShakeAmplitude
-                SetFloatIfNotNull(_fi_camFloats[1], cam, 0f); // ShakeSpeed
-                // Weapon shake
-                SetFloatIfNotNull(_fi_weapShake,      weapon, 0f);
-                SetFloatIfNotNull(_fi_weapShakeSpeed, weapon, 0f);
-                SetFloatIfNotNull(_fi_weapCold,       weapon, 0f);
-                SetFloatIfNotNull(_fi_weapRandom,     weapon, 0f);
-                SetFloatIfNotNull(_fi_weapShakeInst,  weapon, 0f);
-            }
-            if (CheatState.NoBreathSway)
-            {
-                SetFloatIfNotNull(_fi_camFloats[2], cam, 0f);    // Camera BobAmplitude
-                SetFloatIfNotNull(_fi_weapBob,      weapon, 0f); // Weapon BobAmplitude
-                SetFloatIfNotNull(_fi_weapBobRate,  weapon, 0f); // Weapon BobRate
+                // Camera sway 实例字段 —— 直接赋值,不需要反射
+                try { cam.m_MaxAmbientSwayAngleDegreesA       = 0f; } catch { }
+                try { cam.m_MaxAmbientAimingSwayAngleDegreesA  = 0f; } catch { }
+                try { cam.m_AmbientSwaySpeedA                  = 0f; } catch { }
+                try { cam.m_AmbientAimingSwaySpeedA            = 0f; } catch { }
+                try { cam.m_CurrentMaxAmbientSwayAngle         = 0f; } catch { }
+                try { cam.m_CurrentAmbientSwaySpeed            = 0f; } catch { }
+                // Camera shake 实例字段(ShakeAmplitude 是 Vector3)
+                try { cam.ShakeAmplitude = UnityEngine.Vector3.zero; } catch { }
+                try { cam.ShakeSpeed     = 0f; } catch { }
+                // Camera bob 实例字段(BobAmplitude 是 Vector4)
+                try { cam.BobAmplitude = UnityEngine.Vector4.zero; } catch { }
+
+                // v2.7.84:武器实例 bob/shake 归零 —— static bool 只禁用 aim sway 逻辑,
+                //  但武器模型的 BobAmplitude/ShakeAmplitude 是 vp_Component 继承的实例字段,
+                //  需要直接写武器实例才能消除呼吸时武器模型晃动
+                if (weapon != null)
+                {
+                    try
+                    {
+                        var wBob = weapon.GetType().GetField("BobAmplitude", BindingFlags.Instance | BindingFlags.Public);
+                        if (wBob != null) wBob.SetValue(weapon, UnityEngine.Vector4.zero);
+                    } catch { }
+                    try
+                    {
+                        var wShake = weapon.GetType().GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public);
+                        if (wShake != null) wShake.SetValue(weapon, UnityEngine.Vector3.zero);
+                    } catch { }
+                    try
+                    {
+                        var wShakeSpd = weapon.GetType().GetField("ShakeSpeed", BindingFlags.Instance | BindingFlags.Public);
+                        if (wShakeSpd != null) wShakeSpd.SetValue(weapon, 0f);
+                    } catch { }
+                }
             }
 
             if (CheatState.NoRecoil && _fi_recoilSpring != null)
@@ -986,9 +1301,9 @@ internal static class CheatsTick
                     var rs = _fi_recoilSpring.GetValue(cam);
                     if (rs != null)
                     {
-                        SetFloatIfNotNull(_fi_rsCur, rs, 0f);
-                        SetFloatIfNotNull(_fi_rsTgt, rs, 0f);
-                        SetFloatIfNotNull(_fi_rsVel, rs, 0f);
+                        if (_fi_rsCur != null) try { _fi_rsCur.SetValue(rs, 0f); } catch { }
+                        if (_fi_rsTgt != null) try { _fi_rsTgt.SetValue(rs, 0f); } catch { }
+                        if (_fi_rsVel != null) try { _fi_rsVel.SetValue(rs, 0f); } catch { }
                         _fi_recoilSpring.SetValue(cam, rs); // struct 复制回去
                     }
                 }
@@ -999,9 +1314,6 @@ internal static class CheatsTick
         }
         catch (Exception ex) { ModMain.Log?.Warning($"[TickCamera] {ex.Message}"); }
     }
-
-    // (旧的 TrySetFieldFloat / TrySetFieldBool / SetStructFieldFloat helper 已被缓存版
-    //  FieldInfo 替换,删除。)
 
     // ——— 动物不能动 / 隐身 ———
     // v2.7.9 重写 Stealth:之前 m_DisableScanForTargets 单靠它不够 ——

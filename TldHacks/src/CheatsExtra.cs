@@ -342,26 +342,7 @@ internal static class Feats
 // 环境 / 身体 相关的"持续保持"类(每帧或每 tick 应用,每 tick 间隔游戏自己会重写)
 internal static class ExtraOneShot
 {
-    private static bool _windDisabled = false;
     private static bool _sprainDisabled = false;
-
-    public static void TickStopWind()
-    {
-        try
-        {
-            var w = GameManager.GetWeatherComponent();
-            if (w == null) return;
-            if (CheatState.StopWind && !_windDisabled)
-            {
-                try { w.DisableWindEffect(); _windDisabled = true; } catch { }
-            }
-            else if (!CheatState.StopWind && _windDisabled)
-            {
-                try { w.EnableWindEffect(); _windDisabled = false; } catch { }
-            }
-        }
-        catch { }
-    }
 
     public static void TickSprainRisk()
     {

@@ -134,20 +134,16 @@ internal class TldHacksSettings : JsonModSettings
 
     // ——— Aiming ———
     [Section("Aiming / 瞄准")]
-    [Name("No Aim Sway(关闭瞄准晃动)")]
+    [Name("Steady Aim(稳定瞄准,关闭晃动+抖动+呼吸)")]
+    [Description("合并瞄准晃动/抖动/呼吸晃动。开枪准星不动、武器不晃、瞄准画面不抖")]
     public bool NoAimSway = false;
 
-    [Name("No Aim Shake(关闭瞄准抖动)")]
-    public bool NoAimShake = false;
-
-    [Name("No Breath Sway(关闭呼吸晃动)")]
-    public bool NoBreathSway = false;
-
-    [Name("No Aim Stamina(关闭瞄准体力消耗)")]
+    [Name("No Aim Stamina(瞄准不耗体力)")]
     public bool NoAimStamina = false;
 
-    [Name("No Aim DOF(关闭瞄准景深)")]
-    public bool NoAimDOF = false;
+    [Name("Super Accuracy(已由魔法子弹替代,保留兼容)")]
+    [Description("已弃用 —— 请使用 ESP 区的「魔法子弹」。保留此开关是为了旧 JSON 兼容:开启时等效于 稳定瞄准+无后坐力。")]
+    public bool SuperAccuracy = false;
 
     [Section("Speed / 节约时间")]
     [Name("Fast Fire(快速射击)")]
@@ -156,9 +152,6 @@ internal class TldHacksSettings : JsonModSettings
 
     // ——— Environment / 环境 ———
     [Section("Environment / 环境")]
-    [Name("Stop Wind(停止刮风)")]
-    public bool StopWind = false;
-
     [Name("No Sprain Risk(免扭伤风险)")]
     public bool NoSprainRisk = false;
 
@@ -230,6 +223,31 @@ internal class TldHacksSettings : JsonModSettings
     [Name("钓鱼 100% 成功")]
     public bool QuickFishing = false;
 
+    // ——— v2.7.86 新增功能 ———
+    [Name("随意生火(含室内)")]
+    [Description("任何地方都能生火,包括室内")]
+    public bool FireAnywhere = false;
+
+    [Name("生火材料不减")]
+    [Description("添加柴火时不消耗物品")]
+    public bool FreeFireFuel = false;
+
+    [Name("科技背包")]
+    [Description("解锁科技背包的额外负重")]
+    public bool TechBackpack = false;
+
+    [Name("火把满值")]
+    [Description("从篝火取出的火把燃烧值为最大")]
+    public bool TorchFullValue = false;
+
+    [Name("无条件冲刺(含拉雪橇)")]
+    [Description("冲刺不消耗体力,拉雪橇也能无限冲刺")]
+    public bool FreeSprint = false;
+
+    [Name("无限体力")]
+    [Description("体力条永远满,不影响疲劳值")]
+    public bool InfiniteStamina = false;
+
     // ——— v2.7.55 商人 + 美洲狮 ———
     [Section("商人 Trader")]
     [Name("交易清单不限制(上限 → 64)")]
@@ -252,4 +270,28 @@ internal class TldHacksSettings : JsonModSettings
     [Name("W 键自动拾取时跳过自己丢的物品")]
     [Description("按 W 触发 ItemPicker 自动拾取时,忽略本会话内玩家 drop 的 GearItem,避免刚丢就又捡回来")]
     public bool BlockAutoPickupOwnDrops = false;
+
+    [Section("ESP & AutoAim / 透视自瞄")]
+    [Name("ESP 透视")]
+    public bool ESP = false;
+    [Name("自动瞄准 (按住右键激活)")]
+    public bool AutoAim = false;
+    [Name("魔法子弹 (开枪自动命中目标)")]
+    public bool MagicBullet = false;
+    [Name("自瞄 FOV (搜索角度)")]
+    public float AutoAimFOV = 30f;
+    [Name("自瞄速度")]
+    public float AutoAimSpeed = 15f;
+    [Name("锁定部位 (0=躯干 1=头 2=腿)")]
+    public int AimPart = 0;
+    [Name("后坐力强度 (0=无 1=原版)")]
+    public float RecoilScaleESP = 1f;
+    [Name("射速倍率")]
+    public float FireRateScale = 1f;
+    [Name("换弹速度倍率")]
+    public float ReloadScale = 1f;
+    [Name("透视距离 (米)")]
+    public float ESPRange = 300f;
+    [Name("自瞄开关热键")]
+    public KeyCode AutoAimHotkey = KeyCode.None;
 }

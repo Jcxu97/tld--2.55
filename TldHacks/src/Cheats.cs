@@ -15,7 +15,7 @@ internal static class CheatState
     // Life / 生命
     public static bool GodMode;
     public static bool NoFallDamage;
-    // Status / 状态(注:InfiniteStamina 去掉 —— UniversalTweaks / 其他 mod 已覆盖)
+    // Status / 状态
     public static bool AlwaysWarm;
     public static bool NoHunger;
     public static bool NoThirst;
@@ -42,14 +42,11 @@ internal static class CheatState
     public static bool InfiniteAmmo;
     public static bool NoJam;
     public static bool NoRecoil;
-    // Aiming
-    public static bool NoAimSway;
-    public static bool NoAimShake;
-    public static bool NoBreathSway;
+    // Aiming (v2.7.84 合并:NoAimSway = 晃动+抖动+呼吸,SuperAccuracy = 精准+零散布)
+    public static bool NoAimSway;      // 稳定瞄准(合并 sway+shake+breath)
     public static bool NoAimStamina;
-    public static bool NoAimDOF;
+    public static bool SuperAccuracy;  // 超级精准(散布归零 + 后坐归零)
     // Environment / body
-    public static bool StopWind;
     public static bool NoSprainRisk;
     public static bool ImmuneAnimalDamage; // Wolf/Bear/Cougar 攻击不扣血
     public static bool NoSuffocating;      // 不会窒息
@@ -74,6 +71,13 @@ internal static class CheatState
     public static bool CureFrostbite;      // 治愈永久冻伤
     public static bool ClearDeathPenalty;  // 清除死亡惩罚
     public static bool QuickFishing;       // 钓鱼 100%
+    // v2.7.86 新增功能
+    public static bool FireAnywhere;       // 随意生火(含室内)
+    public static bool FreeFireFuel;       // 生火材料不减
+    public static bool TechBackpack;       // 科技背包
+    public static bool TorchFullValue;     // 火把满值
+    public static bool FreeSprint;         // 无条件冲刺
+    public static bool InfiniteStamina;    // 无限体力
     // v2.7.55 商人 + 美洲狮
     public static bool TraderUnlimitedList;   // 交易清单上限 → 64
     public static bool TraderMaxTrust;        // 信任拉满
@@ -137,11 +141,8 @@ internal static class Cheats
             s.NoJam = false;
             s.NoRecoil = false;
             s.NoAimSway = false;
-            s.NoAimShake = false;
-            s.NoBreathSway = false;
             s.NoAimStamina = false;
-            s.NoAimDOF = false;
-            s.StopWind = false;
+            s.SuperAccuracy = false;
             s.NoSprainRisk = false;
             s.ImmuneAnimalDamage = false;
             s.NoSuffocating = false;
@@ -164,6 +165,12 @@ internal static class Cheats
             s.CureFrostbite = false;
             s.ClearDeathPenalty = false;
             s.QuickFishing = false;
+            s.FireAnywhere = false;
+            s.FreeFireFuel = false;
+            s.TechBackpack = false;
+            s.TorchFullValue = false;
+            s.FreeSprint = false;
+            s.InfiniteStamina = false;
             s.TraderUnlimitedList = false;
             s.TraderMaxTrust = false;
             s.TraderInstantExchange = false;
@@ -206,11 +213,8 @@ internal static class Cheats
         CheatState.NoJam = s.NoJam;
         CheatState.NoRecoil = s.NoRecoil;
         CheatState.NoAimSway = s.NoAimSway;
-        CheatState.NoAimShake = s.NoAimShake;
-        CheatState.NoBreathSway = s.NoBreathSway;
         CheatState.NoAimStamina = s.NoAimStamina;
-        CheatState.NoAimDOF = s.NoAimDOF;
-        CheatState.StopWind = s.StopWind;
+        CheatState.SuperAccuracy = s.SuperAccuracy;
         CheatState.NoSprainRisk = s.NoSprainRisk;
         CheatState.ImmuneAnimalDamage = s.ImmuneAnimalDamage;
         CheatState.NoSuffocating = s.NoSuffocating;
@@ -233,6 +237,12 @@ internal static class Cheats
         CheatState.CureFrostbite = s.CureFrostbite;
         CheatState.ClearDeathPenalty = s.ClearDeathPenalty;
         CheatState.QuickFishing = s.QuickFishing;
+        CheatState.FireAnywhere = s.FireAnywhere;
+        CheatState.FreeFireFuel = s.FreeFireFuel;
+        CheatState.TechBackpack = s.TechBackpack;
+        CheatState.TorchFullValue = s.TorchFullValue;
+        CheatState.FreeSprint = s.FreeSprint;
+        CheatState.InfiniteStamina = s.InfiniteStamina;
         CheatState.TraderUnlimitedList = s.TraderUnlimitedList;
         CheatState.TraderMaxTrust = s.TraderMaxTrust;
         CheatState.TraderInstantExchange = s.TraderInstantExchange;

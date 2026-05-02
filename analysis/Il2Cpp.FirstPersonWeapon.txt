@@ -1,0 +1,394 @@
+using System;
+using System.Runtime.CompilerServices;
+using Il2CppInterop.Common.Attributes;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppInterop.Runtime.Runtime;
+using Il2CppSystem;
+using Il2CppSystem.Collections.Generic;
+using UnityEngine;
+
+namespace Il2Cpp;
+
+public class FirstPersonWeapon : MonoBehaviour
+{
+	[System.Serializable]
+	public class FXInfo : Il2CppSystem.Object
+	{
+		private static readonly System.IntPtr NativeFieldInfoPtr_m_Name;
+
+		private static readonly System.IntPtr NativeFieldInfoPtr_m_GameObject;
+
+		private static readonly System.IntPtr NativeMethodInfoPtr__ctor_Public_Void_0;
+
+		public unsafe string m_Name
+		{
+			get
+			{
+				nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Name);
+				return IL2CPP.Il2CppStringToManaged(*(System.IntPtr*)num);
+			}
+			set
+			{
+				System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+				IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Name)), IL2CPP.ManagedStringToIl2Cpp(value));
+			}
+		}
+
+		public unsafe GameObject m_GameObject
+		{
+			get
+			{
+				nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_GameObject);
+				System.IntPtr intPtr = *(System.IntPtr*)num;
+				return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+			}
+			set
+			{
+				System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+				IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_GameObject)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+			}
+		}
+
+		static FXInfo()
+		{
+			Il2CppClassPointerStore<FXInfo>.NativeClassPtr = IL2CPP.GetIl2CppNestedType(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "FXInfo");
+			IL2CPP.il2cpp_runtime_class_init(Il2CppClassPointerStore<FXInfo>.NativeClassPtr);
+			NativeFieldInfoPtr_m_Name = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FXInfo>.NativeClassPtr, "m_Name");
+			NativeFieldInfoPtr_m_GameObject = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FXInfo>.NativeClassPtr, "m_GameObject");
+			NativeMethodInfoPtr__ctor_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FXInfo>.NativeClassPtr, 100683346);
+		}
+
+		[CallerCount(0)]
+		public unsafe FXInfo()
+			: this(IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<FXInfo>.NativeClassPtr))
+		{
+			System.IntPtr* ptr = null;
+			Unsafe.SkipInit(out System.IntPtr intPtr);
+			System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr__ctor_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		}
+
+		public FXInfo(System.IntPtr pointer)
+			: base(pointer)
+		{
+		}
+	}
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_Animator;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_LightSource;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_Renderable;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BulletEmissionPoint;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_FrontSight;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_RearSight;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_ReloadBulletPrefab;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_BulletsToReload;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_FXInfos;
+
+	private static readonly System.IntPtr NativeFieldInfoPtr_m_ReloadBulletInstance;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_ResetFX_Private_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_EnableRenderable_Public_Void_Boolean_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_SpawnReloadBulletPrefab_Public_Void_Transform_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_TryGetFXObject_Public_Boolean_String_byref_GameObject_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_UpdateBulletsForReload_Public_Void_Int32_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_ShowNextLoadedBullet_Public_Void_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr_EnableReloadBulletInstance_Public_Void_Boolean_0;
+
+	private static readonly System.IntPtr NativeMethodInfoPtr__ctor_Public_Void_0;
+
+	public unsafe Animator m_Animator
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Animator);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Animator>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Animator)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe FirstPersonLightSource m_LightSource
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_LightSource);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<FirstPersonLightSource>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_LightSource)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_Renderable
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Renderable);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Renderable)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_BulletEmissionPoint
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BulletEmissionPoint);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BulletEmissionPoint)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe Transform m_FrontSight
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_FrontSight);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Transform>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_FrontSight)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe Transform m_RearSight
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_RearSight);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Transform>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_RearSight)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_ReloadBulletPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_ReloadBulletPrefab);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_ReloadBulletPrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe Il2CppReferenceArray<Renderer> m_BulletsToReload
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BulletsToReload);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<Il2CppReferenceArray<Renderer>>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_BulletsToReload)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe List<FXInfo> m_FXInfos
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_FXInfos);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<List<FXInfo>>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_FXInfos)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_ReloadBulletInstance
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_ReloadBulletInstance);
+			System.IntPtr intPtr = *(System.IntPtr*)num;
+			return (intPtr != (System.IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			System.IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (System.IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_ReloadBulletInstance)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	static FirstPersonWeapon()
+	{
+		Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr = IL2CPP.GetIl2CppClass("Assembly-CSharp.dll", "", "FirstPersonWeapon");
+		IL2CPP.il2cpp_runtime_class_init(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr);
+		NativeFieldInfoPtr_m_Animator = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_Animator");
+		NativeFieldInfoPtr_m_LightSource = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_LightSource");
+		NativeFieldInfoPtr_m_Renderable = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_Renderable");
+		NativeFieldInfoPtr_m_BulletEmissionPoint = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_BulletEmissionPoint");
+		NativeFieldInfoPtr_m_FrontSight = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_FrontSight");
+		NativeFieldInfoPtr_m_RearSight = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_RearSight");
+		NativeFieldInfoPtr_m_ReloadBulletPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_ReloadBulletPrefab");
+		NativeFieldInfoPtr_m_BulletsToReload = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_BulletsToReload");
+		NativeFieldInfoPtr_m_FXInfos = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_FXInfos");
+		NativeFieldInfoPtr_m_ReloadBulletInstance = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, "m_ReloadBulletInstance");
+		NativeMethodInfoPtr_ResetFX_Private_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683338);
+		NativeMethodInfoPtr_EnableRenderable_Public_Void_Boolean_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683339);
+		NativeMethodInfoPtr_SpawnReloadBulletPrefab_Public_Void_Transform_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683340);
+		NativeMethodInfoPtr_TryGetFXObject_Public_Boolean_String_byref_GameObject_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683341);
+		NativeMethodInfoPtr_UpdateBulletsForReload_Public_Void_Int32_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683342);
+		NativeMethodInfoPtr_ShowNextLoadedBullet_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683343);
+		NativeMethodInfoPtr_EnableReloadBulletInstance_Public_Void_Boolean_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683344);
+		NativeMethodInfoPtr__ctor_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr, 100683345);
+	}
+
+	[CallerCount(1)]
+	[CachedScanResults(RefRangeStart = 399891, RefRangeEnd = 399892, XrefRangeStart = 399873, XrefRangeEnd = 399891, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void ResetFX()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_ResetFX_Private_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(10)]
+	[CachedScanResults(RefRangeStart = 399911, RefRangeEnd = 399921, XrefRangeStart = 399892, XrefRangeEnd = 399911, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void EnableRenderable(bool enabled)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = stackalloc System.IntPtr[1];
+		*ptr = (nint)(&enabled);
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_EnableRenderable_Public_Void_Boolean_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 399965, RefRangeEnd = 399968, XrefRangeStart = 399921, XrefRangeEnd = 399965, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void SpawnReloadBulletPrefab(Transform parent)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = stackalloc System.IntPtr[1];
+		*ptr = IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)parent);
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_SpawnReloadBulletPrefab_Public_Void_Transform_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 399976, RefRangeEnd = 399979, XrefRangeStart = 399968, XrefRangeEnd = 399976, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe bool TryGetFXObject(string name, out GameObject fxGameObject)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = stackalloc System.IntPtr[2];
+		*ptr = IL2CPP.ManagedStringToIl2Cpp(name);
+		byte* num = (byte*)ptr + checked((nuint)1u * unchecked((nuint)sizeof(System.IntPtr)));
+		nint num2 = 0;
+		*(nint**)num = &num2;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_TryGetFXObject_Public_Boolean_String_byref_GameObject_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		nint num3 = num2;
+		fxGameObject = ((num3 == 0) ? null : new GameObject(num3));
+		return *(bool*)IL2CPP.il2cpp_object_unbox(intPtr2);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 399983, RefRangeEnd = 399986, XrefRangeStart = 399979, XrefRangeEnd = 399983, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void UpdateBulletsForReload(int numToShow)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = stackalloc System.IntPtr[1];
+		*ptr = (nint)(&numToShow);
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_UpdateBulletsForReload_Public_Void_Int32_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 399989, RefRangeEnd = 399992, XrefRangeStart = 399986, XrefRangeEnd = 399989, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void ShowNextLoadedBullet()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_ShowNextLoadedBullet_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 400002, RefRangeEnd = 400005, XrefRangeStart = 399992, XrefRangeEnd = 400002, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void EnableReloadBulletInstance(bool enable)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		System.IntPtr* ptr = stackalloc System.IntPtr[1];
+		*ptr = (nint)(&enable);
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_EnableReloadBulletInstance_Public_Void_Boolean_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 0, XrefRangeEnd = 0, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe FirstPersonWeapon()
+		: this(IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<FirstPersonWeapon>.NativeClassPtr))
+	{
+		System.IntPtr* ptr = null;
+		Unsafe.SkipInit(out System.IntPtr intPtr);
+		System.IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr__ctor_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	public FirstPersonWeapon(System.IntPtr pointer)
+		: base(pointer)
+	{
+	}
+}
+You are not using the latest version of the tool, please update.
+Latest version is '10.0.1.8346' (yours is '8.2.0.7535-95108c96')

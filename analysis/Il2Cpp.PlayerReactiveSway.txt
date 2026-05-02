@@ -1,0 +1,262 @@
+using System;
+using System.Runtime.CompilerServices;
+using Il2CppInterop.Common.Attributes;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.Runtime;
+using UnityEngine;
+
+namespace Il2Cpp;
+
+public class PlayerReactiveSway : MonoBehaviour
+{
+	private static readonly IntPtr NativeFieldInfoPtr_m_AffectedTransform;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmbientSwayDistance;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmbientSwaySpeed;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmbientTwistDegrees;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmbientTwistSpeed;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeBoostFromPlayer;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeBoostSmoothingTime;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeBoostDecayTime;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeBoostTarget;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeBoost;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeSmoothingVelocity;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_AmplitudeDecayVelocity;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Update_Private_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_OnTriggerEnter_Private_Void_Collider_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr__ctor_Public_Void_0;
+
+	public unsafe Transform m_AffectedTransform
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AffectedTransform);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<Transform>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AffectedTransform)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe Vector3 m_AmbientSwayDistance
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientSwayDistance);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientSwayDistance)) = value;
+		}
+	}
+
+	public unsafe Vector3 m_AmbientSwaySpeed
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientSwaySpeed);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientSwaySpeed)) = value;
+		}
+	}
+
+	public unsafe float m_AmbientTwistDegrees
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientTwistDegrees);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientTwistDegrees)) = value;
+		}
+	}
+
+	public unsafe float m_AmbientTwistSpeed
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientTwistSpeed);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmbientTwistSpeed)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeBoostFromPlayer
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostFromPlayer);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostFromPlayer)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeBoostSmoothingTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostSmoothingTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostSmoothingTime)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeBoostDecayTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostDecayTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostDecayTime)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeBoostTarget
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostTarget);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoostTarget)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeBoost
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoost);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeBoost)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeSmoothingVelocity
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeSmoothingVelocity);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeSmoothingVelocity)) = value;
+		}
+	}
+
+	public unsafe float m_AmplitudeDecayVelocity
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeDecayVelocity);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_AmplitudeDecayVelocity)) = value;
+		}
+	}
+
+	static PlayerReactiveSway()
+	{
+		Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr = IL2CPP.GetIl2CppClass("Assembly-CSharp.dll", "", "PlayerReactiveSway");
+		IL2CPP.il2cpp_runtime_class_init(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr);
+		NativeFieldInfoPtr_m_AffectedTransform = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AffectedTransform");
+		NativeFieldInfoPtr_m_AmbientSwayDistance = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmbientSwayDistance");
+		NativeFieldInfoPtr_m_AmbientSwaySpeed = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmbientSwaySpeed");
+		NativeFieldInfoPtr_m_AmbientTwistDegrees = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmbientTwistDegrees");
+		NativeFieldInfoPtr_m_AmbientTwistSpeed = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmbientTwistSpeed");
+		NativeFieldInfoPtr_m_AmplitudeBoostFromPlayer = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeBoostFromPlayer");
+		NativeFieldInfoPtr_m_AmplitudeBoostSmoothingTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeBoostSmoothingTime");
+		NativeFieldInfoPtr_m_AmplitudeBoostDecayTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeBoostDecayTime");
+		NativeFieldInfoPtr_m_AmplitudeBoostTarget = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeBoostTarget");
+		NativeFieldInfoPtr_m_AmplitudeBoost = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeBoost");
+		NativeFieldInfoPtr_m_AmplitudeSmoothingVelocity = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeSmoothingVelocity");
+		NativeFieldInfoPtr_m_AmplitudeDecayVelocity = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, "m_AmplitudeDecayVelocity");
+		NativeMethodInfoPtr_Update_Private_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, 100667275);
+		NativeMethodInfoPtr_OnTriggerEnter_Private_Void_Collider_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, 100667276);
+		NativeMethodInfoPtr__ctor_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr, 100667277);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 112148, XrefRangeEnd = 112181, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void Update()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_Update_Private_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 112181, XrefRangeEnd = 112192, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void OnTriggerEnter(Collider other)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = stackalloc IntPtr[1];
+		*ptr = IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)other);
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_OnTriggerEnter_Private_Void_Collider_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 0, XrefRangeEnd = 0, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe PlayerReactiveSway()
+		: this(IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<PlayerReactiveSway>.NativeClassPtr))
+	{
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr__ctor_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	public PlayerReactiveSway(IntPtr pointer)
+		: base(pointer)
+	{
+	}
+}
+You are not using the latest version of the tool, please update.
+Latest version is '10.0.1.8346' (yours is '8.2.0.7535-95108c96')

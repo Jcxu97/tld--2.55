@@ -3,7 +3,7 @@ using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.79", "user")]
+[assembly: MelonInfo(typeof(TldHacks.ModMain), "TldHacks", "2.7.91", "user")]
 [assembly: MelonGame("Hinterland", "TheLongDark")]
 [assembly: MelonAdditionalDependencies("ModSettings")]
 
@@ -46,7 +46,7 @@ public class ModMain : MelonMod
 
             // v2.7.64 加载 scene transition 历史记录
             TransitionRecorder.Init();
-            Log.Msg($"TldHacks v2.7.83 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
+            Log.Msg($"TldHacks v2.7.91 loaded — menu hotkey = {Settings.MenuHotkey}, items = {ItemDatabase.All.Count}+{ItemDatabaseMod.All.Count} mod, transitions = {TransitionRecorder.Count}");
         }
         catch (Exception ex) { Log.Error($"[Init] {ex}"); }
     }
@@ -74,13 +74,10 @@ public class ModMain : MelonMod
         CheatState.NoJam = Settings.NoJam;
         CheatState.NoRecoil = Settings.NoRecoil;
         CheatState.NoAimSway = Settings.NoAimSway;
-        CheatState.NoAimShake = Settings.NoAimShake;
-        CheatState.NoBreathSway = Settings.NoBreathSway;
         CheatState.NoAimStamina = Settings.NoAimStamina;
-        CheatState.NoAimDOF = Settings.NoAimDOF;
+        CheatState.SuperAccuracy = Settings.SuperAccuracy;
         CheatState.SpeedMultiplier = Settings.SpeedMultiplier;
         CheatState.FastFire = Settings.FastFire;
-        CheatState.StopWind = Settings.StopWind;
         CheatState.NoSprainRisk = Settings.NoSprainRisk;
         CheatState.ImmuneAnimalDamage = Settings.ImmuneAnimalDamage;
         CheatState.NoSuffocating = Settings.NoSuffocating;
@@ -104,6 +101,13 @@ public class ModMain : MelonMod
         CheatState.CureFrostbite = Settings.CureFrostbite;
         CheatState.ClearDeathPenalty = Settings.ClearDeathPenalty;
         CheatState.QuickFishing = Settings.QuickFishing;
+        // v2.7.86 新增功能
+        CheatState.FireAnywhere = Settings.FireAnywhere;
+        CheatState.FreeFireFuel = Settings.FreeFireFuel;
+        CheatState.TechBackpack = Settings.TechBackpack;
+        CheatState.TorchFullValue = Settings.TorchFullValue;
+        CheatState.FreeSprint = Settings.FreeSprint;
+        CheatState.InfiniteStamina = Settings.InfiniteStamina;
         // v2.7.64 商人 + 美洲狮
         CheatState.TraderUnlimitedList = Settings.TraderUnlimitedList;
         CheatState.TraderMaxTrust = Settings.TraderMaxTrust;
@@ -111,6 +115,17 @@ public class ModMain : MelonMod
         CheatState.TraderAlwaysAvailable = Settings.TraderAlwaysAvailable;
         CheatState.CougarInstantActivate = Settings.CougarInstantActivate;
         CheatState.BlockAutoPickupOwnDrops = Settings.BlockAutoPickupOwnDrops;
+        // v2.7.90 ESP/AutoAim 持久化
+        CheatStateESP.ESP = Settings.ESP;
+        CheatStateESP.AutoAim = Settings.AutoAim;
+        CheatStateESP.MagicBullet = Settings.MagicBullet;
+        CheatStateESP.AutoAimFOV = Settings.AutoAimFOV;
+        CheatStateESP.AutoAimSpeed = Settings.AutoAimSpeed;
+        CheatStateESP.AimPart = Settings.AimPart;
+        CheatStateESP.RecoilScale = Settings.RecoilScaleESP;
+        CheatStateESP.FireRateScale = Settings.FireRateScale;
+        CheatStateESP.ReloadScale = Settings.ReloadScale;
+        CheatStateESP.ESPRange = Settings.ESPRange;
     }
 
     public override void OnUpdate()
@@ -125,12 +140,15 @@ public class ModMain : MelonMod
             if (Settings.MenuHotkey != KeyCode.None && Input.GetKeyDown(Settings.MenuHotkey))
                 Menu.Toggle();
 
-            // Fly toggle hotkey —— 实测 work,保留(之前 HANDOFF 说 release 无效,与实际不符)
+            // Fly toggle hotkey
             if (Settings.FlyHotkey != KeyCode.None && Input.GetKeyDown(Settings.FlyHotkey))
             {
                 CheatState.CFly = !CheatState.CFly;
                 ConsoleBridge.Run("fly");
             }
+            // AutoAim toggle hotkey
+            if (Settings.AutoAimHotkey != KeyCode.None && Input.GetKeyDown(Settings.AutoAimHotkey))
+                CheatStateESP.AutoAim = !CheatStateESP.AutoAim;
 
             // Time scale —— v2.7.21:默认 1.0 时不写回,避免覆盖第三方时间加速 mod
             // 只有用户在菜单主动改成 != 1.0 的倍率时才强制同步
@@ -172,9 +190,10 @@ public class ModMain : MelonMod
             if ((_frame % 600) == 30)
                 CheatsTick.TickAnimalsFull();
 
-            // v2.7.25 TickStatus 从 180 帧 → 60 帧(1s)—— 取代 5 个被删的每帧 Update Postfix
-            // 饥/渴/累/寒 1s 内几乎不可能出现异常上升,TickStatus 60 帧重置一次够用
-            if ((_frame % 60) == 10)   CheatsTick.TickStatus();
+            // v2.7.84 TickStatus 从 60 帧搬到 OnLateUpdate 每帧 —— 消除 HUD 值"掉到中间→跳回满"闪烁
+            //   Unity 顺序:MonoBehaviour.Update(游戏的 Fatigue.Update 在这耗体力) → LateUpdate(我们这里 clamp)→ Render
+            //   每帧 clamp 5 个字段,<10μs/帧,FPS 影响可忽略;GodMode 的 HP 同理
+            // 注:此处不再调 TickStatus,见 OnLateUpdate()
 
             // 其余 sub-tick 每 180 帧一次(3s),错开 phase
             if ((_frame % 180) == 15)  CheatsTick.TickGuns();
@@ -184,7 +203,7 @@ public class ModMain : MelonMod
             if ((_frame % 180) == 165) CheatsTick.TickQuickActions();
 
             // One-shot 类:状态变化时重设即可,低频 OK
-            if ((_frame % 180) == 90) { ExtraOneShot.TickStopWind(); ExtraOneShot.TickSprainRisk(); }
+            if ((_frame % 180) == 90) { ExtraOneShot.TickSprainRisk(); }
 
             // 摄像机 / 武器 aim:v2.7.83 从 120 帧降到 30 帧(0.5s),更灵敏
             if ((_frame % 30) == 20) CheatsTick.TickCamera();
@@ -198,6 +217,11 @@ public class ModMain : MelonMod
 
             // 跨场景传送 pending tick
             Teleport.TickPendingTeleport();
+
+            // v2.7.90 自动瞄准 + 武器调参 + 魔法子弹预览(每帧)
+            AutoAimSystem.Tick();
+            WeaponTuning.Tick();
+            MagicBulletSystem.UpdatePreview();
         }
         catch (Exception ex) { Log?.Error($"[OnUpdate] {ex}"); }
     }
@@ -206,12 +230,15 @@ public class ModMain : MelonMod
     {
         if (Settings != null && (Settings.DiagPauseRuntime || Settings.DiagUnpatchAll)) return;
         Stacking.OnLateUpdate();
+        // v2.7.84 HUD 状态 clamp 每帧跑 —— LateUpdate 在 Update 的 drain 后、render 前,UI 不看到"掉到中间值"闪烁
+        CheatsTick.TickStatus();
     }
 
     public override void OnGUI()
     {
         if (Settings != null && (Settings.DiagPauseRuntime || Settings.DiagUnpatchAll)) return;
         Menu.Draw();
+        ESPOverlay.OnGUI();
     }
 
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
@@ -231,5 +258,7 @@ public class ModMain : MelonMod
         try { AutoPickupGuard.DroppedAt.Clear(); } catch { }
         // v2.7.64 清 BreakDown snapshot —— 跨 scene 后 BreakDown 组件重新 spawn,stale ptr
         try { Patch_BreakDown_UpdateDuration.Snapshots.Clear(); } catch { }
+        // v2.7.84 清 vp_FPSCamera 缓存 + 重置 aim 诊断 —— 跨场景相机实例重建
+        try { CheatsTick.InvalidateCameraCache(); } catch { }
     }
 }

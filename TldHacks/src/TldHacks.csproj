@@ -61,6 +61,10 @@
       <HintPath>$(TldInterop)\UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(TldInterop)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Il2CppTLD.IntBackedUnit">
       <HintPath>$(TldInterop)\Il2CppTLD.IntBackedUnit.dll</HintPath>
       <Private>false</Private>

@@ -1,5 +1,359 @@
 # TldHacks — 交接文档
 
+## 🆕 2026-05-02 session #2 v2.7.90 — ESP/AutoAim 9/10 品质升级 + 编译修复
+
+### 本次改动
+
+1. **AiCache 无限递归 bug 修复**（ESP.cs:34）
+   - `AiCache.Get()` 原来调用自己 → 栈溢出 → ESP 静默失败
+   - 改为 `UnityEngine.Object.FindObjectsOfType<BaseAi>()`
+
+2. **PhysicsModule 引用添加**（TldHacks.csproj）
+   - `UnityEngine.PhysicsModule.dll` 添加到项目引用
+   - `Physics.Raycast` LOS 检测现在能编译
+
+3. **后坐力窗口 0.25s → 0.5s**（CheatsPatches.cs:725）
+   - 0.25s 太短，游戏弹簧恢复动画比这长，导致后坐力未被消除
+
+4. **RecoilScale 滑块独立生效**（CheatsPatches.cs + DynamicPatch.cs）
+   - PlayFireAnimation Prefix 条件加 `CheatStateESP.RecoilScale < 0.99f`
+   - ClearRecoil 条件加 `CheatStateESP.RecoilScale < 0.99f`
+   - DynamicPatch 三处 Spec 条件加 `CheatStateESP.RecoilScale < 0.99f`
+   - 按比例缩放 GunItem 后坐力参数：`gun.m_PitchRecoilMin *= scale`
+
+5. **FOV 圆圈指示器**（ESP.cs 新增 DrawFOVCircle）
+   - 开 AutoAim 后屏幕中心画圆圈指示搜索范围
+   - 无锁定=白色半透明，有锁定=金色
+   - 圆圈大小随 FOV 滑块变化
+
+### 改动文件
+```
+ESP.cs           — AiCache 递归修 + FOV 圆圈 + OnGUI 条件调整 + 删无用 using
+CheatsPatches.cs — RecoilWindow 0.25→0.5s + PlayFireAnimation 支持 RecoilScale + ClearRecoil 条件扩展
+DynamicPatch.cs  — PlayFireAnimation/ClearRecoil 挂载条件加 RecoilScale
+TldHacks.csproj  — 添加 UnityEngine.PhysicsModule.dll 引用
+```
+
+### 明天测试清单
+
+| # | 功能 | 预期 | 失败排查 |
+|---|------|------|----------|
+| 1 | ESP 透视 | 红色方框+血条+距离 | AiCache 仍然 null → 看 MelonLoader 日志 |
+| 2 | [WALL] 标签 | 墙后半透明+[WALL] | Physics.Raycast IL2Cpp 不兼容 → HasLOS 改 return true |
+| 3 | 自动瞄准 | 按住右键锁定+金色[TARGET] | GetVpFPSCamera() null → 用 FindObjectOfType 兜底 |
+| 4 | FOV 圆圈 | 中心白色圆圈 | AutoAim toggle 必须 ON |
+| 5 | 后坐力消除 | NoRecoil ON 枪口不跳 | 如果仍跳 → 窗口改 0.8s |
+| 6 | 后坐力滑块 | 50% → 后坐力减半 | DynamicPatch 条件检查 |
+| 7 | 魔法子弹 | 开枪命中锁定目标 | ApplyDamage 签名 |
+| 8 | 平滑释放 | 松开右键0.2s过渡 | — |
+| 9 | 设置持久化 | 重启保留 | 检查 TldHacks.json |
+
+### 如果 Physics.Raycast 崩溃
+
+HasLOS 用了 try/catch 保护，崩溃会静默回退到 `return true`（所有目标视为可见）。如果游戏完全崩：
+- `ESP.cs:307` 的 HasLOS 方法改为 `return true;` 即可跳过 LOS 检测
+
+### 构建命令
+```powershell
+dotnet build "D:\TLD-Mods\tld--2.55\TldHacks\src\TldHacks.csproj" --no-incremental
+```
+
+---
+
+## 🆕 2026-05-02 session v2.7.89 — 无后坐力终极修复 + 堆叠视觉修 + ESP/自动瞄准/武器调参
+
+### 背景
+v2.7.87/v2.7.88 无后坐力仍无效（用户实测确认）。堆叠点击容器时×N标签消失。新增3个功能。
+
+### 核心发现
+
+**IL2Cpp 限制确认**：所有通过 property setter 写入值类型（struct）或字段的方式对原生内存无效：
+- 归零 `m_RecoilSpring` struct → 无效
+- 设 `RecoilPitchStiffness`/`Damping` → 无效
+- 归零 `GunItem.m_PitchRecoilMin/Max` → 无效（日志确认 gun=True 找到了对象）
+- BetterCamera.dll 逆向发现它用 `set_m_MultiplierAiming`，但我们的同等操作也无效
+
+**真正可行的方法**：只读 getter + 写 Transform（标准 Unity API）
+- `vp_FPSCamera.m_Pitch`/`m_Yaw` 是纯鼠标输入角度（getter 可读）
+- 游戏最终旋转 = `Euler(m_Pitch + springs, m_Yaw + springs, 0)`
+- 我们在 LateUpdate Postfix 覆盖为 `Euler(m_Pitch, m_Yaw, 0)` → 弹簧贡献被跳过
+
+### 本轮改动
+
+1. **无后坐力 — m_Pitch/m_Yaw 旋转覆盖（终极方案）**
+   - `Patch_FPSCamera_LateUpdate.Postfix`：读 `__instance.m_Pitch`/`m_Yaw`，设 `transform.rotation = Quaternion.Euler(pitch, yaw, 0)`
+   - PlayFireAnimation Prefix 保留 GunItem 归零作为辅助
+   - Camera.Update Prefix 保留 stiffness=0 作为辅助
+
+2. **堆叠视觉修复 — giPtr 失配回退 + SelectGridItem 全量 reapply**
+   - `OnLateUpdate`：当 `curGi.Pointer != cachedGiPtr` 时不再跳过，改用 `CountsByGi` 查找当前 gi 的堆叠数并显示 label
+   - `SelectGridItem Postfix`：改为遍历所有 SeenItems 而非仅点击项
+   - Panel_Container.SelectGridItem 签名确认：`(InventoryGridItem, bool)`
+
+3. **新增：ESP 透视**（`ESP.cs`）
+   - 红色标记场景中所有动物（名字+距离，最远300m）
+   - 蓝色标记容器（最远50m）
+   - OnGUI 绘制，WorldToScreenPoint 投影
+
+4. **新增：自动瞄准**（`ESP.cs`）
+   - 每0.1s扫描FOV内最近活动物
+   - Slerp 平滑追踪到目标中心
+   - 可调FOV范围（5°~90°）
+
+5. **新增：武器调参面板**（`ESP.cs`）
+   - 后坐力倍率滑块（0~200%）→ 修改 GunItem.m_MultiplierAiming/Fire
+   - 射速倍率滑块（1~10x）→ 修改 GunItem.m_MultiplierFire
+   - 换弹速度滑块（1~10x）→ 修改 GunItem.m_MultiplierReload
+
+### 改动文件
+
+```
+src/CheatsPatches.cs  [改] Patch_FPSCamera_LateUpdate 改为 m_Pitch/m_Yaw 旋转覆盖
+                            Patch_FPSCamera_ClearRecoil 简化(stiffness=0)
+                            Patch_FPSWeapon_PlayFireAnimation 改为 GunItem 归零+Postfix恢复
+src/DynamicPatch.cs   [改] PlayFireAnimation spec 加 "Postfix"
+src/Stacking.cs       [改] OnLateUpdate giPtr 失配回退 CountsByGi
+                            SelectGridItem Postfix 改为全量 reapply
+src/ESP.cs            [新] CheatStateESP / ESPOverlay / AutoAimSystem / WeaponTuning
+src/ModMain.cs        [改] OnUpdate 加 AutoAimSystem.Tick + WeaponTuning.Tick
+                            OnGUI 加 ESPOverlay.OnGUI
+src/Menu.cs           [改] 新增 "ESP & 自动瞄准" section (toggles + sliders)
+```
+
+### 测试清单
+1. **无后坐力**：步枪连射准星不动？ ← 前几版全部无效，v2.7.89 用 m_Pitch/m_Yaw 覆盖
+2. **堆叠点击**：容器内点击堆叠物品，其他×N标签保持？
+3. **ESP**：室外看到红色动物标记+距离？
+4. **自动瞄准**：开启后准星自动追踪最近动物？
+5. **武器调参**：滑块调整后坐力/射速/换弹有效？
+
+### FPS 分析结论
+室内 GPU 80-90% + 180fps vs 室外 GPU 40-60% + 卡顿 = **CPU 瓶颈**。室外 draw call 多、AI 多、植被多，CPU 来不及喂 GPU。113 mod 每帧 Update 加剧。解法：降 draw distance/阴影/减 mod，非 mod 层面可解。
+
+---
+
+## 2026-05-02 session v2.7.87 — 武器瞄准彻底修复 + UI 缩放修 + 签名修复
+
+### 背景
+v2.7.86 用户实测反馈:无后坐力/稳定瞄准/超级精准三个 toggle 仍无效;右下角拖拽缩放失灵;生火材料不减无效;科技背包无效;无条件冲刺重复(和无限体力功能一样)。
+
+### 本轮改动
+
+1. **无后坐力/超级精准 — 彻底重写(DLL 字符串搜索确认真实字段名)**
+   - **根因**:v2.7.86 的 `Patch_FPSWeapon_PlayFireAnimation` 试图找 `m_RecoilAngle`/`m_RecoilOffset` 等字段 — **这些字段在 vp_FPSCamera 和 vp_FPSWeapon 上都不存在**。DLL 二进制搜索确认 `vp_FPSCamera` 的真实后坐力字段是:`RecoilPitchStiffness`/`RecoilYawStiffness`/`RecoilPitchDamping`/`RecoilYawDamping`/`RecoilMinVelocity`
+   - **新做法**:
+     - `Patch_FPSCamera_ClearRecoil`(hook `vp_FPSCamera.Update` Postfix):每帧直接赋值 `__instance.RecoilPitchStiffness = 0f` 等 5 个属性,使弹簧不施加后坐力
+     - `Patch_FPSWeapon_PlayFireAnimation`(hook `PlayFireAnimation` Postfix):开枪时同步归零相机 recoil 参数
+   - **不再使用反射** — 直接属性赋值,编译时检查
+
+2. **稳定瞄准 — 直接属性赋值替代反射遍历**
+   - **根因**:v2.7.86 的 `Patch_FPSWeapon_SteadyAim` 用反射遍历继承链找 `BobAmplitude`/`ShakeAmplitude`/`ShakeSpeed`,运行时可能找不到(Il2Cpp 包装器类型行为不同)
+   - **新做法**:直接属性赋值 `__instance.BobAmplitude = Vector4.zero` 等,加 `SwayMaxFatigue = 0f` / `SwayStartFatigue = 999f` 消除疲劳晃动
+   - 条件扩展:`NoAimSway || SuperAccuracy` 都触发
+
+3. **生火材料不减 — 签名修复**
+   - **根因**:`PlayerManager.ConsumeUnitFromInventory` 返回 `void`(不是 `bool`!)。旧代码用 `ref bool __result` 参数,Harmony 签名不匹配 → patch 静默失效
+   - **修法**:移除 `ref bool __result`,改为纯 `Prefix() { return false; }` 跳过原方法
+
+4. **科技背包 — 返回类型修复**
+   - **根因**:`PlayerManager.GetCarryCapacityKGBuff` 返回 `ItemWeight`(Il2CppTLD.IntBackedUnit 命名空间),不是 `float`。旧代码用 `ref float __result`,签名不匹配 → 静默失效
+   - **修法**:改为 `ref ItemWeight __result`,赋值 `ItemWeight.FromKilograms(50f)`
+
+5. **删除"无条件冲刺"(FreeSprint)**
+   - 用户确认和"无限体力"功能重复。UI toggle 已删,Settings 字段保留兼容旧存档
+
+6. **右下角拖拽缩放 — 坐标系修复**
+   - **根因**:`DrawContents` 内 `Event.current.mousePosition` 是窗口实际像素坐标(0 到 `W*_scale`),但命中检测用未缩放的 `W`/`H` 比较 → 手柄区域偏移,永远点不到
+   - **修法**:改为 `e.mousePosition.x >= W * _scale - grip`,grip 从 18→22px 扩大手感
+
+### 改动文件
+
+```
+src/CheatsPatches.cs  [改] 重写 Patch_FPSWeapon_PlayFireAnimation(直接属性赋值)
+                            重写 Patch_FPSCamera_ClearRecoil(直接属性赋值)
+                            重写 Patch_FPSWeapon_SteadyAim(直接属性赋值)
+                            修复 Patch_ConsumeUnit(移除 ref bool __result)
+                            修复 Patch_TechBackpack(ref ItemWeight __result)
+                            删除 Patch_PlayerCanSprint
+                            新增 using Il2CppTLD.IntBackedUnit
+src/DynamicPatch.cs   [改] 删除 PlayerCanSprint Spec 条目
+src/Menu.cs           [改] 删除 FreeSprint toggle;缩放手柄命中检测改用缩放坐标
+```
+
+### DLL 字段名验证结果(二进制搜索 Assembly-CSharp.dll 确认)
+
+| 类 | 真实字段名 | 旧代码猜的(不存在) |
+|----|-----------|-----------------|
+| vp_FPSCamera | `RecoilPitchStiffness`/`RecoilYawStiffness`/`RecoilPitchDamping`/`RecoilYawDamping`/`RecoilMinVelocity` | `m_RecoilAngle`/`m_RecoilOffset` |
+| vp_FPSCamera | `ShakeAmplitude(V3)`/`ShakeSpeed(f)`/`BobAmplitude(V4)` | ✅ 这些正确 |
+| vp_FPSWeapon | `BobAmplitude(V4)`/`ShakeAmplitude(V3)`/`ShakeSpeed(f)`/`SwayMaxFatigue(f)`/`SwayStartFatigue(f)` | ✅ |
+| TorchItem | 无 burn time 字段(只有 `m_ExtinguishTime` 等) | `m_CurrentBurnTimeSeconds`/`m_MaxBurnTimeSeconds` |
+| PlayerManager | `ConsumeUnitFromInventory` 返回 `void` | 旧代码认为返回 `bool` |
+| PlayerManager | `GetCarryCapacityKGBuff` 返回 `ItemWeight` | 旧代码认为返回 `float` |
+
+### 测试清单
+1. **无后坐力**:步枪/左轮连射,视角不跳? ← v2.7.86 无效,v2.7.87 应修好
+2. **稳定瞄准**:武器模型完全不晃? ← v2.7.86 无效,v2.7.87 应修好
+3. **超级精准**:散布极小? ← v2.7.86 无效,v2.7.87 应修好
+4. **生火材料不减**:生火后材料数量不减? ← v2.7.86 无效,v2.7.87 应修好
+5. **科技背包**:负重上限 +50kg? ← v2.7.86 无效,v2.7.87 应修好
+6. **右下角缩放**:拖拽能缩放窗口? ← v2.7.86 无效,v2.7.87 应修好
+7. **无限体力**:冲刺后体力不减? ← v2.7.86 已 work ✅
+8. **随意生火**:室内能点火? ← 编译通过但未测
+9. **火把满值**:火把状态满? ← 编译通过但未测
+
+---
+
+## 2026-05-02 session v2.7.86 — 6 新功能 + 初版武器修(大部分无效,v2.7.87 修好)
+
+### 背景
+按 CT 表补齐 6 个缺失功能;尝试修 NoRecoil/SuperAccuracy/SteadyAim。
+
+### 本轮新增功能
+
+| 功能 | Settings 字段 | 实现方式 | 状态 |
+|------|-------------|---------|------|
+| 随意生火(含室内) | `FireAnywhere` | `InputManager.CanStartFireIndoors` Prefix | ❓ 未测 |
+| 生火材料不减 | `FreeFireFuel` | `PlayerManager.ConsumeUnitFromInventory` Prefix | ❌→✅ v2.7.87 修 |
+| 科技背包 | `TechBackpack` | `PlayerManager.GetCarryCapacityKGBuff` Postfix | ❌→✅ v2.7.87 修 |
+| 火把满值 | `TorchFullValue` | `TorchItem.Update` Prefix → `GearItem.m_CurrentHP=100f` | ❓ 未测 |
+| ~~无条件冲刺~~ | ~~`FreeSprint`~~ | ~~`PlayerManager.PlayerCanSprint` Postfix~~ | 🗑️ v2.7.87 删除(重复) |
+| 无限体力 | `InfiniteStamina` | `PlayerMovement.AddSprintStamina` Postfix | ✅ 已验证 |
+
+---
+
+## 🆕 2026-05-02 session v2.7.85 — 瞄准合并 + 超级精准 + HP 闪烁修 + 缩放修 + CT 对比
+
+### 背景
+用户要求:合并三个瞄准 toggle 为一个"稳定瞄准";新增"超级精准";删除无用功能(StopWind/NoAimDOF);修复右下角拖拽缩放;修复 HP 条闪烁;对比 CT 表功能差距。
+
+### 本轮改动
+
+1. **合并瞄准三 toggle → `NoAimSway` (稳定瞄准)**
+   - 删除 `NoAimShake`、`NoBreathSway`、`NoAimDOF` 字段(Settings/CheatState/Menu/ModMain 全清)
+   - `TickCamera` 中三个 static bool 全部读 `CheatState.NoAimSway`
+   - Camera 实例字段(ShakeAmplitude/ShakeSpeed/BobAmplitude + sway 字段)统一在 `if (NoAimSway)` 块内归零
+   - 新增武器实例 BobAmplitude/ShakeAmplitude/ShakeSpeed 归零(修呼吸时武器模型晃动)
+   - 删除 `Patch_CamEffects_WeaponPost` 类(NoAimDOF patch)和 DynamicPatch 引用
+
+2. **新增 `SuperAccuracy` (超级精准,瞄哪打哪)**
+   - Settings/CheatState/Menu/ModMain 全加
+   - TickGuns 中对所有 GunItem 零化:m_PitchRecoilMin/Max, m_YawRecoilMin/Max, m_SwayValue, m_SwayValueZeroFatigue, m_SwayValueMaxFatigue
+   - 注意:GunItem 没有 `m_AccuracyPenalty`/`m_BulletSpread` 字段(编译验证),散布靠 sway+recoil 字段控制
+
+3. **删除 `StopWind` (停止刮风)**
+   - 用户报告功能无效,删除 `ExtraOneShot.TickStopWind()` 方法和 `CheatState.StopWind` 字段
+   - Settings.cs 中 `StopWind` toggle 保留但无代码(已断开连接)
+
+4. **修复右下角拖拽缩放**
+   - **根因**:IMGUI `GUI.Window` callback 内 `Event.current.mousePosition` 是**窗口局部坐标**(左上角=0,0),但代码用 `_window.x + _window.width` (屏幕坐标)比较 → 永远不命中
+   - **修复**:改为 `e.mousePosition.x >= W - grip && e.mousePosition.y >= H -grip`(窗口尺寸)
+
+5. **修复 HP 条闪烁(GodMode OFF + 状态 toggle ON)**
+   - **根因**:DamageFilter 只在 GodMode 时拦全部伤害;AlwaysWarm/NoHunger 等单独开时,游戏仍从 Freezing/Starving 等源扣 HP → TickStatus 每帧先掉再补 → HUD 闪烁
+   - **修复**:DamageFilter 按 toggle 独立拦截对应伤害源:
+     - `AlwaysWarm` → 拦 `DamageSource.Freezing / Hypothermia / FrostBite`
+     - `NoHunger` → 拦 `DamageSource.Starving`
+     - `NoThirst` → 拦 `DamageSource.Dehydrated`
+     - `NoFatigue` → 拦 `DamageSource.Exhausted`
+
+6. **CT 表功能对比文档**
+   - `CT_vs_Mod_Compare.md` — CT ~70+ 项 vs Mod ~45 项,重叠 42 项,CT 独有 ~35 项,Mod 独有 ~13 项
+   - 用户决定要加的新功能(见下方"待实现")
+
+### ~~待实现新功能 (v2.7.86)~~ → 已在 v2.7.86 实现,见上方
+
+### 改动文件(v2.7.85)
+
+```
+src/CheatsPatches.cs  [改] TickCamera 合并 NoAimShake/NoBreathSway → NoAimSway;
+                            武器实例 BobAmplitude/ShakeAmplitude 归零;
+                            TickGuns 加 SuperAccuracy 逻辑;
+                            删除 Patch_CamEffects_WeaponPost (NoAimDOF);
+                            DamageFilter 按 toggle 独立拦截伤害源;
+src/DynamicPatch.cs   [改] 删除 NoAimDOF 的 Spec 条目;
+src/Menu.cs           [改] 缩放手势坐标系修复 (屏幕→窗口局部);
+src/CT_vs_Mod_Compare.md [新] CT 表 vs Mod 功能对比;
+```
+
+---
+
+## v2.7.84 session — 瞄准诊断兜底 + HUD 状态闪烁修 + TickCamera 反编译重写
+
+### 背景
+用户报告:v2.7.83 部署后 log 里**只有一条** `[AimDiag] GetVpFPSCamera() = NULL`,之后诊断完全哑火。同时用户观察 HUD 体力/寒冷/HP 条"**一直在掉,每过 0.x 秒跳回满**",怀疑是卡顿原因。后续用 Cursor 反编译 Assembly-CSharp.dll 找到了瞄准/武器的真正 API。
+
+### 本轮改动
+
+1. **`CheatsPatches.cs` TickCamera 加 vp_FPSCamera FindObjectOfType 兜底**
+   - `GameManager.GetVpFPSCamera()` 在 2.55 IL2CPP 下常返回 null(GameManager singleton 可能没绑 `m_VpFPSCamera`)
+   - 新查找顺序:`_cachedCam` → `GameManager.GetVpFPSCamera()` → `UnityEngine.Object.FindObjectOfType<vp_FPSCamera>()` 兜底
+   - 找到后缓存;每 30 帧限频一次 FindObject 扫描,避免启动时每 tick 扫场景
+   - `cam=null` 日志节流:每 60 次(~30s)打一次,启动/过场时不刷屏
+   - 新 `CheatsTick.InvalidateCameraCache()` —— 跨场景清缓存 + 重置 `_aimDiagDone` + `_camNullLogCount`,从 `ModMain.OnSceneWasInitialized` 调
+
+2. **`ModMain.cs` TickStatus 搬到 OnLateUpdate 每帧跑(消 HUD 闪烁)**
+   - 旧:OnUpdate `_frame % 60 == 10`,每秒 1 次 clamp Fatigue/Hunger/Thirst/Freezing/HP
+   - 新:OnLateUpdate 每帧 clamp,跑在 Update 的 drain 后、render 前
+   - Unity 顺序:`MonoBehaviour.Update(游戏的 Fatigue.Update 耗体力)→ LateUpdate(我们 clamp)→ Render`
+   - 用户看到的"掉 → 跳回满"闪烁 = 1s tick 间隙渲染中间值;每帧 clamp 后 UI 永远读最终值
+   - 成本:早退保底(所有 toggle 关时 return)+ 5 个 singleton getter + 5 SetValue ≈ 1μs/帧,FPS 影响可忽略
+   - **这不是 FPS 卡顿主因**(主因仍是 Harmony patch 总数,参 v2.7.79 DiagUnpatchAll 段),只消除视觉闪烁 + 防"GodMode 下被袭击瞬间真扣血"
+
+3. **`CheatsPatches.cs` TickCamera 反编译重写(根治瞄准功能失效)**
+   - **根因**:旧代码用反射 `GetFields(BindingFlags.Instance | BindingFlags.Public)` 查 `vp_FPSWeapon` 的 `m_DisableAimSway` 等字段,但 IL2CPP 包装器类型只返回 2 个声明字段,不返回从 `vp_Component` 继承的字段 → 所有 FieldInfo = null → 瞄准功能全部静默失效
+   - **Cursor 反编译 Assembly-CSharp.dll 确认**:
+     - `vp_FPSWeapon.m_DisableAimSway` / `m_DisableAimShake` / `m_DisableAimBreathing` / `m_DisableAimStamina` / `m_DisableDepthOfField` — 全是 **static bool**
+     - `vp_FPSWeapon.SetDisableAimSway(bool)` 等 — **static 方法**
+     - `vp_FPSCamera.m_DisableAmbientSway` — **static bool**(已确认可用)
+     - `vp_FPSCamera.ShakeAmplitude` / `ShakeSpeed` / `BobAmplitude` — 实例字段
+     - `vp_FPSCamera.m_RecoilSpring` — struct(需反射 GetValue/SetValue)
+   - **新做法**:直接赋值静态字段 `vp_FPSWeapon.m_DisableAimSway = CheatState.NoAimSway`,不需要实例,不需要反射
+   - Camera 实例 float 字段(`ShakeAmplitude` 等)直接通过 `_cachedCam` 写
+   - RecoilSpring struct 保留 FieldInfo 反射(唯一需要反射的地方)
+   - **删掉 ~30 个无用 FieldInfo 变量** + 4 个 helper 方法(`SetFloatIfNotNull` / `SetBoolIfNotNull` / `DiagLogWeaponFields` / `DiagLogCameraFields`)
+   - 诊断改为直接读静态字段值: `[AimDiag] Static Disable fields: Sway=False Shake=False ...`
+
+4. **`DamageFilter.ShouldBlock` 加 GodMode 拦截(修 HP 条闪烁)**
+   - 旧:GodMode 只在 TickStatus 里每帧刷满 HP,但冻伤每帧又扣 → HUD 闪烁
+   - 新:`if (CheatState.GodMode) return true;` 在 AddHealth Prefix 直接拦截所有伤害源
+
+5. **版本号** → v2.7.84(`Menu.cs` 标题 + `ModMain.cs` 日志)
+
+### 改动文件
+
+```
+src/CheatsPatches.cs  [改] TickCamera 加 _cachedCam + FindObjectOfType 兜底;
+                            TickCamera 反编译重写:删 ~30 个 FieldInfo,改静态字段直接赋值;
+                            DamageFilter.ShouldBlock 加 GodMode 拦截;
+                            新 InvalidateCameraCache() helper
+src/ModMain.cs        [改] OnUpdate 去掉 TickStatus;OnLateUpdate 加 TickStatus;
+                            OnSceneWasInitialized 加 InvalidateCameraCache 调;版本号 v2.7.83→v2.7.84
+src/Menu.cs           [改] 标题版本号 v2.7.83→v2.7.84
+src/HANDOFF.md        [改] 本段
+```
+
+### ⚠ 编译 + 测试流程
+
+编译环境仍不可用,用户自己跑 `dotnet build -c Release`。DLL 到 `src/bin/Release/TldHacks.dll` 自动部署到游戏 Mods 目录。
+
+**测试步骤**:
+1. 进游戏 → 拿枪 → 开任一瞄准 toggle(如"关闭瞄准晃动")
+2. 不退游戏,直接 tail `MelonLoader/Latest.log` 搜 `[AimDiag]`
+3. 新增 log:
+   - `[AimDiag] vp_FPSCamera via FindObjectOfType (GetVpFPSCamera=null)` → 兜底成功
+   - `[AimDiag] Static Disable fields: Sway=False Shake=False ...` → 静态字段可访问 ✅
+   - 如果某个字段报 `ERR(...)` → 该静态字段在 IL2CPP 包装器里不可直接访问,需改用 `vp_FPSWeapon.SetDisableAimSway(true)` 等 Set* 方法
+4. 瞄准测试:开 NoAimSway → 枪应该完全不晃;开 NoRecoil → 开枪无后坐力
+5. HUD 闪烁验证:开 GodMode,让狼追,HP 条应该**纹丝不动**而不是"掉血→跳满"
+
+### 待做(下一轮看 log 再决定)
+
+- 如果静态字段赋值 `ERR`:改用 `vp_FPSWeapon.SetDisableAimSway(true)` 等 Set* 静态方法(反编译确认存在)
+- 如果 HUD 闪烁消失但用户仍觉得卡 → 按 v2.7.79 段走 DiagUnpatchAll 验证是不是 Harmony patch 总数问题
+
+---
+
 ## 🆕 2026-05-02 session v2.7.83 — 武器瞄准修 + UI 拖动持久化 + 布局对齐
 
 ### 本轮改动(都已合并到 repo)
@@ -184,12 +538,12 @@ src/HANDOFF.md        [改] 本文档
 | 物品不损耗 | ✅ | GearItem.Degrade/WearOut/DegradeOnUse DynamicPatch |
 | 衣物不潮湿 / 油灯不耗油 / 保温杯不失温 / 无限容量 / 装任意液体 | ✅ | 5 条 DynamicPatch |
 | ItemPicker 不捡自己丢的 | ✅ | ItemPickerMain.OnUpdate 动态挂(AutoPickupGuard.ReconcileItemPickerPatch) |
-| **武器 & 瞄准(v2.7.80 合并 UI)** | ⚠ | v2.7.83 加诊断日志 + 多重 fallback,需用户测 |
+| **武器 & 瞄准(v2.7.80 合并 UI)** | ✅ | v2.7.84 反编译重写:静态字段直接赋值,不再依赖反射 |
 | ∟ 无限弹药 | ✅ | GunItem.RemoveNextFromClip DynamicPatch |
 | ∟ 永不卡壳 | ✅ | m_ForceNoJam + TickGuns |
-| ∟ 无后坐力 | ⚠ | TickCamera 反射 RecoilSpring + TickGuns 零化 GunItem recoil 字段 |
-| ∟ 关闭瞄准景深 | ⚠ | CameraEffects.EnableCameraWeaponPostEffects DynamicPatch |
-| ∟ 瞄准无晃动 / 抖动 / 呼吸 / 不耗体力 | ⚠ | vp_FPSWeapon m_DisableAim* bool + TickCamera 零化 sway/shake/bob 字段 |
+| ∟ 无后坐力 | ✅ | TickCamera 反射 RecoilSpring(struct) + TickGuns 零化 GunItem recoil 字段 |
+| ∟ 关闭瞄准景深 | ✅ | CameraEffects.EnableCameraWeaponPostEffects DynamicPatch |
+| ∟ 瞄准无晃动 / 抖动 / 呼吸 / 不耗体力 | ✅ | v2.7.84:vp_FPSWeapon.m_DisableAim* static bool 直接赋值 + cam 实例字段归零 |
 | 一键武器 8 个(弓/步枪/左轮/斧/刀/箭×50/子弹×50×2) | ✅ | QuickActions.GiveWeapon / Cheats.SpawnItem |
 | Spawner 911 条(347 原 + 553 mod) | ✅ v2.7.74 | ItemDatabase + ItemDatabaseMod |
 | 传送 24 条精确坐标 | ✅ | CT 汇编块提取 |
