@@ -104,6 +104,32 @@
 
 ---
 
+## 下次任务 (Nexus 国际站发布前)
+
+### 1. Settings.cs 全字段双语化
+- 现状: `[Name("中文")]` / `[Description("中文")]` 大量只有中文(~150 字段),英文用户在 ModSettings 配置面板看不懂
+- 已双语的: 老版基础作弊字段 (GodMode/NoFall/Hunger 等用 "English(中文)" 风格)
+- 待补: v3.0.4 新加的 UT/Stack/Lamp DIY ~50 项 + 老版未双语的衰减/扭伤/汽水/等 ~100 项
+- 总数: ~150 个 [Name] + ~80 个 [Description] + ~20 个 [Section]
+- 原则: 改成 `"English (中文)"` 形式,英文在前
+- **不影响功能**(只改字符串显示),Settings.cs 1156 行,工作量约 1 小时
+- 文件: `D:\Github\tld--2.55\TldHacks\src\Settings.cs`
+
+### 2. Nexus Mods 英文介绍
+- 平台: nexusmods.com (国际站)
+- 风格: 详细 README,markdown,带截图
+- 内容要点:
+  - 一句话介绍 (Replaces N independent mods)
+  - 整合的 mod 清单 + 各 mod 链接
+  - 已知 BUG / 不影响功能的限制
+  - 安装步骤 (装 MelonLoader + 解压根目录)
+  - 截图 (Menu UI / Spawner / Quick Teleport)
+  - Credits (整合源 mod 作者 / Hinterland)
+  - License / 反馈渠道
+- 必须先做完任务 1 (双语化) 才能发,否则英文用户体验差
+
+---
+
 ## 编译/部署
 
 ```
