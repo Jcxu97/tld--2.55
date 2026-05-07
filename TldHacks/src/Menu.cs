@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Il2Cpp;
 using UnityEngine;
 
 namespace TldHacks;
@@ -11,9 +13,13 @@ internal static class Menu
 
     private static float W = 1280f;
     private static float H = 760f;
+    internal static float ContentW => W - 20f;
     private const float W_MIN = 600f, W_MAX = 2400f;
     private const float H_MIN = 400f, H_MAX = 1200f;
     private static float _measuredMainH = 800f;
+    private static float _measuredSpawnerH = 800f;
+    private static float _measuredTweaksH = 400f;
+    private static readonly Func<float, float, float, float, Rect> RFunc = R;
     private static float ContentH_Spawner => H - 130f;
     private static Vector2 _mainScroll;
     private static Rect _window = new Rect(30f, 30f, W, H);
@@ -25,6 +31,7 @@ internal static class Menu
     private static bool _prevCursorVisible;
     private static CursorLockMode _prevCursorLock;
     private static bool _cursorSaved;
+
 
     // Spawner + presets
     private static int _selectedCategory = 0;
@@ -47,13 +54,14 @@ internal static class Menu
     private static string[] WeatherLabels => I18n.IsEnglish ? WeatherLabelsEn : WeatherLabelsZh;
     private static List<ItemEntry> _filtered = new List<ItemEntry>();
     private static int _lastCat = -1;
+    private static bool _namesResolved;
 
     // v2.7.72 技能详细列表默认折叠,只显示"全部满级"
     private static bool _skillsExpanded = false;
 
     // 标签页
-    private static readonly string[] TabsZh = { "主要 + uConsole", "物品 & 传送" };
-    private static readonly string[] TabsEn = { "Main + uConsole", "Items & Teleport" };
+    private static readonly string[] TabsZh = { "主页", "物品 & 传送", "人物 & 生存", "装备 & 世界", "光火 & 制作", "图形" };
+    private static readonly string[] TabsEn = { "Main", "Items & Teleport", "Character", "Gear & World", "Light & Craft", "Graphics" };
     private static string[] Tabs => I18n.IsEnglish ? TabsEn : TabsZh;
     private static int _activeTab = 0;
 
@@ -191,6 +199,13 @@ internal static class Menu
         skin.box = _sectionStyle;
         skin.button = _buttonStyle;
         skin.toggle = _toggleStyle;
+
+        MenuTweaks.SectionBox = _sectionStyle;
+        MenuTweaks.AccentBar = _buttonActiveStyle;
+        MenuTweaks.LabelStyle = _labelStyle;
+        MenuTweaks.MutedLabel = _mutedLabelStyle;
+        MenuTweaks.SectionTitle = _sectionTitleStyle;
+        MenuTweaks.ToggleStyle = _toggleStyle;
     }
 
     private static void ConfigureLabel(GUIStyle style, int size, Color color)
@@ -289,7 +304,6 @@ internal static class Menu
     private static bool _resizing = false;
     private static Vector2 _resizeStartMouse;
     private static Vector2 _resizeStartScreenMouse;
-    private static float _resizeStartScale;
     private static float _resizeStartW, _resizeStartH;
     private enum ResizeEdge { None, Right, Bottom, Corner }
     private static ResizeEdge _resizeEdge = ResizeEdge.None;
@@ -398,23 +412,26 @@ internal static class Menu
         }
 
         GUI.Box(R(0f, 0f, W, H), "", _windowStyle);
-        GUI.Label(R(16f, 8f, 400f, 24f), "TldHacks v2.7.94  [drag title | resize corner ↘]", _titleStyle);
+        GUI.Label(R(16f, 8f, W - 200f, 24f), "TldHacks v3.0.4  本软件完全免费|作者:AKUL|最新版本&交流群:563092033", _titleStyle);
         GUI.Label(R(16f, 30f, 500f, 18f), "Cursor Ink UI / IL2CPP IMGUI", _mutedLabelStyle);
 
         // 标题栏右侧:scale - / x1.0 / + / Close (v2.7.83 统一间距 4px)
         if (CBtn(W - 148f, 8f, 28f, 24f, "-"))
         { s.MenuScale = Mathf.Max(0.6f, s.MenuScale - 0.1f); s.Save(); }
-        // label 居中在 -(W-148..W-120) 和 +(W-88..W-60) 之间:中心=W-104,宽48→x=W-128
-        GUI.Label(R(W - 128f, 14f, 48f, 18f), $"x{s.MenuScale:F1}", _mutedLabelStyle);
+        // label 居中在 - 和 + 之间
+        var prevAlign = _mutedLabelStyle.alignment;
+        _mutedLabelStyle.alignment = UnityEngine.TextAnchor.MiddleCenter;
+        GUI.Label(R(W - 120f, 8f, 32f, 24f), $"x{s.MenuScale:F1}", _mutedLabelStyle);
+        _mutedLabelStyle.alignment = prevAlign;
         if (CBtn(W - 88f, 8f, 28f, 24f, "+"))
         { s.MenuScale = Mathf.Min(3.0f, s.MenuScale + 0.1f); s.Save(); }
         if (CBtn(W - 56f, 8f, 44f, 24f, I18n.T("关闭", "Close"), false, true)) Close();
 
         // 标签页
-        float tabW = 150f;
+        float tabW = Mathf.Min(150f, (W - 32f - (Tabs.Length - 1) * 6f) / Tabs.Length);
         for (int i = 0; i < Tabs.Length; i++)
         {
-            float tx = 16f + i * (tabW + 8f);
+            float tx = 16f + i * (tabW + 6f);
             if (CBtn(tx, 52f, tabW, 28f, Tabs[i])) _activeTab = i;
             if (i == _activeTab) GUI.Box(R(tx, 82f, tabW, 2f), "", _buttonActiveStyle);
         }
@@ -422,18 +439,24 @@ internal static class Menu
         // ScrollView viewport:顶部 title/tab 下到 底部状态栏上
         float viewH = H - 128f;
         Rect viewport = R(OUTER_PAD, 92f, W - OUTER_PAD * 2f, viewH);
-        float measuredH = _activeTab == 0 ? _measuredMainH + 20f : ContentH_Spawner;
-        bool needScroll = measuredH > viewH + 4f; // 4px 容差,防浮点抖动导致滚轮条闪烁
-        float ch = needScroll ? measuredH : viewH - 2f; // 内容比视口略小,确保不触发自动滚轮
+        float measuredH = _activeTab == 0 ? _measuredMainH + 20f
+            : _activeTab == 1 ? _measuredSpawnerH + 20f
+            : _measuredTweaksH + 40f;
+        bool needScroll = measuredH > viewH + 4f;
+        float ch = needScroll ? measuredH : viewH - 2f;
         Rect content  = R(0f, 0f, W - OUTER_PAD * 2f - (needScroll ? 16f : 0f), ch);
-        if (!needScroll) _mainScroll = Vector2.zero; // 不需要滚动时重置偏移
+        if (!needScroll) _mainScroll = Vector2.zero;
         _mainScroll = GUI.BeginScrollView(viewport, _mainScroll, content, false, needScroll);
 
-        if (_activeTab == 0)
+        switch (_activeTab)
         {
-            _measuredMainH = DrawMainTab(s);
+            case 0: _measuredMainH = DrawMainTab(s); break;
+            case 1: _measuredSpawnerH = DrawSpawnerTab(s); break;
+            case 2: _measuredTweaksH = MenuTweaks.DrawCharacterAndQoLTab(RFunc, s); break;
+            case 3: _measuredTweaksH = MenuTweaks.DrawGearAndWorldTab(RFunc, s); break;
+            case 4: _measuredTweaksH = MenuTweaks.DrawLightAndCraftTab(RFunc, s); break;
+            case 5: _measuredTweaksH = MenuTweaks.DrawGfxTab(RFunc, s); break;
         }
-        else DrawSpawnerTab(s);
 
         GUI.EndScrollView();
 
@@ -542,7 +565,10 @@ internal static class Menu
         {
             s.GodMode = god; s.NoFallDamage = nfall; s.NoSprainRisk = nspr;
             s.ImmuneAnimalDamage = immA; s.NoSuffocating = nsuf; s.ClearDeathPenalty = cdp;
-            CheatState.GodMode = god; CheatState.NoFallDamage = nfall; CheatState.NoSprainRisk = nspr;
+            // v3.0.4r4: GodMode 隐含 NoFallDamage + NoSprainRisk
+            CheatState.GodMode = god;
+            CheatState.NoFallDamage = nfall || god;
+            CheatState.NoSprainRisk = nspr || god;
             CheatState.ImmuneAnimalDamage = immA; CheatState.NoSuffocating = nsuf; CheatState.ClearDeathPenalty = cdp;
             s.Save();
         }
@@ -575,6 +601,8 @@ internal static class Menu
         bool fzbuf  = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.FreezingBuff,    I18n.T(" 加热", " Warming Buff"));
         bool ftbuf  = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.FatigueBuff,     I18n.T(" 疲劳减缓", " Less Fatigue"));
         y1 += ROW_ADV;
+        bool cfb    = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.CureFrostbite,   I18n.T(" 治愈永久冻伤", " Cure Frostbite"));
+        y1 += ROW_ADV;
         // 坏血病状态显示(只读信息)
         ScurvyViewer.Poll();
         CLabel(c1, y1, TOG_WIDE, ROW_H,
@@ -583,16 +611,19 @@ internal static class Menu
                 : $"  坏血病: {ScurvyViewer.Status}  维C={ScurvyViewer.VitaminC:F1}/{ScurvyViewer.Threshold:F1}", true);
         y1 += ROW_ADV + SECTION_END_ADV;
         if (nfrost != s.NoFrostbiteRisk || wfbuf != s.WellFedBuff
-            || fzbuf != s.FreezingBuff || ftbuf != s.FatigueBuff)
+            || fzbuf != s.FreezingBuff || ftbuf != s.FatigueBuff || cfb != s.CureFrostbite)
         {
+            if (s.WellFedBuff && !wfbuf) Cheats.ClearWellFedBuff();
+            if (s.FatigueBuff && !ftbuf) Cheats.ClearFatigueBuff();
             s.NoFrostbiteRisk = nfrost; s.WellFedBuff = wfbuf;
-            s.FreezingBuff = fzbuf; s.FatigueBuff = ftbuf;
+            s.FreezingBuff = fzbuf; s.FatigueBuff = ftbuf; s.CureFrostbite = cfb;
             CheatState.NoFrostbiteRisk = nfrost; CheatState.WellFedBuff = wfbuf;
             CheatState.FreezingBuff = fzbuf; CheatState.FatigueBuff = ftbuf;
+            CheatState.CureFrostbite = cfb;
             s.Save();
         }
 
-        y1 = Section(c1, y1, I18n.T("移动速度", "Movement Speed"));
+        y1 = Section(c1, y1, I18n.T("全局速度", "Global Speed"));
         float bx1 = c1;
         foreach (var sp in SpeedPresets)
         {
@@ -607,7 +638,7 @@ internal static class Menu
         // v2.7.72 默认折叠 —— v2.7.82 "全部满级" + "展开" 同行
         if (GUI.Button(R(c1,               y1, 120f, ROW_H), I18n.T("全部满级", "All Max")))
             Skills.SetAllMax();
-        if (GUI.Button(R(c1 + 128f,        y1, 60f, ROW_H), _skillsExpanded ? I18n.T("收▲", "Hide▲") : I18n.T("展▼", "Show▼")))
+        if (GUI.Button(R(c1 + 128f,        y1, 92f, ROW_H), _skillsExpanded ? I18n.T("收起全部", "Hide All") : I18n.T("展开全部", "Show All")))
             _skillsExpanded = !_skillsExpanded;
         y1 += ROW_ADV;
         if (_skillsExpanded)
@@ -624,14 +655,16 @@ internal static class Menu
         y1 += SECTION_END_ADV;
 
         // —— 从列 3 搬来:制作 ——
-        y1 = Section(c1, y1, I18n.T("制作", "Crafting"));
-        bool fc = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.FreeCraft,  I18n.T(" 免费制作", " Free Craft"));
+        y1 = Section(c1, y1, I18n.T("制作 & 修理", "Crafting & Repair"));
+        bool fc = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.FreeCraft,  I18n.T(" 免费制作/烹饪", " Free Craft/Cook"));
         bool qk = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.QuickCraft, I18n.T(" 快速制作", " Quick Craft"));
+        y1 += ROW_ADV;
+        bool fr = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.FreeRepair, I18n.T(" 免费修理", " Free Repair"));
         y1 += ROW_ADV + SECTION_END_ADV;
-        if (fc != s.FreeCraft || qk != s.QuickCraft)
+        if (fc != s.FreeCraft || qk != s.QuickCraft || fr != s.FreeRepair)
         {
-            s.FreeCraft = fc; s.QuickCraft = qk;
-            CheatState.FreeCraft = fc; CheatState.QuickCraft = qk;
+            s.FreeCraft = fc; s.QuickCraft = qk; s.FreeRepair = fr;
+            CheatState.FreeCraft = fc; CheatState.QuickCraft = qk; CheatState.FreeRepair = fr;
             s.Save();
         }
 
@@ -641,13 +674,28 @@ internal static class Menu
         bool qc   = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.QuickOpenContainer, I18n.T(" 快速开容器", " Quick Open"));
         y1 += ROW_ADV;
         bool usaf = GUI.Toggle(R(c1,            y1, TOG_W, ROW_H), s.UnlockSafes,       I18n.T(" 解锁保险箱", " Unlock Safes"));
-        bool tbag = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.TechBackpack,     I18n.T(" 科技背包", " Tech Backpack"));
-        y1 += ROW_ADV + SECTION_END_ADV;
-        if (lok != s.IgnoreLock || qc != s.QuickOpenContainer || usaf != s.UnlockSafes || tbag != s.TechBackpack)
+        bool tbag = GUI.Toggle(R(c1 + TOG2_OFF, y1, TOG_W, ROW_H), s.TechBackpack,     I18n.T(" 背包负重", " Carry Cap"));
+        y1 += ROW_ADV;
+        float tbagKg = s.TechBackpackKg;
+        if (tbag)
         {
-            s.IgnoreLock = lok; s.QuickOpenContainer = qc; s.UnlockSafes = usaf; s.TechBackpack = tbag;
+            GUI.Label(R(c1, y1, 100f, ROW_H), I18n.T("  上限kg:", "  Max kg:"));
+            tbagKg = GUI.HorizontalSlider(R(c1 + 100f, y1 + 8f, 200f, 12f), s.TechBackpackKg, 10f, 10000f);
+            GUI.Label(R(c1 + 308f, y1, 60f, ROW_H), tbagKg.ToString("F0"));
+            y1 += ROW_ADV;
+        }
+        bool infCon= GUI.Toggle(R(c1,           y1, TOG_W, ROW_H), s.InfiniteContainer, I18n.T(" 容器无限容量", " Inf. Container"));
+        y1 += ROW_ADV + SECTION_END_ADV;
+        if (lok != s.IgnoreLock || qc != s.QuickOpenContainer || usaf != s.UnlockSafes
+            || tbag != s.TechBackpack || infCon != s.InfiniteContainer || tbagKg != s.TechBackpackKg)
+        {
+            bool wasOn = s.TechBackpack;
+            s.IgnoreLock = lok; s.QuickOpenContainer = qc; s.UnlockSafes = usaf;
+            s.TechBackpack = tbag; s.InfiniteContainer = infCon; s.TechBackpackKg = tbagKg;
             CheatState.IgnoreLock = lok; CheatState.QuickOpenContainer = qc; CheatState.UnlockSafes = usaf;
-            CheatState.TechBackpack = tbag;
+            CheatState.TechBackpack = tbag; CheatState.InfiniteContainer = infCon; CheatState.TechBackpackKg = tbagKg;
+            // 关闭瞬间还原原版 Encumber 字段(patch 已卸载)
+            if (wasOn && !tbag) EncumberVanilla.Reset();
             s.Save();
         }
 
@@ -693,14 +741,20 @@ internal static class Menu
         y2 += ROW_ADV;
         bool ffue = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.FreeFireFuel,   I18n.T(" 材料不减", " Free Fuel"));
         bool ftrch= GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.TorchFullValue, I18n.T(" 火把满值", " Torch Full"));
+        y2 += ROW_ADV;
+        bool qf   = GUI.Toggle(R(c2,            y2, TOG_W, ROW_H), s.QuickFire,      I18n.T(" 生火必成功", " 100% Fire"));
+        bool qfish= GUI.Toggle(R(c2 + TOG2_OFF, y2, TOG_W, ROW_H), s.QuickFishing,   I18n.T(" 钓鱼必成功", " 100% Fish"));
         y2 += ROW_ADV + SECTION_END_ADV;
         if (ice != s.ThinIceNoBreak || ftmp != s.FireTemp300 || fnev != s.FireNeverDie
-            || fany != s.FireAnywhere || ffue != s.FreeFireFuel || ftrch != s.TorchFullValue)
+            || fany != s.FireAnywhere || ffue != s.FreeFireFuel || ftrch != s.TorchFullValue
+            || qf != s.QuickFire || qfish != s.QuickFishing)
         {
             s.ThinIceNoBreak = ice; s.FireTemp300 = ftmp; s.FireNeverDie = fnev;
             s.FireAnywhere = fany; s.FreeFireFuel = ffue; s.TorchFullValue = ftrch;
+            s.QuickFire = qf; s.QuickFishing = qfish;
             CheatState.ThinIceNoBreak = ice; CheatState.FireTemp300 = ftmp; CheatState.FireNeverDie = fnev;
             CheatState.FireAnywhere = fany; CheatState.FreeFireFuel = ffue; CheatState.TorchFullValue = ftrch;
+            CheatState.QuickFire = qf; CheatState.QuickFishing = qfish;
             s.Save();
         }
 
@@ -754,7 +808,7 @@ internal static class Menu
         // —— 商人 uConsole 命令(从列 3 搬来,紧跟商人 toggle) ——
         y2 = Section(c2, y2, I18n.T("商人 uConsole 命令", "Trader uConsole"));
         const float cgap2 = 5f;
-        float cbw2 = (COL_W - 2f * cgap2) / 3f;
+        float cbw2 = (BOX_W - 2f * cgap2) / 3f;
         if (GUI.Button(R(c2,                       y2, cbw2, ROW_H), I18n.T("秒完成交易", "Finish Trade"))) ConsoleBridge.Run("trader_trade_force_completed");
         if (GUI.Button(R(c2 + cbw2 + cgap2,        y2, cbw2, ROW_H), I18n.T("刷新清单", "Refresh List")))   ConsoleBridge.Run("trader_reset_drawn_exchanges");
         if (GUI.Button(R(c2 + 2*(cbw2 + cgap2),    y2, cbw2, ROW_H), I18n.T("信任 +100", "Trust +100")))    ConsoleBridge.Run("trader_trust_add 100");
@@ -776,19 +830,19 @@ internal static class Menu
         bool qev   = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickEvolve,    I18n.T(" 秒风干/腌制", " Instant Cure"));
         bool qcl   = GUI.Toggle(R(c3 + TOG2_OFF, y3, TOG_W, ROW_H), s.QuickClimb,     I18n.T(" 爬绳加速", " Fast Climb"));
         y3 += ROW_ADV;
-        bool qf    = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickFire,      I18n.T(" 生火必成功", " 100% Fire"));
+        bool qa    = GUI.Toggle(R(c3,            y3, TOG_W, ROW_H), s.QuickAction,    I18n.T(" 快速采集/修理", " Quick Action"));
         y3 += ROW_ADV + SECTION_END_ADV;
         if (qcook != s.QuickCook || qsrch != s.QuickSearch || qhv != s.QuickHarvest
             || qbd != s.QuickBreakDown || qev != s.QuickEvolve || qcl != s.QuickClimb
-            || qf != s.QuickFire)
+            || qa != s.QuickAction)
         {
             s.QuickCook = qcook; s.QuickSearch = qsrch; s.QuickHarvest = qhv;
             s.QuickBreakDown = qbd; s.QuickEvolve = qev; s.QuickClimb = qcl;
-            s.QuickFire = qf;
+            s.QuickAction = qa;
             CheatState.QuickCook = qcook; CheatState.QuickSearch = qsrch;
             CheatState.QuickHarvest = qhv; CheatState.QuickBreakDown = qbd;
             CheatState.QuickEvolve = qev; CheatState.QuickClimb = qcl;
-            CheatState.QuickFire = qf;
+            CheatState.QuickAction = qa;
             s.Save();
         }
 
@@ -876,7 +930,7 @@ internal static class Menu
 
     // ————————————— Tab 2:物品刷出 + 传送 —————————————
     // v2.7.28 重排:15 个传送目的地改 5 列 × 3 行;Item Spawner 2 列 × 3 行(6/页)→ 3 列 × 6 行(18/页)
-    private static void DrawSpawnerTab(TldHacksSettings s)
+    private static float DrawSpawnerTab(TldHacksSettings s)
     {
         float y = 6f;
 
@@ -928,6 +982,8 @@ internal static class Menu
         }
         y += ROW_ADV + SECTION_END_ADV;
 
+        // 搜索栏已移除,直接按类别浏览
+
         // 数量预设
         GUI.Label(R(10f, y, 60f, ROW_H), I18n.T("数量:", "Qty:"));
         float bx = 70f;
@@ -941,14 +997,11 @@ internal static class Menu
         y += ROW_ADV + SECTION_END_ADV;
 
         if (_lastCat != _selectedCategory) { RebuildFilter(); _lastCat = _selectedCategory; }
+        else if (_filtered.Count == 0 && (ItemDatabase.All.Count + ItemDatabaseMod.All.Count) > 0) { RebuildFilter(); }
 
-        // v2.7.57: 动态 PageSize —— 根据剩余可视高度塞满物品
-        //   v2.7.73 修分页消失:H-80 是 v2.7.72 前的 viewport,codex 改 ContentH_Spawner=H-108 后
-        //   这里还按 H-80 算 → 物品多塞 ~28px → 分页按钮被裁出 scroll content 外看不见
-        //   cols 从 3 改 4 —— 每页物品数 +33%,总页数减少
         const int cols = 4;
-        float availH = ContentH_Spawner - y - (ROW_ADV + 8f);
-        _pageRows = Mathf.Max(3, (int)(availH / ROW_ADV));
+        float availH = (H - 130f) - y - ROW_ADV * 2f - SECTION_END_ADV - 10f;
+        _pageRows = Mathf.Max(4, (int)(availH / ROW_ADV));
         _pageSize = _pageRows * cols;
 
         int totalPages = Mathf.Max(1, (_filtered.Count + _pageSize - 1) / _pageSize);
@@ -982,6 +1035,8 @@ internal static class Menu
         if (GUI.Button(R(pw - 280f, y, 100f, ROW_H), I18n.T("下一页 ▶", "Next ▶"))) { if (_page < totalPages - 1) _page++; }
         if (GUI.Button(R(pw - 170f, y, 80f, ROW_H), I18n.T("⏮ 首页", "⏮ First")))   _page = 0;
         if (GUI.Button(R(pw - 80f, y, 80f, ROW_H), I18n.T("末页 ⏭", "Last ⏭")))    _page = totalPages - 1;
+        y += ROW_ADV;
+        return y;
     }
 
     private static float Section(float x, float y, string title)
@@ -992,10 +1047,55 @@ internal static class Menu
         return y + SEC_ADV;
     }
 
+    private static void ResolveDisplayNames()
+    {
+        if (_namesResolved) return;
+        _namesResolved = true;
+        try
+        {
+            void Resolve(System.Collections.Generic.List<ItemEntry> list)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    try
+                    {
+                        var gi = GearItem.LoadGearItemPrefab(list[i].PrefabName);
+                        if (gi == null) continue;
+                        string dn = null;
+                        var prop = HarmonyLib.AccessTools.Property(typeof(GearItem), "m_DisplayName");
+                        if (prop != null) dn = prop.GetValue(gi) as string;
+                        if (string.IsNullOrEmpty(dn))
+                        {
+                            var field = HarmonyLib.AccessTools.Field(typeof(GearItem), "m_LocalizedDisplayName");
+                            if (field != null)
+                            {
+                                var ls = field.GetValue(gi);
+                                if (ls != null)
+                                {
+                                    var getText = ls.GetType().GetMethod("GetLocalizedString", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                                    if (getText != null) dn = getText.Invoke(ls, null) as string;
+                                }
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(dn) && dn != list[i].PrefabName)
+                            list[i].Name = dn;
+                    }
+                    catch { }
+                }
+            }
+            Resolve(ItemDatabase.All);
+            Resolve(ItemDatabaseMod.All);
+            ModMain.Log?.Msg("[Spawner] Display names resolved from game localization");
+        }
+        catch (System.Exception ex) { ModMain.Log?.Warning($"[ResolveNames] {ex.Message}"); }
+    }
+
     private static void RebuildFilter()
     {
+        ResolveDisplayNames();
         _filtered.Clear();
         string cat = ItemDatabase.Categories[_selectedCategory];
+
         for (int i = 0; i < ItemDatabase.All.Count; i++)
         {
             var e = ItemDatabase.All[i];

@@ -113,25 +113,23 @@ internal static class Patch_ItemPicker_OnUpdate_Guard
     internal static MethodBase ResolveTargetMethod()
     {
         if (_resolved) return _target;
-        _resolved = true;
         try
         {
             var asm = AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(a => a.GetName().Name == "ItemPicker");
-            if (asm == null)
-            {
-                ModMain.Log?.Msg("[AutoPickupGuard] ItemPicker assembly 未加载,ItemPicker 可能没装或没启用");
-                return null;
-            }
-            // 从反编译看,class 名就是 ItemPickerMain,可能无 namespace 或在 default
-            var t = asm.GetType("ItemPickerMain")
+            if (asm == null) return null;
+
+            var t = asm.GetType("ItemPicker.ItemPickerMain")
+                 ?? asm.GetType("ItemPickerMain")
                  ?? asm.GetTypes().FirstOrDefault(x => x.Name == "ItemPickerMain");
             if (t == null)
             {
                 ModMain.Log?.Warning("[AutoPickupGuard] ItemPickerMain type 没找到");
+                _resolved = true;
                 return null;
             }
             _target = t.GetMethod("OnUpdate", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            _resolved = true;
             ModMain.Log?.Msg(_target != null
                 ? $"[AutoPickupGuard] hooked ItemPickerMain.OnUpdate (declaringType={t.FullName})"
                 : "[AutoPickupGuard] ItemPickerMain.OnUpdate 方法没找到");

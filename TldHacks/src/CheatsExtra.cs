@@ -47,6 +47,7 @@ internal static class Teleport
         new Waypoint("林狼雪岭(机舱)",         "CrashMountainRegion",      934.50f, 470.10f, 1174.40f),
         new Waypoint("林狼雪岭·地堡",           "CrashMountainRegion",     1675.41f, 207.32f,  968.21f),
         // L —— LakeRegion(神秘湖)
+        new Waypoint("神秘湖·营地办公室",       "LakeRegion",              1015.87f,  25.91f,  450.86f),
         new Waypoint("神秘湖地堡",              "LakeRegion",              1029.06f,  91.99f,  -52.52f),
         // M —— MarshRegion(孤寂沼地)
         new Waypoint("孤寂沼地",                "MarshRegion",             1116.10f,-130.60f,  969.10f),
@@ -89,6 +90,7 @@ internal static class Teleport
             catch { }
 
             pm.TeleportPlayer(pos, rot);
+            TeleportFallGuard.Arm();
             Log($"[TP] TeleportPlayer({pos})");
         }
         catch (Exception ex) { Log($"[TP] {ex.Message}"); }

@@ -88,6 +88,9 @@ internal static class Patch_Harvest_Start
     internal static void Postfix(Panel_BodyHarvest __instance)
     {
         if (!CheatState.QuickAction) return;
+        // v3.0.4r2 fix: 当 QuickHarvest 已开启,m_HarvestTimeSeconds=Total 让 vanilla 自动 HarvestSuccessful,
+        // Runner 不应再 Queue 第二次,否则 vanilla + Runner 双重触发 → 尸体多扣 m_HarvestUnits 个 + stack 合并产出错乱
+        if (CheatState.QuickHarvest) return;
         FadeSuppressionWindow.Arm();  // v2.7.29:采集过程内吃 fade
         QuickHarvestRunner.Queue(__instance, QuickHarvestRunner.Action.Harvest);
     }
@@ -98,6 +101,8 @@ internal static class Patch_Harvest_StartQuarter
     internal static void Postfix(Panel_BodyHarvest __instance)
     {
         if (!CheatState.QuickAction) return;
+        // v3.0.4r2 fix: 见 Patch_Harvest_Start 同样防双重触发
+        if (CheatState.QuickHarvest) return;
         FadeSuppressionWindow.Arm();
         QuickHarvestRunner.Queue(__instance, QuickHarvestRunner.Action.Quarter);
     }
@@ -146,8 +151,7 @@ internal static class QuickHarvestRunner
 }
 
 // ——— 快速修理 v2.7.29:只保留 StartRepair Postfix 一次 set,删 Update Postfix ———
-// 每帧 Update Postfix 是 FPS 杀手(v2.7.25 漏删),StartRepair 一次性把进度拉满 + 设 TimeAccel 就够
-[HarmonyPatch(typeof(Panel_Repair), "StartRepair", new System.Type[] { typeof(int), typeof(string) })]
+// v2.8.1: 移除 [HarmonyPatch] 属性(IL2CPP 下静默失败),改用 DynamicPatch spec
 internal static class Patch_Repair_StartRepair
 {
     private static void Postfix(Panel_Repair __instance)
@@ -423,6 +427,102 @@ internal static class Patch_Craft_CanCraft
     }
 }
 
+// ——— 免费制作扩展:BlueprintData.HasRequiredMaterials 强制返回 true ———
+[HarmonyPatch(typeof(Il2CppTLD.Gear.BlueprintData), "HasRequiredMaterials")]
+internal static class Patch_BlueprintData_HasRequiredMaterials
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeCraft) __result = true;
+    }
+}
+
+// ——— 免费制作扩展:RecipeBook.IsRecipeUnlocked 强制返回 true(解锁 DLC/mod 食谱) ———
+[HarmonyPatch(typeof(Il2CppTLD.Cooking.RecipeBook), "IsRecipeUnlocked")]
+internal static class Patch_RecipeBook_IsRecipeUnlocked
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeCraft) __result = true;
+    }
+}
+
+// ——— 免费制作扩展:Panel_Crafting 内部材料检查(mod 物品路径) ———
+[HarmonyPatch(typeof(Panel_Milling), "HasEnoughMaterials")]
+internal static class Patch_Crafting_HasEnoughMaterials
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeCraft) __result = true;
+    }
+}
+
+[HarmonyPatch(typeof(Panel_Crafting), "CanCraftBlueprint", new[] { typeof(Il2CppTLD.Gear.BlueprintData) })]
+internal static class Patch_Crafting_CanCraftBlueprint
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeCraft) __result = true;
+    }
+}
+
+[HarmonyPatch(typeof(Panel_Crafting), "CanCraftSelectedBlueprint")]
+internal static class Patch_Crafting_CanCraftSelected
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeCraft) __result = true;
+    }
+}
+
+[HarmonyPatch(typeof(Panel_Cooking), "PlayerHasEnoughPotableWaterForCookingItem")]
+internal static class Patch_Crafting_HasWater
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeCraft) __result = true;
+    }
+}
+
+[HarmonyPatch(typeof(CraftingOperation), "ConsumeMaterialsUsedForCrafting")]
+internal static class Patch_Crafting_SkipConsume
+{
+    private static bool Prefix() => !CheatState.FreeCraft;
+}
+
+// ——— 免费修理:静态 Postfix 强制修理按钮可用 ———
+[HarmonyPatch(typeof(Panel_Inventory_Examine), "CanRepair")]
+internal static class Patch_Repair_CanRepair
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeRepair) __result = true;
+    }
+}
+
+// v2.8.1: HasMaterialsForRepair/RepairHasRequiredTool/RepairHasRequiredMaterial
+// 已在 TLD 2.55 中改名或移除,删除失败的 attribute patches(CanRepair + SkipConsume 已足够)
+
+[HarmonyPatch(typeof(Panel_Repair), "ToolCanRepairSelectedItem")]
+internal static class Patch_Repair_ToolCanRepair
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (CheatState.FreeRepair) __result = true;
+    }
+}
+
+// ——— 免费修理:跳过消耗材料和工具损耗 ———
+internal static class Patch_Repair_SkipConsume
+{
+    internal static bool Prefix() => !CheatState.FreeRepair;
+}
+
+internal static class Patch_Repair_SkipToolDegrade
+{
+    internal static bool Prefix() => !CheatState.FreeRepair;
+}
+
 // ——— 快速制作 v2.7.29:简化为 time=1 策略,完全移除循环递归护栏 ———
 // v2.7.27 的 static _busy 护栏有 bug:OnCraftingSuccess 递归触发 CraftingStart 时内层 return
 // 跳过 batch 第 2+ 个 item。改成纯粹 "每个 craft time 归 1 秒" 让游戏自己跑 batch:
@@ -611,11 +711,15 @@ internal static class Patch_Container_Enable
 {
     internal static void Postfix(Panel_Container __instance)
     {
-        if (!CheatState.QuickOpenContainer) return;
         try
         {
-            __instance.m_EnableDelaySeconds = 0f;
-            __instance.m_EnableDelayElapsed = 999f;
+            if (CheatState.QuickOpenContainer)
+            {
+                __instance.m_EnableDelaySeconds = 0f;
+                __instance.m_EnableDelayElapsed = 999f;
+            }
+            if (CheatState.InfiniteContainer && __instance.m_Container != null)
+                __instance.m_Container.m_Capacity = Il2CppTLD.IntBackedUnit.ItemWeight.FromKilograms(10000f);
         }
         catch { }
     }
@@ -635,7 +739,6 @@ internal static class Patch_Container_Enable
 // 值为 0 → 不施加力 → 无后坐。Postfix 恢复原值避免持久修改。
 internal static class Patch_FPSWeapon_PlayFireAnimation
 {
-    private static bool _logged;
     private static GunItem _gun;
     private static float _pitchMin, _pitchMax, _yawMin, _yawMax;
 
@@ -692,11 +795,23 @@ internal static class Patch_FPSCamera_ClearRecoil
 {
     private static bool _logged;
 
+    private static bool IsHoldingGun()
+    {
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null || pm.m_ItemInHands == null) return false;
+            return pm.m_ItemInHands.GetComponent<GunItem>() != null;
+        }
+        catch { return false; }
+    }
+
     internal static void Prefix(vp_FPSCamera __instance)
     {
         bool recoilOn = CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f;
         bool swayOn = CheatState.NoAimSway;
         if (!recoilOn && !swayOn) return;
+        if (!IsHoldingGun()) return;
 
         if (recoilOn)
         {
@@ -781,29 +896,146 @@ internal static class Patch_FPSCamera_LateUpdate
             }
             catch { }
         }
-        // 稳定瞄准:LateUpdate 结束后再清一次 sway,防游戏在 LateUpdate 里重写
+        // 稳定瞄准:LateUpdate 结束后再清一次 sway,防游戏在 LateUpdate 里重写(仅持枪时)
         if (CheatState.NoAimSway)
         {
-            try { __instance.ShakeAmplitude = UnityEngine.Vector3.zero; } catch { }
-            try { __instance.ShakeSpeed = 0f; } catch { }
-            try { __instance.BobAmplitude = UnityEngine.Vector4.zero; } catch { }
-            try { __instance.m_CurrentMaxAmbientSwayAngle = 0f; } catch { }
-            try { __instance.m_CurrentAmbientSwaySpeed = 0f; } catch { }
+            try
+            {
+                var pm = GameManager.GetPlayerManagerComponent();
+                if (pm != null && pm.m_ItemInHands != null && pm.m_ItemInHands.GetComponent<GunItem>() != null)
+                {
+                    __instance.ShakeAmplitude = UnityEngine.Vector3.zero;
+                    __instance.ShakeSpeed = 0f;
+                    __instance.BobAmplitude = UnityEngine.Vector4.zero;
+                    __instance.m_CurrentMaxAmbientSwayAngle = 0f;
+                    __instance.m_CurrentAmbientSwaySpeed = 0f;
+                }
+            }
+            catch { }
         }
+        // GunZoom:瞄准时滚轮缩放 FOV
+        GunZoomState.ApplyZoom(__instance);
+    }
+}
+
+// —— 瞄准滚轮缩放:整合 GunZoom ——
+internal static class GunZoomState
+{
+    public static float RifleMult = 1f;
+    public static float RevolverMult = 1f;
+    private static float _lerpMult = 1f;
+    private static float _originalMainFOV = -1f;
+    private static float _originalWeaponFOV = -1f;
+    private static float _baseSensitivity = -1f;
+    private static bool _wasZooming;
+    private const float ZoomIncrement = 1.2f;
+    private const float ZoomSpeed = 15f;
+
+    public static void UpdateScroll()
+    {
+        var s = ModMain.Settings;
+        if (s == null || !s.GunZoomEnabled) return;
+        var cam = GameManager.m_vpFPSCamera;
+        if (cam == null || !cam.IsZoomed) { _lerpMult = 1f; return; }
+
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll == 0f) return;
+
+        var pm = GameManager.GetPlayerManagerComponent();
+        if (pm == null || pm.m_ItemInHands == null) return;
+        string name = ((UnityEngine.Object)pm.m_ItemInHands).name.ToLower();
+        bool rifle = name.Contains("rifle");
+        bool revolver = name.Contains("revolver");
+        if (!rifle && !revolver) return;
+
+        if (rifle)
+        {
+            if (scroll > 0f) RifleMult /= ZoomIncrement; else RifleMult *= ZoomIncrement;
+            RifleMult = Mathf.Clamp(RifleMult, 0.05f, 1f);
+        }
+        else
+        {
+            if (scroll > 0f) RevolverMult /= ZoomIncrement; else RevolverMult *= ZoomIncrement;
+            RevolverMult = Mathf.Clamp(RevolverMult, 0.33f, 1f);
+        }
+    }
+
+    public static void ApplyZoom(vp_FPSCamera cam)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null || !s.GunZoomEnabled) return;
+            if (!cam.IsZoomed)
+            {
+                if (_wasZooming) RestoreFOV(cam);
+                _lerpMult = 1f;
+                return;
+            }
+
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null || pm.m_ItemInHands == null) { if (_wasZooming) RestoreFOV(cam); return; }
+            string name = ((UnityEngine.Object)pm.m_ItemInHands).name.ToLower();
+            bool rifle = name.Contains("rifle");
+            bool revolver = name.Contains("revolver");
+            if (!rifle && !revolver) { if (_wasZooming) RestoreFOV(cam); return; }
+
+            if (_baseSensitivity <= 0f)
+            {
+                _baseSensitivity = cam.MouseSensitivity;
+                var mainCam = cam.GetComponent<Camera>();
+                if (mainCam != null) _originalMainFOV = mainCam.fieldOfView;
+                if (cam.m_WeaponCamera != null) _originalWeaponFOV = cam.m_WeaponCamera.fieldOfView;
+            }
+
+            float target = rifle ? RifleMult : RevolverMult;
+            _lerpMult = Mathf.Lerp(_lerpMult, target, Time.deltaTime * ZoomSpeed);
+
+            var mc = cam.GetComponent<Camera>();
+            if (mc != null) mc.fieldOfView = _originalMainFOV * _lerpMult;
+            if (cam.m_WeaponCamera != null) cam.m_WeaponCamera.fieldOfView = _originalWeaponFOV * _lerpMult;
+            cam.MouseSensitivity = _baseSensitivity * Mathf.Clamp(_lerpMult + 0.15f, 0f, 1f);
+            _wasZooming = true;
+        }
+        catch { }
+    }
+
+    private static void RestoreFOV(vp_FPSCamera cam)
+    {
+        try
+        {
+            if (_baseSensitivity > 0f) cam.MouseSensitivity = _baseSensitivity;
+            var mc = cam.GetComponent<Camera>();
+            if (mc != null && _originalMainFOV > 0f) mc.fieldOfView = _originalMainFOV;
+            if (cam.m_WeaponCamera != null && _originalWeaponFOV > 0f) cam.m_WeaponCamera.fieldOfView = _originalWeaponFOV;
+        }
+        catch { }
+        _wasZooming = false;
     }
 }
 
 // —— 稳定瞄准:锁定武器位置/旋转 + 归零 bob/shake/sway 参数 ——
 internal static class Patch_FPSWeapon_SteadyAim
 {
-    private static bool _logged;
     [ThreadStatic] private static Vector3 _savedPos;
     [ThreadStatic] private static Quaternion _savedRot;
     [ThreadStatic] private static bool _hasSaved;
 
+    private static bool IsHoldingGun()
+    {
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null || pm.m_ItemInHands == null) return false;
+            return pm.m_ItemInHands.GetComponent<GunItem>() != null;
+        }
+        catch { return false; }
+    }
+
     internal static void Prefix(vp_FPSWeapon __instance)
     {
         if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) { _hasSaved = false; return; }
+        if (!IsHoldingGun()) { _hasSaved = false; return; }
         try
         {
             var t = __instance.transform;
@@ -816,53 +1048,17 @@ internal static class Patch_FPSWeapon_SteadyAim
     internal static void Postfix(vp_FPSWeapon __instance)
     {
         if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) return;
-        // 恢复武器 transform:抵消 Update 内 bob/shake/sway 对武器位置的修改
-        if (_hasSaved)
-        {
-            try { __instance.transform.localPosition = _savedPos; } catch { }
-            try { __instance.transform.localRotation = _savedRot; } catch { }
-        }
-        // 也归零参数防止后续帧继续产生运动
+        if (!_hasSaved) return;
+        try { __instance.transform.localPosition = _savedPos; } catch { }
+        try { __instance.transform.localRotation = _savedRot; } catch { }
         try { __instance.BobAmplitude = Vector4.zero; } catch { }
         try { __instance.ShakeAmplitude = Vector3.zero; } catch { }
         try { __instance.ShakeSpeed = 0f; } catch { }
         try { __instance.SwayMaxFatigue = 0f; } catch { }
         try { __instance.SwayStartFatigue = 999f; } catch { }
-
-        if (!_logged)
-        {
-            _logged = true;
-            try { ModMain.Log?.Msg($"[SteadyAim] Weapon transform lock active. hasSaved={_hasSaved}"); } catch { }
-        }
     }
 }
 
-// v2.7.90 稳定瞄准 LateUpdate 兜底:游戏 LateUpdate 可能再次应用 sway,这里最终覆盖
-internal static class Patch_FPSWeapon_SteadyAim_Late
-{
-    private static Vector3 _savedPos;
-    private static Quaternion _savedRot;
-    private static bool _hasSaved;
-
-    internal static void Prefix(vp_FPSWeapon __instance)
-    {
-        if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) { _hasSaved = false; return; }
-        try
-        {
-            var t = __instance.transform;
-            if (t != null) { _savedPos = t.localPosition; _savedRot = t.localRotation; _hasSaved = true; }
-            else _hasSaved = false;
-        }
-        catch { _hasSaved = false; }
-    }
-
-    internal static void Postfix(vp_FPSWeapon __instance)
-    {
-        if (!_hasSaved) return;
-        try { __instance.transform.localPosition = _savedPos; } catch { }
-        try { __instance.transform.localRotation = _savedRot; } catch { }
-    }
-}
 
 // ═══════════════════════════════════════════════════════════════════
 //   v2.7.86 新增功能 —— 随意生火 / 生火材料不减 / 科技背包 / 火把满值 / 无条件冲刺 / 无限体力
@@ -878,6 +1074,224 @@ internal static class Patch_AddSprintStamina
     {
         if (!CheatState.InfiniteStamina) return;
         try { __instance.m_SprintStamina = 100f; } catch { }
+    }
+}
+
+// —— 速度倍率:vp_FPSController.GetSlopeMultiplier Postfix ——
+// 复制自 SonicMode:根据移动状态(蹲/走/冲刺)乘以对应系数
+internal static class Patch_SpeedMultiplier
+{
+    internal static void Postfix(ref float __result)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null || !s.SpeedTweaksEnabled) return;
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null) return;
+            if (pm.PlayerIsSprinting())
+                __result *= s.SprintSpeed;
+            else if (pm.PlayerIsCrouched())
+                __result *= s.CrouchSpeed;
+            else
+                __result *= s.WalkSpeed;
+        }
+        catch { }
+    }
+}
+
+// —— 体力恢复:PlayerMovement.Update Postfix ——
+// 复制自 SonicMode:每帧设置恢复速率和消耗速率
+internal static class Patch_StaminaTweaks
+{
+    private static float _initRecovery;
+    private static float _initSeconds;
+    private static bool _inited;
+
+    internal static void Postfix(PlayerMovement __instance)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null) return;
+            if (!_inited)
+            {
+                _initRecovery = __instance.m_SprintStaminaRecoverPerHour;
+                _initSeconds = __instance.m_SecondsNotSprintingBeforeRecovery;
+                _inited = true;
+            }
+            if (!s.SpeedTweaksEnabled) return;
+            __instance.m_SprintStaminaRecoverPerHour = _initRecovery * s.StaminaRecharge;
+            __instance.m_SecondsNotSprintingBeforeRecovery = _initSeconds * s.StaminaRecoveryDelay;
+        }
+        catch { }
+    }
+}
+
+// —— 火把燃烧时间:Panel_FeedFire.Enable Postfix ——
+// 复制自 TorchTweaker:设置 min/max condition
+internal static class Patch_TorchCondition
+{
+    internal static void Postfix(Panel_FeedFire __instance)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null) return;
+            __instance.m_MinNormalizedTorchCondition = s.TorchMinCondition;
+            __instance.m_MaxNormalizedTorchCondition = s.TorchMaxCondition;
+        }
+        catch { }
+    }
+}
+
+// —— 火把 condition:Panel_ActionPicker.Enable Postfix ——
+// TorchTweaker 原版同时 patch 这两个面板,保证从地上/靠近火堆等交互也生效
+internal static class Patch_TorchCondition_ActionPicker
+{
+    internal static void Postfix()
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null) return;
+            var panel = InterfaceManager.GetPanel<Panel_FeedFire>();
+            if (panel == null) return;
+            panel.m_MinNormalizedTorchCondition = s.TorchMinCondition;
+            panel.m_MaxNormalizedTorchCondition = s.TorchMaxCondition;
+        }
+        catch { }
+    }
+}
+
+
+// —— 交互距离:PlayerManager.ComputeModifiedPickupRange Postfix ——
+// 复制自 StretchArmstrong:乘以滑块倍率
+internal static class Patch_PickupRange
+{
+    internal static void Postfix(ref float __result)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s != null) __result *= s.PickupRange;
+        }
+        catch { }
+    }
+}
+
+// —— 脚步静音:FootStepSounds.PlayFootStepSound Prefix ——
+// 复制自 SilentWalker:toggle on 时完全不播放脚步声
+internal static class Patch_SilentFootsteps
+{
+    internal static bool Prefix() => !CheatState.SilentFootsteps;
+}
+
+// 复制自 SilentWalker:按 RTPC ID 缩放背包物品发声音量
+internal static class Patch_SilentWalker_RTPC
+{
+    internal static void Prefix(uint rtpcID, ref float rtpcValue)
+    {
+        var s = ModMain.Settings;
+        if (s == null) return;
+        int pct;
+        switch (rtpcID)
+        {
+            case 135115684u: pct = s.InvWeightMetalVol; break;
+            case 330491720u: pct = s.InvWeightWoodVol; break;
+            case 1721946080u: pct = s.InvWeightWaterVol; break;
+            case 2064316281u: pct = s.InvWeightGeneralVol; break;
+            default: return;
+        }
+        rtpcValue *= pct / 100f;
+    }
+}
+
+// —— 衰减倍率:GearItem.Degrade Prefix ——
+// 复制自 GearDecayModifier:根据物品类型乘以对应衰减系数
+internal static class Patch_GearDegrade
+{
+    internal static bool Prefix(GearItem __instance, ref float hp)
+    {
+        try
+        {
+            // v2.8.1: 坠落衣物保护 — IL2CPP 可能忽略 return false,改用 hp=0 让 Degrade 无效化
+            if (FallClothingGuard.Active) { hp = 0f; return true; }
+            if (CheatState.InfiniteDurability) { hp = 0f; return true; }
+            if (CheatState.QuickCraft) { hp = 0f; return true; }
+            if (__instance == null) return true;
+
+            float mult = DecayState.GeneralDecay;
+            string name = __instance.gameObject.name;
+
+            // Check specific item types by name first
+            if (name.Contains("Bedroll")) mult = DecayState.BedrollDecay;
+            else if (name.Contains("Travois")) mult = DecayState.TravoisDecay;
+            else if (name.Contains("Arrow")) mult = DecayState.ArrowDecay;
+            else if (name.Contains("Snare")) mult = DecayState.SnareDecay;
+            else if (name.Contains("FlareGunAmmo")) mult = DecayState.FlareGunAmmoDecay;
+            else if (name.Contains("CookingPot") || name.Contains("RecycledCan")) mult = DecayState.CookingPotDecay;
+            else if (name.Contains("Hide") || name.Contains("Pelt") || name.Contains("Gut") || name.Contains("Leather"))
+                mult = DecayState.HideDecay;
+            else if (name.Contains("FirstAid") || name.Contains("Bandage") || name.Contains("Antibiotic") || name.Contains("Painkiller"))
+                mult = DecayState.FirstAidDecay;
+            else if (name.Contains("WaterPurifier")) mult = DecayState.WaterPurifierDecay;
+            else if (__instance.m_DegradeOnUse != null)
+            {
+                if (__instance.m_GunItem != null) mult = DecayState.GunDecay;
+                else if (__instance.m_BowItem != null) mult = DecayState.BowDecay;
+                else if (name.Contains("Whetstone") || name.Contains("SharpeningStone"))
+                    mult = DecayState.WhetstoneDecay;
+                else if (name.Contains("CanOpener")) mult = DecayState.CanOpenerDecay;
+                else if (name.Contains("Prybar")) mult = DecayState.PrybarDecay;
+                else if (name.Contains("FireStriker") || name.Contains("Matches") || name.Contains("Flare"))
+                    mult = DecayState.FirestartingDecay;
+                else if (__instance.m_ToolsItem != null)
+                {
+                    if (name.Contains("Hatchet") || name.Contains("Knife") || name.Contains("Hacksaw"))
+                        mult = DecayState.BodyHarvestDecay;
+                    else
+                        mult = DecayState.ToolsDecay;
+                }
+                else mult = DecayState.OnUseDecay;
+            }
+            else if (__instance.m_FoodItem != null)
+            {
+                if (name.Contains("Coffee") || name.Contains("Tea") || name.Contains("HerbalTea"))
+                    mult = DecayState.CoffeeTeaDecay;
+                else if (__instance.m_FoodItem.m_IsDrink) mult = DecayState.DrinksDecay;
+                else if (name.Contains("Canned") || name.Contains("PinnacleCanPeaches") || name.Contains("TomatoSoup") || name.Contains("DogFood"))
+                    mult = DecayState.CannedFoodDecay;
+                else if (name.Contains("PackagedFood") || name.Contains("GranolaBar") || name.Contains("EnergyBar") || name.Contains("CattailStalk"))
+                    mult = DecayState.PackagedFoodDecay;
+                else if (name.Contains("CookingFat") || name.Contains("BearFat"))
+                    mult = DecayState.FatDecay;
+                else if (name.Contains("CuredFish") || name.Contains("Jerky") && name.Contains("Fish"))
+                    mult = DecayState.CuredFishDecay;
+                else if (__instance.m_FoodItem.m_IsRawMeat && name.Contains("Fish"))
+                    mult = DecayState.RawFishDecay;
+                else if (__instance.m_FoodItem.m_IsMeat && name.Contains("Fish"))
+                    mult = DecayState.CookedFishDecay;
+                else if (name.Contains("Cured") || name.Contains("Jerky"))
+                    mult = DecayState.CuredMeatDecay;
+                else if (name.Contains("Flour") || name.Contains("Yeast") || name.Contains("Salt") || name.Contains("Sugar"))
+                    mult = DecayState.IngredientsDecay;
+                else if (__instance.m_FoodItem.m_IsRawMeat) mult = DecayState.RawMeatDecay;
+                else if (__instance.m_FoodItem.m_IsMeat) mult = DecayState.CookedMeatDecay;
+                else mult = DecayState.OtherFoodDecay;
+            }
+            else if (__instance.m_ClothingItem != null)
+            {
+                mult = DecayState.ClothingDecayRate;
+            }
+
+            if (!__instance.m_BeenInspected && !__instance.m_BeenInPlayerInventory)
+                mult *= DecayState.DecayBeforePickup;
+
+            hp *= mult;
+        }
+        catch { }
+        return true;
     }
 }
 
@@ -897,41 +1311,71 @@ internal static class Patch_FireAnywhere
     }
 }
 
-// —— 生火材料不减:PlayerManager.ConsumeUnitFromInventory(void) skip ——
+// —— 生火/修理材料不减:PlayerManager.ConsumeUnitFromInventory(void) skip ——
 internal static class Patch_ConsumeUnit
 {
     internal static bool Prefix()
     {
-        if (CheatState.FreeFireFuel) return false; // skip original = 不消耗
+        if (CheatState.FreeFireFuel || CheatState.FreeRepair) return false;
         return true;
     }
 }
 
-// —— 科技背包:PlayerManager.GetCarryCapacityKGBuff 返回大值 ——
-// 返回类型是 ItemWeight (Il2CppTLD.IntBackedUnit),用 FromKilograms 构造
+// —— 自定义背包负重:Encumber.Update Postfix 直接覆盖原版 30kg 上限 ——
+// v3.0.4 fix: 移除 dirty-check —— vanilla Encumber.Update 每帧重置字段,
+//   dirty-check 第一次写后被 vanilla 覆盖 → 永远 return → 看似无效。
+//   照抄 UniversalTweaks 写法: 每帧 Postfix 写 7 字段(开销可忽略,Update 1 次/帧)
 internal static class Patch_TechBackpack
 {
-    internal static void Postfix(ref ItemWeight __result)
+    internal static void Postfix(Encumber __instance)
     {
-        if (CheatState.TechBackpack) __result = ItemWeight.FromKilograms(50f);
+        try
+        {
+            if (__instance == null || !CheatState.TechBackpack) return;
+            float kg = CheatState.TechBackpackKg;
+            __instance.m_MaxCarryCapacity = ItemWeight.FromKilograms(kg);
+            __instance.m_MaxCarryCapacityWhenExhausted = ItemWeight.FromKilograms(kg * 0.5f);
+            __instance.m_NoSprintCarryCapacity = ItemWeight.FromKilograms(kg + 10f);
+            __instance.m_NoWalkCarryCapacity = ItemWeight.FromKilograms(kg + 30f);
+            __instance.m_EncumberLowThreshold = ItemWeight.FromKilograms(kg + 1f);
+            __instance.m_EncumberMedThreshold = ItemWeight.FromKilograms(kg + 10f);
+            __instance.m_EncumberHighThreshold = ItemWeight.FromKilograms(kg + 30f);
+        }
+        catch { }
     }
 }
 
-// —— 火把满值:TorchItem.Update 设 burn time = max ——
-// CT 实现:patch TorchItem.Update → movss xmm2,[max_burn_time]
-//         + 另一个 patch 设 return true for some check
-// Harmony 做法:Prefix 设 m_CurrentBurnTimeSeconds = m_MaxBurnTimeSeconds
+// —— 关闭自定义负重时手动还原原版值(由 Menu UI 调) ——
+internal static class EncumberVanilla
+{
+    internal static void Reset()
+    {
+        try
+        {
+            var e = GameManager.GetEncumberComponent();
+            if (e == null) return;
+            e.m_MaxCarryCapacity = ItemWeight.FromKilograms(30f);
+            e.m_MaxCarryCapacityWhenExhausted = ItemWeight.FromKilograms(15f);
+            e.m_NoSprintCarryCapacity = ItemWeight.FromKilograms(40f);
+            e.m_NoWalkCarryCapacity = ItemWeight.FromKilograms(60f);
+            e.m_EncumberLowThreshold = ItemWeight.FromKilograms(31f);
+            e.m_EncumberMedThreshold = ItemWeight.FromKilograms(40f);
+            e.m_EncumberHighThreshold = ItemWeight.FromKilograms(60f);
+        }
+        catch { }
+    }
+}
+
+// —— 火把满值:TorchItem.Update 重置燃烧时间 + HP ——
 internal static class Patch_TorchFullValue
 {
     internal static void Prefix(TorchItem __instance)
     {
         if (!CheatState.TorchFullValue) return;
-        try
-        {
-            var gi = __instance.GetComponent<GearItem>();
-            if (gi != null) gi.m_CurrentHP = 100f;
-        }
-        catch { }
+        if (!__instance.IsBurning()) return;
+        __instance.m_ElapsedBurnMinutes = 0f;
+        var gi = __instance.m_GearItem;
+        if (gi != null) gi.m_CurrentHP = 100f;
     }
 }
 
@@ -939,11 +1383,11 @@ internal static class Patch_TorchFullValue
 // OnUpdate 每帧/每 N 帧扫一次实例,直接改字段。
 internal static class CheatsTick
 {
-    // ——— 武器:无限弹药 / 永不卡壳 / 快速射击 / 无后坐(字段层 fallback)———
+    // ——— 武器:无限弹药 / 永不卡壳 / 无后坐(字段层 fallback)———
     // v2.7.92 性能:InfiniteAmmo/NoJam 需扫全场景;其余只需手持武器,避免 FindObjectsOfType
     public static void TickGuns()
     {
-        if (!CheatState.InfiniteAmmo && !CheatState.NoJam && !CheatState.FastFire && !CheatState.NoRecoil && !CheatState.SuperAccuracy && !CheatState.NoAimSway) return;
+        if (!CheatState.InfiniteAmmo && !CheatState.NoJam && !CheatState.NoRecoil && !CheatState.SuperAccuracy && !CheatState.NoAimSway) return;
         try
         {
             if (CheatState.NoJam)
@@ -971,20 +1415,13 @@ internal static class CheatsTick
                 }
             }
 
-            // NoRecoil/FastFire/NoAimSway 只需手持武器
-            if (CheatState.FastFire || CheatState.NoRecoil || CheatState.SuperAccuracy || CheatState.NoAimSway)
+            if (CheatState.NoRecoil || CheatState.SuperAccuracy || CheatState.NoAimSway)
             {
                 var pm = GameManager.GetPlayerManagerComponent();
                 var gi = pm?.m_ItemInHands;
                 var g = gi != null ? gi.GetComponent<GunItem>() : null;
                 if (g != null)
                 {
-                    if (CheatState.FastFire)
-                    {
-                        try { g.m_FiringRateSeconds     = 0.05f; } catch { }
-                        try { g.m_FireDelayOnAim        = 0f;    } catch { }
-                        try { g.m_FireDelayAfterReload  = 0f;    } catch { }
-                    }
                     if (CheatState.NoRecoil || CheatState.SuperAccuracy)
                     {
                         try { g.m_PitchRecoilMin = 0f; } catch { }
@@ -1297,11 +1734,6 @@ internal static class CheatsTick
     //   1) 设 m_DisableScanForTargets = true(阻止新增探测)
     //   2) 对已经在 Attack/Stalking/Investigate/HoldGround 的 AI,立即 SetAiMode(Wander)
     //      —— 公开方法,可靠;等于把玩家从威胁列表踢出
-    private static System.Reflection.FieldInfo _fi_baseAi_disableScan;
-    // v2.7.13 TrueInvisible 强化:把 AI 的探测/听觉 range 都归零,堵所有感知通道
-    private static System.Reflection.FieldInfo _fi_baseAi_detectRange, _fi_baseAi_detectFOV;
-    private static System.Reflection.FieldInfo _fi_baseAi_hearFootsteps, _fi_baseAi_hearRifle;
-    private static System.Reflection.FieldInfo _fi_baseAi_detectRangeFeeding;
     private static bool _lastTickedStealth = false;
     private static bool _lastTickedFreeze = false;
     private static bool _lastTickedInvis = false;
@@ -1462,8 +1894,6 @@ internal static class CheatsTick
         }
         catch { }
     }
-
-    // 火焰无限时长已移除 —— 用户说其他 mod(如 InfiniteFiresDLC)覆盖
 
     // ——— 爬绳加速 ———
     // 直接设固定值 5.0(原值 0.3~1.5 左右),幂等:多次 tick 不会叠加。
@@ -1639,6 +2069,104 @@ internal static class CheatsTick
     }
 
     // TryLockFieldOnAll 已移除 —— 仅 TickFires 用,TickFires 本身已删
+
+    // v2.8.2 NoFallDamage tick — 反应式:既然 IL2CPP prefix return false 不可靠,
+    // 每几帧检查+清除坠落产生的扭伤/衣物破损
+    private static bool _fallGuardWristSet;
+    private static float[] _clothingHpSnapshot;
+    private static int _clothingSnapshotFrame;
+
+    public static void TickNoFallDamage()
+    {
+        if (!CheatState.NoFallDamage)
+        {
+            if (_fallGuardWristSet)
+            {
+                try { GameManager.GetSprainedWristComponent()?.SetForceNoSprainWrist(false); } catch { }
+                _fallGuardWristSet = false;
+            }
+            return;
+        }
+        try
+        {
+            // 1. 强制关闭手腕扭伤风险
+            if (!_fallGuardWristSet)
+            {
+                try { GameManager.GetSprainedWristComponent()?.SetForceNoSprainWrist(true); } catch { }
+                _fallGuardWristSet = true;
+            }
+
+            // 2. 检测并清除已有的坠落扭伤
+            try
+            {
+                var ankle = GameManager.GetSprainedAnkleComponent();
+                if (ankle != null && ankle.HasSprainedAnkle())
+                {
+                    ankle.SprainedAnkleEnd(0, (AfflictionOptions)0);
+                    ankle.SprainedAnkleEnd(1, (AfflictionOptions)0);
+                }
+            }
+            catch { }
+            try
+            {
+                var wrist = GameManager.GetSprainedWristComponent();
+                if (wrist != null && wrist.HasSprainedWrist())
+                {
+                    wrist.SprainedWristEnd(0, (AfflictionOptions)0);
+                    wrist.SprainedWristEnd(1, (AfflictionOptions)0);
+                }
+            }
+            catch { }
+
+            // 3. 衣物 HP 快照/恢复 — 检测突然降低并还原(用背包列表,轻量)
+            try
+            {
+                var inv = GameManager.m_Inventory;
+                var items = inv?.m_Items;
+                if (items != null)
+                {
+                    int count = items.Count;
+                    if (_clothingHpSnapshot == null || _clothingHpSnapshot.Length < count)
+                        _clothingHpSnapshot = new float[count + 8];
+
+                    int frame = UnityEngine.Time.frameCount;
+                    if (frame - _clothingSnapshotFrame <= 30)
+                    {
+                        for (int i = 0; i < count; i++)
+                        {
+                            try
+                            {
+                                var obj = items[i];
+                                if (obj == null) continue;
+                                var gi = obj.m_GearItem;
+                                if (gi == null || gi.m_ClothingItem == null) continue;
+                                float cur = gi.m_CurrentHP;
+                                float prev = _clothingHpSnapshot[i];
+                                if (prev > 0f && cur < prev - 1f)
+                                    gi.m_CurrentHP = prev;
+                            }
+                            catch { }
+                        }
+                    }
+
+                    // 更新快照
+                    for (int i = 0; i < count; i++)
+                    {
+                        try
+                        {
+                            var obj = items[i];
+                            var gi = obj?.m_GearItem;
+                            _clothingHpSnapshot[i] = (gi != null && gi.m_ClothingItem != null) ? gi.m_CurrentHP : 0f;
+                        }
+                        catch { _clothingHpSnapshot[i] = 0f; }
+                    }
+                    _clothingSnapshotFrame = frame;
+                }
+            }
+            catch { }
+        }
+        catch { }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1689,15 +2217,16 @@ internal static class HarvestableSnaps
 
 internal static class Patch_HarvestableInteraction_Init
 {
-    internal static void Postfix(HarvestableInteraction __instance)
+    internal static void Postfix(Il2CppTLD.Interactions.TimedHoldInteraction __instance)
     {
         try
         {
             if (!CheatState.QuickSearch) return;
-            var ptr = __instance.Pointer;
+            if (__instance is not HarvestableInteraction hi) return;
+            var ptr = hi.Pointer;
             if (!HarvestableSnaps.Snapshots.ContainsKey(ptr))
-                HarvestableSnaps.Snapshots[ptr] = (__instance.m_DefaultHoldTime, __instance.m_Timer);
-            __instance.m_DefaultHoldTime = 0.001f;
+                HarvestableSnaps.Snapshots[ptr] = (hi.m_DefaultHoldTime, hi.m_Timer);
+            hi.m_DefaultHoldTime = 0.001f;
         }
         catch { }
     }
@@ -1856,11 +2385,131 @@ internal static class Patch_LockedInteraction_IsLocked_Unlock
     }
 }
 
-// —— 防风油灯油不减 CT:KeroseneLampItem.ReduceFuel 首字节 db C3(return) ——
-// v2.7.75 DynamicPatch
+// —— 油灯 Update Postfix: 光照范围 + 持续 HP 损耗 + 静音 ——
+// v3.0.4 整合 KeroseneLampTweaks v2.4.1 三个 Update 行为:lamp_range/overTimeDecay/muteLamps
+internal static class Patch_KeroseneLamp_LightRange
+{
+    // v3.0.4r4 性能优化: 缓存 lamp instance ID → (Light[], 各自原始 range[])
+    // 旧版每帧 GetComponentsInChildren<Light>(true) 扫整个 transform 树 + 分配数组,大开销
+    // 新版第一次扫一次 light 子组件,记录原始 range,之后帧直接索引数组
+    private struct LampCache
+    {
+        public UnityEngine.Light[] Lights;
+        public float[] BaseRanges;
+    }
+    private static readonly System.Collections.Generic.Dictionary<int, LampCache> s_Cache = new();
+
+    internal static void Postfix(KeroseneLampItem __instance)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null || __instance == null) return;
+
+            // 1. 持续 HP 损耗(只在点亮时)
+            if (s.LampOverTimeDecay > 0.001f && __instance.IsOn())
+            {
+                var gi = __instance.m_GearItem;
+                if (gi != null)
+                {
+                    var tod = GameManager.GetTimeOfDayComponent();
+                    float scale = (tod != null && tod.m_DayLengthScale > 0.001f) ? tod.m_DayLengthScale : 1f;
+                    gi.m_CurrentHP = Mathf.Max(0f, gi.m_CurrentHP - s.LampOverTimeDecay * (Time.deltaTime / 300f) * (1f / scale));
+                }
+            }
+
+            // 2. 静音(放置且非手持时)
+            if (s.LampMute || CheatState.LampMute)
+            {
+                var gi2 = __instance.m_GearItem;
+                if (gi2 != null && !gi2.m_InPlayerInventory)
+                {
+                    try { __instance.StopLoopingAudio(); } catch { }
+                }
+            }
+
+            // 3. 光照范围倍率(性能关键路径) — 缓存 lamp 子 Light 数组
+            float mult = s.LampRangeMultiplier;
+            if (Mathf.Abs(mult - 1f) >= 0.005f)
+            {
+                int lampId = ((UnityEngine.Object)__instance).GetInstanceID();
+                LampCache cache;
+                if (!s_Cache.TryGetValue(lampId, out cache))
+                {
+                    var lts = __instance.GetComponentsInChildren<UnityEngine.Light>(true);
+                    if (lts == null) return;
+                    int n = lts.Length;
+                    cache.Lights = new UnityEngine.Light[n];
+                    cache.BaseRanges = new float[n];
+                    for (int i = 0; i < n; i++)
+                    {
+                        var lt = lts[i];
+                        cache.Lights[i] = lt;
+                        cache.BaseRanges[i] = lt != null ? lt.range : 0f;
+                    }
+                    s_Cache[lampId] = cache;
+                }
+                // 用缓存数组(无 GC 分配,无 transform 树扫描)
+                var lightsArr = cache.Lights;
+                var baseArr = cache.BaseRanges;
+                int len = lightsArr.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    var lt = lightsArr[i];
+                    if (lt == null) continue;
+                    float target = baseArr[i] * mult;
+                    if (Mathf.Abs(lt.range - target) > 0.01f) lt.range = target;
+                }
+            }
+        }
+        catch { }
+    }
+}
+
+// —— 油灯燃油消耗 v3.0.4 重写: KeroseneLampTweaks v2.4.1 完整版 ——
+// 拆分手持/放置消耗倍率 + HP 阈值惩罚机制
+// v3.0.4 替换原 LampBurnMultiplier 单一倍率
 internal static class Patch_KeroseneLamp_ReduceFuel
 {
-    internal static bool Prefix() => !CheatState.LampFuelNoDrain;
+    internal static bool Prefix(KeroseneLampItem __instance, ref float hoursBurned)
+    {
+        if (CheatState.LampFuelNoDrain) return false;
+        var s = ModMain.Settings;
+        if (s == null) return true;
+        var gi = __instance != null ? __instance.m_GearItem : null;
+
+        // 手持 vs 放置 倍率
+        bool inInv = gi != null && gi.m_InPlayerInventory;
+        float mult = inInv ? s.LampHeldBurnMult : s.LampPlacedBurnMult;
+
+        // HP 阈值惩罚: HP 低于阈值时额外耗油
+        float penalty = 1f;
+        if (gi != null && s.LampConditionThreshold > 0 && gi.m_CurrentHP < s.LampConditionThreshold)
+        {
+            penalty += (1f - gi.m_CurrentHP / (float)s.LampConditionThreshold) * (s.LampMaxPenalty / 100f);
+        }
+
+        float effective = mult * penalty;
+        if (effective < 0.001f) return false;  // 0 = 无限燃烧
+        hoursBurned *= effective;
+        return true;
+    }
+}
+
+// —— v3.0.4 油灯开启时一次性 HP 损耗 (KeroseneLampTweaks turnOnDecay) ——
+internal static class Patch_KeroseneLamp_OnIgnite
+{
+    internal static void Postfix(KeroseneLampItem __instance)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null || s.LampTurnOnDecay < 0.001f) return;
+            var gi = __instance != null ? __instance.m_GearItem : null;
+            if (gi != null) gi.m_CurrentHP -= s.LampTurnOnDecay;
+        }
+        catch { }
+    }
 }
 
 // —— 保温杯永不失温 CT:InsulatedFlask.CalculateHeatLoss NOP 关键字节 ——
@@ -1898,6 +2547,50 @@ internal static class Patch_EvolveItem_Update
         {
             __instance.m_TimeToEvolveGameDays = 0f;
             __instance.m_TimeSpentEvolvingGameHours = 1f;
+        }
+        catch { }
+    }
+}
+
+// —— v3.0.4r3 修: stack 物品 evolve 数量丢失(用户报"10 内脏只产 1 干内脏") ——
+// 根因: vanilla EvolveItem.DoEvolution 把 stack 整体替换为 1 个 evolved,原 N 个鲜内脏全消耗
+// 方案 A(失败): Postfix 改 evolved 物品 m_Units → __instance 状态已变,设置无效
+// 方案 C: Prefix 在 vanilla evolve 前,先用 InventoryComponent 直接 spawn N-1 个 evolved 物品到背包
+//   (vanilla 自己 evolve 1 个 → 总产出 N 个;原 stack 消耗 N 个匹配)
+[HarmonyPatch(typeof(EvolveItem), "DoEvolution")]
+internal static class Patch_EvolveItem_DoEvolution_StackFix
+{
+    static void Prefix(EvolveItem __instance)
+    {
+        try
+        {
+            if (__instance == null) return;
+            var gi = __instance.m_GearItem;
+            if (gi == null || gi.m_StackableItem == null) return;
+            int extraUnits = gi.m_StackableItem.m_Units - 1;
+            if (extraUnits <= 0) return;
+
+            var prefab = __instance.m_GearItemToBecome;
+            if (prefab == null) return;
+
+            // 用 vanilla InstantiateGearItem + AddGearItem 给背包加 N-1 个 evolved 副本
+            var pm = GameManager.GetPlayerManagerComponent();
+            var inv = GameManager.GetInventoryComponent();
+            if (pm == null || inv == null) return;
+
+            for (int i = 0; i < extraUnits; i++)
+            {
+                try
+                {
+                    // GearItem.Instantiate 的标准方式 — 用 GearItemPrefabUtility 或直接 Object.Instantiate
+                    var go = UnityEngine.Object.Instantiate(((UnityEngine.Component)prefab).gameObject);
+                    if (go == null) continue;
+                    var newGi = go.GetComponent<GearItem>();
+                    if (newGi == null) { UnityEngine.Object.Destroy(go); continue; }
+                    pm.AddItemToPlayerInventory(newGi, false, true);
+                }
+                catch { }
+            }
         }
         catch { }
     }
@@ -2160,6 +2853,299 @@ internal static class ScurvyViewer
                    :              (I18n.IsEnglish ? "OK" : "正常");
         }
         catch { Status = "err"; }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   整合 RunWithLantern:拿油灯时可以跑步
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_RunWithLantern
+{
+    internal static bool Prefix() => false;
+}
+
+internal static class Patch_CameraOverride_OnStateUpdate
+{
+    internal static bool Prefix(AnimatorStateInfo stateInfo)
+    {
+        if (!CheatState.RunWithLantern) return true;
+        string[] skip = { "Lantern_Prepare", "Lantern_Idle", "Lantern_Extinguish" };
+        for (int i = 0; i < skip.Length; i++)
+            if (stateInfo.IsName(skip[i])) return false;
+        return true;
+    }
+}
+
+internal static class Patch_CameraOverride_OnStateEnter
+{
+    internal static bool Prefix(AnimatorStateInfo stateInfo)
+    {
+        if (!CheatState.RunWithLantern) return true;
+        string[] skip = { "Lantern_Prepare", "Lantern_Idle", "Lantern_Extinguish" };
+        for (int i = 0; i < skip.Length; i++)
+            if (stateInfo.IsName(skip[i])) return false;
+        return true;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   整合 FullSwing:门开角度和开门速度可调
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_ObjectAnim_Play
+{
+    internal static void Prefix(ObjectAnim __instance, ref string name)
+    {
+        try
+        {
+            var s = ModMain.Settings;
+            if (s == null) return;
+            if ((UnityEngine.Object)__instance.m_Target == null || __instance.m_Events == null) return;
+            if (name != "open" && name != "close") return;
+            if (name == "open" && ((UnityEngine.Object)((Component)__instance).gameObject).name != "Door") return;
+
+            iTweenEvent openEvt = null, closeEvt = null;
+            var events = (Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<iTweenEvent>)(object)__instance.m_Events;
+            foreach (var ev in events)
+            {
+                if (ev.tweenName == "open") openEvt = ev;
+                if (ev.tweenName == "close") closeEvt = ev;
+            }
+
+            if (name == "open" && openEvt != null && closeEvt != null)
+            {
+                float angle = s.DoorSwingAngle;
+                float speed = s.DoorSwingSpeed;
+                ((Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<Vector3>)(object)openEvt.vector3s)[0] = new Vector3(angle, 0f, 0f);
+                ((Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<Vector3>)(object)closeEvt.vector3s)[0] = new Vector3(0f - angle, 0f, 0f);
+                ((Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<float>)(object)openEvt.floats)[0] = speed;
+                ((Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<float>)(object)closeEvt.floats)[0] = speed;
+                openEvt.DeserializeValues();
+                closeEvt.DeserializeValues();
+            }
+        }
+        catch (Exception ex)
+        {
+            MelonLoader.MelonLogger.Warning($"[TldHacks] FullSwing patch error: {ex.Message}");
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   整合 DisableAutoEquipCharcoal:取炭不自动装备
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_CharcoalHarvest_NoEquip
+{
+    internal static void Postfix()
+    {
+        if (!CheatState.NoAutoEquipCharcoal) return;
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null || pm.m_ItemInHands == null) return;
+            var name = ((UnityEngine.Object)pm.m_ItemInHands).name;
+            if (name != null && name.Contains("Charcoal"))
+                pm.UnequipItemInHands();
+        }
+        catch { }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   整合 AutoToggleLights:休息/等待时自动熄灯
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_AutoExtinguish_PassTime
+{
+    internal static void Postfix()
+    {
+        if (CheatState.AutoExtinguishOnRest) AutoExtinguishHelper.ExtinguishHeld();
+    }
+}
+
+internal static class Patch_AutoExtinguish_OnRest
+{
+    internal static void Postfix()
+    {
+        if (CheatState.AutoExtinguishOnRest) AutoExtinguishHelper.ExtinguishHeld();
+    }
+}
+
+internal static class AutoExtinguishHelper
+{
+    public static void ExtinguishHeld()
+    {
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null || pm.m_ItemInHands == null) return;
+            var lamp = pm.m_ItemInHands.GetComponent<KeroseneLampItem>();
+            if (lamp != null && lamp.IsOn()) { lamp.TurnOff(true); return; }
+            var torch = pm.m_ItemInHands.GetComponent<TorchItem>();
+            if (torch != null && torch.IsBurning()) { torch.Extinguish((TorchState)4); return; }
+            var flash = pm.m_ItemInHands.GetComponent<FlashlightItem>();
+            if (flash != null && flash.IsOn()) flash.TurnOff();
+        }
+        catch { }
+    }
+}
+
+// —— 防止左键误灭火把 ——
+internal static class Patch_TorchExtinguish_Block
+{
+    internal static bool Prefix() => !CheatState.DisableTorchLeftClick;
+}
+
+// —— 防止左键误灭油灯 ——
+internal static class Patch_LampToggle_Block
+{
+    internal static bool Prefix(KeroseneLampItem __instance)
+    {
+        if (CheatState.DisableLampLeftClick && __instance.IsOn()) return false;
+        return true;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   整合 CaffeinatedSodas:苏打水加 FatigueBuff
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_GearItem_Awake_CaffeinatedSodas
+{
+    private static float DurationHours(int choice) => choice switch
+    {
+        0 => 0.085f,
+        1 => 0.167f,
+        2 => 0.25f,
+        3 => 0.5f,
+        _ => 0.167f,
+    };
+
+    internal static void Postfix(GearItem __instance)
+    {
+        try
+        {
+            if (!CheatState.World_CaffeinatedSodas) return;
+            var s = ModMain.Settings;
+            if (s == null) return;
+
+            string objName = ((UnityEngine.Object)__instance).name;
+
+            if (objName.Contains("GEAR_SodaOrange") && s.World_SodaOrangeEnabled)
+            {
+                var buff = ((Component)__instance).gameObject.AddComponent<FatigueBuff>();
+                __instance.m_FatigueBuff = buff;
+                buff.m_InitialPercentDecrease = s.World_SodaOrangeInitial;
+                buff.m_RateOfIncreaseScale = 1f;
+                buff.m_DurationHours = DurationHours(s.World_SodaOrangeDuration);
+            }
+            else if (objName.Contains("GEAR_SodaGrape") && s.World_SodaGrapeEnabled)
+            {
+                var buff = ((Component)__instance).gameObject.AddComponent<FatigueBuff>();
+                __instance.m_FatigueBuff = buff;
+                buff.m_InitialPercentDecrease = s.World_SodaGrapeInitial;
+                buff.m_RateOfIncreaseScale = 1f;
+                buff.m_DurationHours = DurationHours(s.World_SodaGrapeDuration);
+            }
+            else if (objName.Contains("GEAR_Soda") && !objName.Contains("GEAR_SodaOrange")
+                     && !objName.Contains("GEAR_SodaGrape") && s.World_SodaSummitEnabled)
+            {
+                var buff = ((Component)__instance).gameObject.AddComponent<FatigueBuff>();
+                __instance.m_FatigueBuff = buff;
+                buff.m_InitialPercentDecrease = s.World_SodaSummitInitial;
+                buff.m_RateOfIncreaseScale = 1f;
+                buff.m_DurationHours = DurationHours(s.World_SodaSummitDuration);
+            }
+        }
+        catch (Exception ex)
+        {
+            MelonLoader.MelonLogger.Warning($"[TldHacks] CaffeinatedSodas patch error: {ex.Message}");
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   v2.8.1 容器无限容量 — 照抄 UniversalTweaks 方案
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_Container_Awake_InfiniteCapacity
+{
+    internal static void Postfix(Container __instance)
+    {
+        if (!CheatState.InfiniteContainer) return;
+        try { __instance.m_Capacity = Il2CppTLD.IntBackedUnit.ItemWeight.FromKilograms(10000f); } catch { }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   v2.8.1 坠落伤害 — patch FallDamage 入口方法彻底屏蔽
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_FallDamage_MaybeApply
+{
+    internal static bool Prefix() => !CheatState.NoFallDamage && !TeleportFallGuard.Active;
+}
+
+internal static class Patch_FallDamage_ApplyAll
+{
+    // v3.0.4r3 修: 用户报衣物撕裂仍发生
+    // 根因: IL2CPP 下 Prefix return false 不可靠,vanilla 仍跑 ApplyClothingDamage(fallHeight) → HP 减损 → 撕裂
+    // 修复: ref 改 fallHeight=0,让 vanilla 自己算出 damage(0)=0,完全不依赖 return false
+    internal static void Prefix(ref float fallHeight)
+    {
+        if (CheatState.NoFallDamage || TeleportFallGuard.Active)
+        {
+            fallHeight = 0f;            // 关键: vanilla 算 damage = f(height) → 0
+            FallClothingGuard.Arm();    // 双保险: GearDegrade 也 hp=0
+        }
+    }
+    internal static void Postfix()
+    {
+        FallClothingGuard.Clear();
+    }
+}
+
+// v3.0.4r3: 主入口 ApplyFallDamage(height, damageOverride) 也清零,
+// 防止内部 ApplyTravoisDamage / ApplyInsulatedFlaskDamage 等子方法用到非零 height
+[HarmonyPatch(typeof(FallDamage), "ApplyFallDamage", new System.Type[] { typeof(float), typeof(float) })]
+internal static class Patch_FallDamage_ApplyFallDamage_ZeroHeight
+{
+    static void Prefix(ref float height, ref float damageOverride)
+    {
+        if (CheatState.NoFallDamage || TeleportFallGuard.Active)
+        {
+            height = 0f;
+            damageOverride = 0f;
+        }
+    }
+}
+
+internal static class FallClothingGuard
+{
+    public static bool Active;
+    public static void Arm() => Active = true;
+    public static void Clear() => Active = false;
+}
+
+internal static class TeleportFallGuard
+{
+    public static bool Active;
+    private static int _frames;
+    public static void Arm() { Active = true; _frames = 180; }
+    public static void Tick() { if (Active && --_frames <= 0) Active = false; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//   v2.8.1 免费制作扩展 — NumSetsOfMaterialsAvailable 返回 ≥1
+// ═══════════════════════════════════════════════════════════════════
+
+internal static class Patch_Blueprint_NumSets
+{
+    internal static void Postfix(ref int __result)
+    {
+        if (CheatState.FreeCraft && __result < 1) __result = 1;
     }
 }
 

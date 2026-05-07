@@ -67,12 +67,10 @@ internal static class MapClickTeleport
 
     private static Vector3 FindGroundPosition(Vector3 pos)
     {
-        // 从目标点上方 200m 向下 raycast 找地面
         Vector3 origin = new Vector3(pos.x, pos.y + 200f, pos.z);
         if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 500f))
-            return hit.point + Vector3.up * 2f;
-        // raycast 失败:MapDetail.transform.position 本身就是地面位置,只加 2m
-        return new Vector3(pos.x, pos.y + 2f, pos.z);
+            return hit.point + Vector3.up * 0.5f;
+        return new Vector3(pos.x, pos.y + 0.5f, pos.z);
     }
 
     /// <summary>

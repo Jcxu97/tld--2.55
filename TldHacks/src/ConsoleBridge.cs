@@ -17,6 +17,7 @@ internal static class ConsoleBridge
         {
             if (_didInitialTurnOn) return;
             if (!uConsole.IsOn()) uConsole.TurnOn();
+            uConsole.m_On = false;
             _didInitialTurnOn = true;
         }
         catch { }
@@ -28,7 +29,12 @@ internal static class ConsoleBridge
         try
         {
             EnsureOn();
-            uConsole.RunCommandSilent(cmd);
+            // v3.0.4r2 fix: RunCommandSilent 内部判 m_On,要求执行期间为 true。
+            //   旧版 EnsureOn() 把 m_On 立即设回 false → 命令被静默忽略(用户报商人刷新无效)
+            bool wasOn = uConsole.m_On;
+            uConsole.m_On = true;
+            try { uConsole.RunCommandSilent(cmd); }
+            finally { if (!wasOn) { try { uConsole.m_On = false; } catch { } } }
             ModMain.Log?.Msg($"[Console] {cmd}");
             CheatState.LastActionLog = $"[Console] {cmd}";
             return true;

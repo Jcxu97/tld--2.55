@@ -38,6 +38,7 @@ internal static class CheatState
     // Crafting
     public static bool FreeCraft;
     public static bool QuickCraft;
+    public static bool FreeRepair;
     // Weapons
     public static bool InfiniteAmmo;
     public static bool NoJam;
@@ -61,6 +62,7 @@ internal static class CheatState
     public static bool QuickBreakDown;     // 秒打碎
     public static bool UnlockSafes;        // 解锁保险箱/门/柜子
     public static bool LampFuelNoDrain;    // 防风油灯油不减
+    public static bool LampMute;           // v3.0.4 油灯静音(放置时)
     public static bool FlaskNoHeatLoss;    // 保温杯永不失温
     public static bool FlaskInfiniteVol;   // 保温杯存放无限
     public static bool FlaskAnyItem;       // 保温瓶装任意
@@ -78,9 +80,10 @@ internal static class CheatState
     // v2.7.86 新增功能
     public static bool FireAnywhere;       // 随意生火(含室内)
     public static bool FreeFireFuel;       // 生火材料不减
-    public static bool TechBackpack;       // 科技背包
+    public static bool TechBackpack;       // 自定义背包负重(覆盖原版 30kg 上限)
+    public static float TechBackpackKg = 30f;
     public static bool TorchFullValue;     // 火把满值
-    public static bool FreeSprint;         // 无条件冲刺
+    // FreeSprint 已由 InfiniteStamina 覆盖,字段保留仅为 JSON 兼容
     public static bool InfiniteStamina;    // 无限体力
     // v2.7.55 商人 + 美洲狮
     public static bool TraderUnlimitedList;   // 交易清单上限 → 64
@@ -91,6 +94,21 @@ internal static class CheatState
     public static bool MapClickTP = true; // 双击地图图标传送
     // v2.7.58 与 ItemPicker mod 交互 —— 不让 W 键自动拾取捡回玩家自己丢的物品
     public static bool BlockAutoPickupOwnDrops;
+    // v2.7.95 整合 mod
+    public static bool SilentFootsteps;
+    public static bool RunWithLantern;
+    public static bool NoAutoEquipCharcoal;
+    public static bool AutoExtinguishOnRest;
+    public static bool DisableTorchLeftClick;
+    public static bool DisableLampLeftClick;
+    // v2.7.96 整合 Batch 2
+    public static bool PauseInJournal;
+    public static bool SkipIntro;
+    public static bool MuteCougarMenuSound;
+    public static bool VehicleKeepFov;
+    public static bool DroppableUndroppables;
+    public static bool RememberBreakdownTool;
+    public static bool VehicleFreeLook;
     // Display
     public static string PositionText = "";
     // v2.7.29:LastActionLog 截断到 200 字符避免 UI 溢出
@@ -106,8 +124,64 @@ internal static class CheatState
     // ⚠ CFly 保留:`fly` 命令在用户的游戏里实际 work(F1 切换)—— 删除会误伤
     public static bool CFly;
 
-    // Fast fire(tick 类,持久化)
-    public static bool FastFire;
+
+
+    // ═══════════════════════════════════════════════════════════════
+    // v2.8.0 批量整合 — Tab 7: QoL
+    // ═══════════════════════════════════════════════════════════════
+    public static bool QoL_Enabled;
+    public static bool QoL_NoSaveOnSprain;
+    public static bool QoL_NoSaveOnSprainFalls;
+    public static bool QoL_WakeUpCall;
+    public static bool QoL_AuroraSense = true;
+    public static bool QoL_ShowTimeSleep;
+    public static bool QoL_NoPitchBlack;
+    public static bool QoL_MapTextOutline;
+    public static bool QoL_BuryCorpses;
+    public static bool QoL_SleepAnywhere;
+    public static bool QoL_AutoSurvey;
+
+
+    // ═══════════════════════════════════════════════════════════════
+    // v2.8.0 批量整合 — Tab 8: Crafting & Fire
+    // ═══════════════════════════════════════════════════════════════
+    public static bool Craft_Anywhere;
+    public static bool Craft_MoreCookingSlots;
+
+    // ═══════════════════════════════════════════════════════════════
+    // v2.8.0 批量整合 — Tab 9: World & Items
+    // ═══════════════════════════════════════════════════════════════
+    public static bool World_Sprainkle;
+    public static int World_SprainklePreset;
+    public static float World_SprainkleSlopeMin;
+    public static float World_SprainkleSlopeIncrease;
+    public static float World_SprainkleBaseChanceMoving;
+    public static float World_SprainkleEncumberChance;
+    public static float World_SprainkleExhaustionChance;
+    public static float World_SprainkleSprintChance;
+    public static float World_SprainkleCrouchChance;
+    public static float World_SprainkleMinSecondsRisk;
+    public static float World_SprainkleWristMovementChance;
+    public static float World_SprainkleSprintUIOn;
+    public static float World_SprainkleSprintUIOff;
+    public static bool World_SprainkleAnkleEnabled;
+    public static float World_SprainkleAnkleDurMin;
+    public static float World_SprainkleAnkleDurMax;
+    public static float World_SprainkleAnkleRestHours;
+    public static float World_SprainkleAnkleFallChance;
+    public static bool World_SprainkleWristEnabled;
+    public static float World_SprainkleWristDurMin;
+    public static float World_SprainkleWristDurMax;
+    public static float World_SprainkleWristRestHours;
+    public static float World_SprainkleWristFallChance;
+    public static bool World_BowRepair;
+    public static bool World_BowRepairDLC;
+    public static bool World_CaffeinatedSodas;
+    public static bool World_SodaOrangeEnabled;
+    public static bool World_SodaSummitEnabled;
+    public static bool World_SodaGrapeEnabled;
+    public static bool World_CarcassMoving;
+    public static bool World_ElectricTorch;
 }
 
 // 工具函数:刷物品/清 affliction/天气/时间/耐久恢复
@@ -142,6 +216,7 @@ internal static class Cheats
             s.NoWetClothes = false;
             s.FreeCraft = false;
             s.QuickCraft = false;
+            s.FreeRepair = false;
             s.InfiniteAmmo = false;
             s.NoJam = false;
             s.NoRecoil = false;
@@ -218,6 +293,7 @@ internal static class Cheats
         CheatState.NoWetClothes = s.NoWetClothes;
         CheatState.FreeCraft = s.FreeCraft;
         CheatState.QuickCraft = s.QuickCraft;
+        CheatState.FreeRepair = s.FreeRepair;
         CheatState.InfiniteAmmo = s.InfiniteAmmo;
         CheatState.NoJam = s.NoJam;
         CheatState.NoRecoil = s.NoRecoil;
@@ -254,7 +330,6 @@ internal static class Cheats
         CheatState.FreeFireFuel = s.FreeFireFuel;
         CheatState.TechBackpack = s.TechBackpack;
         CheatState.TorchFullValue = s.TorchFullValue;
-        CheatState.FreeSprint = s.FreeSprint;
         CheatState.InfiniteStamina = s.InfiniteStamina;
         CheatState.TraderUnlimitedList = s.TraderUnlimitedList;
         CheatState.TraderMaxTrust = s.TraderMaxTrust;
@@ -275,23 +350,25 @@ internal static class Cheats
             var pm = GameManager.GetPlayerManagerComponent();
             if (pm == null) { ModMain.Log?.Warning("[Spawn] PlayerManager not ready"); return; }
 
-            // 1) 先 LoadGearItemPrefab —— TLD 自己用这个方法加载 prefab,稳定
             GearItem prefab = null;
             try { prefab = GearItem.LoadGearItemPrefab(prefabName); } catch { }
 
             if (prefab == null)
             {
-                // 2) fallback:AddItemCONSOLE(和以前一样,某些物品可能成功)
-                try
+                // fallback: loop AddItemCONSOLE one at a time
+                int added = 0;
+                for (int i = 0; i < quantity; i++)
                 {
-                    var r = pm.AddItemCONSOLE(prefabName, quantity, 100f);
-                    if (r != null)
-                    {
-                        ModMain.Log?.Msg($"[Spawn] CONSOLE fallback +{quantity} {prefabName}");
-                        return;
-                    }
+                    try { if (pm.AddItemCONSOLE(prefabName, 1, 100f) != null) added++; } catch { }
                 }
-                catch { }
+                if (added > 0)
+                {
+                    ModMain.Log?.Msg($"[Spawn] CONSOLE fallback +{added} {prefabName}");
+                    CheatState.LastActionLog = I18n.IsEnglish
+                        ? $"Spawned ×{added} {prefabName}"
+                        : $"已刷 ×{added} {prefabName}";
+                    return;
+                }
                 ModMain.Log?.Error($"[Spawn] prefab not found: {prefabName}");
                 CheatState.LastActionLog = I18n.IsEnglish
                     ? $"Spawn failed: {prefabName} (prefab not found)"
@@ -299,20 +376,30 @@ internal static class Cheats
                 return;
             }
 
-            // 3) 用 InstantiateItemInPlayerInventory —— flags=0 即 InventoryInstantiateFlags.None
-            try
+            // loop one at a time — some items silently fail with quantity>1
+            int spawned = 0;
+            for (int i = 0; i < quantity; i++)
             {
-                pm.InstantiateItemInPlayerInventory(prefab, quantity, 100f, PlayerManager.InventoryInstantiateFlags.None);
-                ModMain.Log?.Msg($"[Spawn] +{quantity} {prefabName}");
-                CheatState.LastActionLog = I18n.IsEnglish
-                    ? $"Spawned ×{quantity} {prefabName}"
-                    : $"已刷 ×{quantity} {prefabName}";
+                try
+                {
+                    pm.InstantiateItemInPlayerInventory(prefab, 1, 100f, PlayerManager.InventoryInstantiateFlags.None);
+                    spawned++;
+                }
+                catch { }
             }
-            catch (Exception ex)
+            if (spawned > 0)
             {
-                ModMain.Log?.Error($"[Spawn.Instantiate] {ex.Message}");
-                // 最后 fallback 再试 CONSOLE
-                try { pm.AddItemCONSOLE(prefabName, quantity, 100f); } catch { }
+                ModMain.Log?.Msg($"[Spawn] +{spawned} {prefabName}");
+                CheatState.LastActionLog = I18n.IsEnglish
+                    ? $"Spawned ×{spawned} {prefabName}"
+                    : $"已刷 ×{spawned} {prefabName}";
+            }
+            else
+            {
+                ModMain.Log?.Error($"[Spawn] InstantiateItem failed for {prefabName}");
+                // last resort CONSOLE fallback
+                for (int i = 0; i < quantity; i++)
+                    try { pm.AddItemCONSOLE(prefabName, 1, 100f); } catch { }
             }
         }
         catch (Exception ex) { ModMain.Log?.Error($"[Spawn] {ex.Message}"); }
@@ -636,37 +723,30 @@ internal static class Cheats
         catch (Exception ex) { ModMain.Log?.Warning($"[Cheats.Kill] {ex.Message}"); }
     }
 
-    // 全地图揭示 —— 反射调 RegionManager 的各种 "RevealAll" 方法
     public static void RevealFullMap()
+    {
+        ConsoleBridge.Run("map_reveal");
+        CheatState.LastActionLog = I18n.IsEnglish ? "Map revealed" : "地图已全开";
+    }
+
+    public static void ClearWellFedBuff()
     {
         try
         {
-            object rm = null;
-            try
-            {
-                var instField = typeof(GameManager).GetField("Instance", BindingFlags.Static | BindingFlags.Public);
-                var inst = instField?.GetValue(null);
-                if (inst != null)
-                {
-                    var m = inst.GetType().GetMethod("GetRegionManagerComponent", BindingFlags.Instance | BindingFlags.Public);
-                    rm = m?.Invoke(inst, null);
-                }
-            }
-            catch { }
-            if (rm == null) { ModMain.Log?.Warning("[Map] no RegionManager"); return; }
-
-            foreach (var name in new[] { "RevealAllRegions", "SetAllRegionsExplored", "UnlockAllRegions", "DiscoverAllRegions" })
-            {
-                try
-                {
-                    var m = rm.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.Public);
-                    if (m != null) { m.Invoke(rm, null); ModMain.Log?.Msg($"[Map] called {name}"); return; }
-                }
-                catch { }
-            }
-            ModMain.Log?.Warning("[Map] no reveal method found on RegionManager");
+            var wf = GameManager.GetWellFedComponent();
+            if (wf != null) wf.m_Active = false;
         }
-        catch (Exception ex) { ModMain.Log?.Error($"[Map] {ex.Message}"); }
+        catch { }
+    }
+
+    public static void ClearFatigueBuff()
+    {
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm != null) pm.m_FatigueBuffHoursRemaining = 0f;
+        }
+        catch { }
     }
 
     // 玩家位置,每 10 帧更新。PositionText 给 Menu 显示用
@@ -730,13 +810,13 @@ internal static class Patch_Hypothermia_Start
 [HarmonyPatch(typeof(SprainedWrist), "SprainedWristStart")]
 internal static class Patch_SprainedWrist_Start
 {
-    private static bool Prefix() => !(CheatState.GodMode || CheatState.NoSprainRisk);
+    private static bool Prefix() => !(CheatState.GodMode || CheatState.NoSprainRisk || CheatState.NoFallDamage);
 }
 
 [HarmonyPatch(typeof(SprainedAnkle), "SprainedAnkleStart")]
 internal static class Patch_SprainedAnkle_Start
 {
-    private static bool Prefix() => !(CheatState.GodMode || CheatState.NoSprainRisk);
+    private static bool Prefix() => !(CheatState.GodMode || CheatState.NoSprainRisk || CheatState.NoFallDamage);
 }
 
 [HarmonyPatch(typeof(BloodLoss), "BloodLossStart")]
@@ -763,10 +843,7 @@ internal static class Patch_Infection_Start
 
 // v2.7.75 DynamicPatch: 去 [HarmonyPatch] attribute —— GearItem.Degrade 等每帧多次调用,
 // 即便 Prefix 第一行 return true,Harmony wrapper 本身就是每帧数百次 bridge 的开销
-internal static class Patch_GearItem_Degrade
-{
-    internal static bool Prefix() => !CheatState.InfiniteDurability;
-}
+// Patch_GearItem_Degrade 已合并到 Patch_GearDegrade (CheatsPatches.cs) —— 避免同一方法两个 spec 冲突
 
 internal static class Patch_GearItem_WearOut
 {
