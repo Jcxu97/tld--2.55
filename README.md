@@ -145,3 +145,340 @@ cp    tld-自用改造2.55/ModSettingsQuickNav/ModSettingsQuickNav.dll <TLD>/Mod
 
 - `BunkerDefaults/` / `FoodStackable/` / `TldHacks/` 下面我写的一切:MIT(见 `LICENSE`)
 - `configs/` 下面的是我的设置快照 —— 各 mod 配置格式归原作者,这些只是"我填了什么值"。你随便拿去改。
+
+
+---
+
+# 推荐配套 MOD 合集
+
+
+> 配套 TldHacks 使用的精选基础 mod 包。**不含**剧情区域/衣物食物内容包/风格皮肤,只保留**框架 + 核心玩法补强**。
+> 内容包 (modcomponent) 类按需自加,不在本合集范围。
+
+---
+
+## 1. 必装框架 (8 项)
+
+无这些 TldHacks 不工作或外部 mod 加载失败。
+
+| dll | 作用 |
+|---|---|
+| MelonLoader | mod 框架 (外部安装,装游戏前先装) |
+| ModSettings.dll | mod 配置面板入口,TldHacks 详细参数全靠它 |
+| ModData.dll | TldHacks 序列化用 |
+| ModComponent.dll | 加载 .modcomponent 扩展物品包 |
+| ComplexLogger.dll | 多个 mod 共享日志库 |
+| AudioManager.dll | 音频替换 API,多 mod 依赖 |
+| AfflictionComponent.dll | 疾病/状态扩展 API |
+| ExamineActionsAPI.dll | 物品 Examine 交互扩展 API |
+| DeveloperConsole.dll | TldHacks ConsoleBridge 必需 (商人刷新等命令依赖) |
+
+## 2. 核心本体
+
+| dll | 作用 |
+|---|---|
+| **TldHacks.dll** | 本合集主体,整合 30+ 独立 mod 功能 |
+| disable_integrated_mods.bat | 禁用脚本,把已被 TldHacks 整合的独立 mod 改名 .disabled |
+
+## 3. 安全屋 + 搬运 (用户钦点)
+
+| dll | 作用 |
+|---|---|
+| **SafehouseCustomizationPlus.dll** | 自定义安全屋,可改室内布局/物品摆放 |
+| **Architect.dll + Architect.modcomponent** | **按 Y 搬炉子/家具**,自由建造 |
+
+## 4. 地图 / 导航 (3 项)
+
+| dll | 作用 |
+|---|---|
+| MapManager.dll | 玩家箭头/居中/调查范围/无宝丽来/全开/地堡热键 (TldHacks 不再整合) |
+| MotionTrackerLite.dll | 运动追踪雷达,提示附近野兽 |
+| ModSettingsQuickNav.dll | ModSettings 配置面板快速导航 |
+
+## 5. 物品管理 (4 项)
+
+| dll | 作用 |
+|---|---|
+| GearInfo.dll | 物品详情面板 (重量/HP/分类) |
+| GearToolbox.dll | 装备工具箱,批量整理 |
+| ItemPicker.dll | 拾取增强 + 自动堆叠提示 |
+| InventoryReassignments.dll | 背包/快捷栏重排 |
+
+## 6. 通用补强 (3 项)
+
+| dll | 作用 |
+|---|---|
+| SaveManager.dll | 多存档/手动存档 |
+| PlacingAnywhere.dll | 物品任意位置放置 (室外/路面) |
+| BlueprintCleaner.dll | 配方清单清理 (TldHacks 已 unpatch 它的破损 Postfix) |
+
+## 7. 兼容性修复 (2 项,可选)
+
+| dll | 作用 |
+|---|---|
+| BricklayersDoorFix.dll | 修复部分 mod 引入的门交互 bug |
+| RavineBridgeFix.dll | 修复某些桥梁碰撞 bug |
+
+---
+
+## 总计
+
+- **必装**: 8 (框架) + 1 (TldHacks) = **9 个 dll**
+- **强烈推荐**: 1 (安全屋) + 1 (Architect) + 3 (地图) + 4 (物品) + 3 (补强) = **12 个 dll** + 1 modcomponent
+- **可选**: 2 (兼容性修复)
+- **总共**: 23 个 dll + 1 modcomponent + 1 bat
+
+体积小,启动快,稳定。
+
+---
+
+## 玩家自加 (本合集不内置)
+
+按个人喜好可加,**与本合集兼容**:
+- 难度调整: MiseryModePlus / Minor_Miseries / SeasonedInterloping / InterloperHudPro / StalkerAidsAndSupplements
+- 内容扩展 (.modcomponent): FoodPackByTKG / ClothingExpanded / FirePack / CampingTools / IndoorsGreenery / ZC8787 系列等
+- 风格皮肤: RetroFood / RetroTextures
+- 区域 mod: LitharsRidge
+- 杂项: AlcoholMod / WildFire / RestandReadMod / PineNeedleTea / EdiblePlants / Bountiful_Foraging / FortifiedLookouts / PrepperCache
+
+---
+
+## 不推荐(已被 TldHacks 整合,装了会冲突)
+
+`disable_integrated_mods.bat` 会自动禁用以下 33 项:
+SonicMode / Jump / GunZoom / VehicleFov / FastTravel / StretchArmstrong / TorchTweaker / KeroseneLampTweaks /
+AutoToggleLights / GearDecayModifier / BowRepair / DisableAutoEquipCharcoal / RememberBreakDownItem /
+DroppableUndroppables / CraftAnywhereRedux / MoreCookingSlots / TimeScaleHotkey / FullSwing / SilentWalker /
+QoL / AutoSurvey / TinyTweaks-(MapTextOuline/NoSaveOnSprain/WakeUpCall/BuryHumanCorpses) /
+SleepWithoutABed / SkipIntroRedux / PlaceFromInventory / CaffeinatedSodas / Sprainkle / RnStripped /
+ExtraGraphicsSettings / UniversalTweaks / StackManager
++ 已知冲突 (GfxBoost/LightCull/DarkerNights)
+
+---
+
+## 安装步骤
+
+1. 装 MelonLoader (TLD 2.55+)
+2. 把本合集所有文件复制到 `<TLD>/Mods/`
+3. 双击 `disable_integrated_mods.bat` (一次性,把整合冗余 mod 改名 .disabled;若已不在你的 Mods 目录会显示"未找到")
+4. 启动游戏,Tab 键打开 TldHacks 菜单
+
+
+---
+
+# 整合包改动记录
+
+
+基准:`【2026-4-21】V2.54MOD整合包 / 【V2.54整合包】/【第二步】/Mods`
+当前:`D:\Steam\steamapps\common\TheLongDark\Mods`(TLD 2.55)
+
+## 从整合包删除的 mod(6 个)
+
+| DLL | 备注 |
+|---|---|
+| `DarkerNights.dll` | ⚠️ **必须删** —— 最后更新 2023-01-24,对应 TLD 2.06;在 2.55 启动时死循环卡住 mod 初始化。详见 `README.md` 已知问题段 |
+| `CatchColdMod.dll` | 未装 |
+| `OxygenLevels.dll` | 未装 |
+| `PhotoOfALovedOne.dll` | 未装 |
+| `ReducedLoot.dll` | 未装 |
+| `TheLongMood.dll` | 未装 |
+
+## 额外装的 mod(7 个)
+
+| DLL | 来源 / 用途 |
+|---|---|
+| `BunkerDefaults.dll` | **本仓库原创** —— 给每个存档预填 9 个地堡 FastTravel 传送点 |
+| `FoodStackable.dll` | **本仓库原创**(v0.4.9,已并入 TldHacks v2.7.0)—— 背包里同类食物视觉堆叠成一格 ×N,不改底层物品 |
+| `TldHacks.dll` | **本仓库原创**(v2.7.74)—— 综合修改器。替代 FoodStackable(含其全部功能)+ 移植 Cheat Engine 表 ~90 个 cheat:无敌/免疫/无限体力/瞄准稳定/无后坐力/快速制作/生火 100%/爬绳 ×5/15 region 传送/**911 条物品刷出(358 vanilla + 553 自动扫出的 mod 物品,带 `[ModName]` 标签)**/技能满级/解锁壮举·蓝图·地图/冻结寒冷值(开启抓当前,关闭自然变化)等 |
+| `ModSettingsQuickNav.dll` | **本仓库原创**(v1.0.0)—— ModSettings 面板快速跳转:按 `` ` `` 打开 IMGUI 浮层,A-Z 字母跳段 + 滚动列表点一下直接切到对应 mod 设置。Harmony patch `ModSettingsGUI.OnEnable/OnDisable`(internal 类走 `AccessTools.TypeByName` 反射) |
+| `AudioCore.dll` | 某个 mod 的依赖 |
+| `ImprovedTrader.dll` | 优化商人交互 |
+| `RecipeRequirements.dll` | 食谱需求调整 |
+
+## 额外的 modcomponent
+
+- `Rare-ExclusiveLoot.modcomponent`
+- `ZC8787JerkyChipsblueprints.modcomponent`
+
+## 主要配置改动
+
+### `Mods/FastTravel.json`
+- `OnlyBetweenDestinations`: `true` → **`false`**
+  - 原设定要求当前位置也是已保存传送点才让你传
+  - 改后可以从**任意位置**传到 9 个地堡
+- `LogDebugInfo`: 保持 `false`(debug 太吵)
+
+### `Mods/StackManager/config.json`
+加了以下物品到 `STACK_MERGE` + `AddStackableComponent`:
+- `GEAR_Soda` — 苏打水
+- `GEAR_SodaEnergy` — 能量饮料
+- `GEAR_BeefJerky` — 牛肉干
+- `GEAR_CannedBeans` — 罐装豆子
+- `GEAR_SprayPaintCan` — 喷漆罐
+
+⚠️ 只对**新生成**的物品生效;已经在存档里的老物品还是不能叠。
+
+### `Mods/ItemPickerCustomList.txt`
+自动拾取列表从 ~130 行扩到 **627 行**(2026-04-27 三批累积:68 件衣服 + 25 件杂项 + 全量批扫 catalog.json 补齐 246 条),新增类别:
+- **弹药/武器耗材**:`Bullet`、`GunpowderCan`、`ScrapLead`、`ArrowHead`、`Accelerant`、`RifleCleaningKit`、`SharpeningStone` 等
+- **建材/工具**:`Prybar`、`SimpleTools`、`SewingKit`、`BeeHive`、`Flint`、`WireBundle`、`CarBattery`、`Battery9V`、`Fuse`、`ScrapPlastic`、`ElectronicParts`、`GlassShards`、`NutsNBolts`、`NutsNBoltsBox`、`TarpSheet`、`Charcoal`、`SprayPaintCan`、`FlareA`、`BlueFlare`、`TapeRoll`、`BottleHydrogenPeroxide` 等
+- **食物/饮料**:`CuredMeat*`(熊/鸟/驼鹿/虎鲸/雷鸟/兔/鹿/狼)、`SaltedMeat*`(同)、`CuredFish*` / `SaltedFish*`(9 种鱼)、`BirdMeatRaw/Cooked`、`BirdEggRaw/Boiled`、`OrcaMeatRaw/Cooked`、`CannedChili/Stew/Spaghetti/Pears/Mangos/Pineapples/Beans`、`Cooked*`(饼/炖菜/煎蛋/披萨/三明治)、`BabyFood*`、`Tea*`、`CoffeeCupSugar` 等
+- **耗材**:`PineNeedle` 系列、`PineNeedleDried`、`FilmBoxColour/BW/Sepia`、`MapleSyrup`、`GranolaBar`、`CondensedMilk`、`BariumCarbonate`、`LampFuel`、`PackMatches`、`WoolSocks`、`BasicBoots`、`FleeceSweater` 等
+- **原版遗漏的罐装**:`Soda`、`SodaEnergy`、`KetchupChips`、`AuroraEnergyDrink`、`CheeseDoodles`、`SwedishMeatballs`、`icecreamCup` 等
+- **衣服(2026-04-27 新增 68 件)**:外套/Parka(14)、马甲(3)、毛衣/卫衣(6)、衬衫(4)、裤子(8)、靴子/鞋(11)、袜子(2)、手套(9)、帽子(7)、围巾/头套(4)。包含 `BearSkinCoat` / `WolfSkinCape` / `Improvised*` 等自制装备变体。prefab 名全量来源:`tld_Data/StreamingAssets/aa/catalog.json`(848 条)。
+- **杂项补漏(2026-04-27 累计)**:`SodaGrape`、`DogFood`、`Hacksaw`、`CanOpener`、`RecycledCan`、`HeavyBandage`、`MagnifyingLens`、`CandyBar`、`MashedPotatoes`、`EmergencyStim`、`HighQualityTools`、`HatchetImprovised`、`Hammer`、`Rope`、`RevolverAmmoBox`、`MixedNuts`、`PinnacleCanPeaches`、`InsulatedFlask_C`、`Hatchet`、`Jeans`、`Toque`、`LongUnderwear`、`Flour`、`CookingPot`、`Skillet`。
+
+**全量批扫(2026-04-27 最后一次)**:从 `tld_Data/StreamingAssets/aa/catalog.json` 抽 848 个 GEAR_ prefab,去掉 `_Mat/_Dif` 材质后,差集补齐 246 条。明确排除(122 条)**会破坏游戏的剧情物**:
+- 剧情钥匙(~20:`BIKey1/2`、`LakeCabinKey_*`、`BankManagerHouseKey`、`DepositBoxKey` 等)— 自动捡可能阻断剧情
+- 剧情笔记(~70:`BackerNote*`、`VisorNote*`、`Blackrock*Note`、`DeadmanNote1-5` 等)— 挤背包
+- 明信片(21:`PostCard_*`)— 收集品
+- 尸体(3:`*Carcass`)— 要屠宰不是捡(`*Quarter` 肉块保留)
+- 水壶系统(4:`WaterSupply*`、`WaterBottle*`)— 水不走物品拾取
+- 占位/生物/剧情物(4:`NULL`、`Stalker`、`ElevatorCrank`、大背包 `BackPack_A*`)
+
+完整表在 `configs/Mods/ItemPickerCustomList.txt`
+
+### 其他自动生成的 mod 配置
+- `Mods/AmbientLights.json` — 环境光默认值(mod 自动写的)
+- `Mods/UniversalTweaks.json` — UniversalTweaks 调参(mod 自动写的)
+- `Mods/MapManager.json` — 地图管理默认配置
+- `Mods/ImprovedTrader.json` / `SilentWalker.json` / `PrepperCache.json` — mod 默认配置
+
+### `Mods/ModData/*.moddata`(不在仓库里,每个存档各自的)
+BunkerDefaults 会在运行时预填 9 个 FastTravel 地堡传送点。不包进仓库因为 moddata 是你自己的存档数据。
+
+## 已知整合包级问题(不是我改出来的)
+
+- **切场景偶发闪退 → 重启游戏卡在 `CraftAnywhere is online` 日志行**:117-mod 整合包通病。社区解法:
+  - 切场景前按 `F5` 快存(SaveManager 提供)
+  - 启动卡死就反复重启游戏,不行就重启电脑
+  - 耐心等,有时 Unity 后台还在加载只是 MelonLoader 日志停了
+- **CampingTools v2.2.1 报 MissingMethodException**:ExamineActionsAPI v2.0.7 接口改了签名,CampingTools 没跟上。不致命(CampingTools 自己挂,其他 mod 照跑),但 CampingTools 功能用不了。
+
+
+---
+
+# 视频介绍稿
+
+
+---
+
+## 开场
+
+大家好，今天给大家介绍一下我们的 TldHacks 模组整合包。
+
+我们把 29 个独立模组整合进了一个 DLL 里面。
+所有功能都可以在游戏内的 IMGUI 菜单里面实时开关和调参。
+不需要退出游戏，不需要改配置文件。
+
+---
+
+## 速度与动作类
+
+**SonicMode** — 超级跑步模式。移动速度、攀爬速度、蹲伏速度全部可调。
+
+**FullSwing** — 近战全力挥击。伤害倍率和击退力度都可以拉满。
+
+**VehicleFov** — 调整车辆视角 FOV，开车/乘坐都能设。
+
+---
+
+## 画面与性能类
+
+**GfxBoost** — 一键优化画面性能。阴影距离、LOD、树木渲染距离，11 个参数全部可调。
+
+**ExtraGraphicsSettings** — 额外画面设置。分辨率缩放、各向异性过滤、纹理质量，12 个参数。
+
+---
+
+## 武器与瞄准
+
+**GunZoom** — 枪械瞄准倍率调节。
+
+**BowRepair** — 允许修弓。
+
+---
+
+## 睡眠与时间
+
+**WakeUpCall** — 日出唤醒提示、极光感知、睡眠显示时间、禁止全黑屏。四个独立开关。
+
+**SleepWithoutABed** — 随地睡觉。不需要床也能睡。13 个参数可调：疲劳恢复率、冻伤系数、低血量中断、冷却时间等等。
+
+**TimeScaleHotkey** — 时间加速热键。按一下加速，再按一下恢复。
+
+---
+
+## 灯光与火把
+
+**TorchTweaker** — 火把参数调节。亮度、燃烧时间、投掷距离全能改。
+
+**KeroseneLampTweaks** — 煤油灯优化。油耗、亮度、照射范围，6 个参数。
+
+**AutoToggleLights** — 进出室内自动开关灯。
+
+---
+
+## 物品与制作
+
+**CraftAnywhereRedux** — 任意地点制作。不用找工作台。
+
+**MoreCookingSlots** — 更多烹饪槽位。一次最多烤多少东西你来定。
+
+**CaffeinatedSodas** — 汽水含咖啡因，喝了提升疲劳恢复。9 个参数控制效果强度。
+
+**DroppableUndroppables** — 让不能丢弃的物品可以丢弃。
+
+**DisableAutoEquipCharcoal** — 测绘完不自动装备炭笔。
+
+**RememberBreakDownItem** — 记住上次拆解用的工具。
+
+---
+
+## 地图与测绘
+
+**AutoSurvey** — 自动测绘。走到哪画到哪，范围和延迟可调。全图解锁也行。
+
+**MapTextOutline** — 地图文字描边。0-3 级粗细可选。
+
+---
+
+## 隐身与声音
+
+**SilentWalker** — 脚步静音。走路、跑步、金属/木头/水/通用 5 个音量通道独立控制。
+
+---
+
+## 物品衰减
+
+**GearDecayModifier** — 装备衰减倍率修改器。37 个分类独立可调：食物、饮料、衣物、工具、武器，全覆盖。猎刀/手斧/钢锯屠宰衰减也能单独设。
+
+---
+
+## 扭伤与受伤
+
+**Sprainkle** — 扭伤系统全面修改。16 个参数：扭伤概率、负重阈值、恢复时间、绷带效果等。
+
+**NoSaveOnSprain** — 扭伤不触发自动存档。坠落扭伤也可以单独控制。
+
+---
+
+## 跳过与杂项
+
+**SkipIntroRedux** — 跳过开头动画和警告界面。
+
+**RnStripped** — 两个功能：尸体拖拽移动 + 手电筒永不耗电。
+
+**BuryHumanCorpses** — 埋葬人类尸体。按住右键出进度条，埋完消失。数据持久化。
+
+---
+
+## 总结
+
+29 个模组，一个 DLL。
+菜单里分四个标签页：作弊功能、角色属性、生活质量、快捷导航。
+所有参数实时可调，改完即生效。
+
+装好之后记得跑一下我们的一键禁用脚本，把原来的独立 DLL 禁掉，避免重复加载冲突。
+
+感谢观看，用得开心。
