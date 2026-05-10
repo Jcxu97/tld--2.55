@@ -561,5 +561,17 @@ internal static class ItemDatabaseMod
     new ItemEntry("GEAR_PillowDZ12", "垫子 [Cushion]", "工具", "", 0.1f),
     new ItemEntry("GEAR_PillowDZ13", "垫子 [Cushion]", "工具", "", 0.1f),
     new ItemEntry("GEAR_PillowDZ14", "垫子 [Cushion]", "工具", "", 0.1f),
+    // 原版
+    new ItemEntry("GEAR_InsulatedFlask_A", "保温瓶 A", "工具", "", 0.25f),
+    new ItemEntry("GEAR_InsulatedFlask_B", "保温瓶 B", "工具", "", 0.25f),
+    new ItemEntry("GEAR_InsulatedFlask_C", "保温瓶 C", "工具", "", 0.25f),
+    new ItemEntry("GEAR_InsulatedFlask_D", "保温瓶 D", "工具", "", 0.25f),
+    new ItemEntry("GEAR_InsulatedFlask_E", "保温瓶 E", "工具", "", 0.25f),
+    new ItemEntry("GEAR_InsulatedFlask_F", "保温瓶 F", "工具", "", 0.25f),
+    new ItemEntry("GEAR_InsulatedFlask_G", "保温瓶 G", "工具", "", 0.25f),
+    new ItemEntry("GEAR_TechnicalBackpack", "高科技背包", "衣物", "", 1.5f),
+    new ItemEntry("GEAR_BackPack_A", "背包", "衣物", "", 1f),
+    new ItemEntry("GEAR_BackPackForestTalker_A", "森林之语背包", "衣物", "", 1f),
+    new ItemEntry("GEAR_BackPackForestTalker_A01", "森林之语背包 01", "衣物", "", 1f),
     };
 }

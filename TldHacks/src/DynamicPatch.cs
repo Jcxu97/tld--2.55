@@ -4,6 +4,7 @@ using HarmonyLib;
 using Il2Cpp;
 using Il2CppTLD.Gear;
 using Il2CppTLD.Interactions;
+using Il2CppTLD.ModularElectrolizer;
 using Il2CppTLD.News;
 using UnityEngine;
 
@@ -31,7 +32,12 @@ internal static class DynamicPatch
     private static readonly Type[] TwoBool = { typeof(bool), typeof(bool) };
     private static readonly Type[] GameObjectFloat = { typeof(UnityEngine.GameObject), typeof(float) };
     private static readonly Type[] RTPCArgs = { typeof(uint), typeof(float), typeof(UnityEngine.GameObject) };
+    private static readonly Type[] FootStepArgs2 = { typeof(UnityEngine.Vector3), typeof(string) };
+    private static readonly Type[] FootStepArgs3 = { typeof(UnityEngine.Vector3), typeof(string), typeof(FootStepSounds.State) };
     private static readonly Type[] GearItemBool = { typeof(GearItem), typeof(bool) };
+    private static readonly Type[] HLRegisterLightArgs = { typeof(AuroraLightingSimple) };
+    private static readonly Type[] HLUpdateHUDArgs = { typeof(Panel_HUD) };
+    private static readonly Type[] HLTooDarkArgs = { typeof(ActionsToBlock) };
     private static readonly Type[] BodyHarvestEnableArgs = ResolvePanelBodyHarvestEnableArgs();
     private static Type[] ResolvePanelBodyHarvestEnableArgs()
     {
@@ -93,8 +99,9 @@ internal static class DynamicPatch
             "Prefix", null, () => CheatState.Stealth || CheatState.TrueInvisible),
 
         Spec(typeof(Fire), "Update", typeof(Patch_Fire_Update_NeverDie),
-            "Prefix", null, () => CheatState.FireNeverDie,
-            () => Patch_Fire_Update_NeverDie.Snapshots.Count == 0),
+            "Prefix", null, () => CheatState.FireNeverDie),
+        Spec(typeof(FireManager), "PlayerCalculateFireStartTime", typeof(Patch_FireManager_CalcStartTime_Uncap),
+            "Prefix", null, () => CheatState.FireMaxBurnHours > 12f),
         Spec(typeof(HeatSource), "Update", typeof(Patch_HeatSource_Update),
             "Prefix", null, () => CheatState.FireTemp300,
             () => Patch_HeatSource_Update.Snapshots.Count == 0),
@@ -102,7 +109,7 @@ internal static class DynamicPatch
         Spec(typeof(Il2CppTLD.AI.CougarManager), "Update", typeof(Patch_CougarManager_Update_ForceActivate),
             "Prefix", null, () => CheatState.CougarInstantActivate),
         Spec(typeof(Panel_BreakDown), "Update", typeof(Patch_BreakDown_Update_Edge),
-            null, "Postfix", () => CheatState.QuickAction || CheatState.QuickBreakDown),
+            null, "Postfix", () => CheatState.QuickBreakDown),
         Spec(typeof(CheatDeathAffliction), "Update", typeof(Patch_CheatDeathAfflict_Update),
             "Prefix", null, () => CheatState.ClearDeathPenalty),
 
@@ -142,11 +149,15 @@ internal static class DynamicPatch
             "Prefix", null, () => CheatState.FlaskInfiniteVol),
         Spec(typeof(Il2CppTLD.Gear.InsulatedFlask), "IsItemCompatibleWithFlask", typeof(Patch_Flask_IsCompatible),
             null, "Postfix", () => CheatState.FlaskAnyItem, null, OneGearItem),
+        Spec(typeof(Panel_InsulatedFlask), "IsCompatibleDrink", typeof(Patch_Flask_IsCompatible),
+            null, "Postfix", () => CheatState.FlaskAnyItem, null, OneGearItem),
+        Spec(typeof(Il2CppTLD.Gear.InsulatedFlaskLiquidTypeConstraint), "IsAllowed", typeof(Patch_Flask_IsCompatible),
+            null, "Postfix", () => CheatState.FlaskAnyItem, null, OneGearItem),
 
         Spec(typeof(CraftingOperation), "Update", typeof(Patch_CraftingOp_Update),
             "Prefix", null, () => CheatState.QuickCraft),
         Spec(typeof(CookingPotItem), "UpdateCookingTimeAndState", typeof(Patch_CookingPot_Update),
-            "Prefix", null, () => CheatState.QuickCook, null, TwoCookingFloats),
+            "Prefix", null, () => CheatState.QuickCook || CheatState.NoBurn, null, TwoCookingFloats),
         Spec(typeof(Panel_Crafting), "CraftingEnd", typeof(Patch_Craft_End_ForceBright),
             null, "Postfix", () => CheatState.QuickCraft),
         Spec(typeof(Panel_Crafting), "OnCraftingSuccess", typeof(Patch_Craft_OnSuccess_ArmFade),
@@ -182,15 +193,15 @@ internal static class DynamicPatch
         Spec(typeof(Panel_BodyHarvest), "StartQuarter", typeof(Patch_Harvest_StartQuarter),
             null, "Postfix", () => CheatState.QuickAction, null, OneIntString),
         Spec(typeof(Panel_BreakDown), "OnBreakDown", typeof(Patch_BreakDown_OnBreakDown),
-            null, "Postfix", () => CheatState.QuickAction || CheatState.QuickBreakDown),
+            null, "Postfix", () => CheatState.QuickBreakDown),
         Spec(typeof(Panel_BreakDown), "BreakDownFinished", typeof(Patch_BreakDown_Finished_Unfade),
-            null, "Postfix", () => CheatState.QuickAction || CheatState.QuickBreakDown),
+            null, "Postfix", () => CheatState.QuickBreakDown),
         Spec(typeof(Panel_BreakDown), "ExitInterface", typeof(Patch_BreakDown_ExitInterface_UnlockTOD),
-            null, "Postfix", () => CheatState.QuickAction || CheatState.QuickBreakDown),
+            null, "Postfix", () => CheatState.QuickBreakDown),
         Spec(typeof(Panel_BreakDown), "OnCancel", typeof(Patch_BreakDown_OnCancel_UnlockTOD),
-            null, "Postfix", () => CheatState.QuickAction || CheatState.QuickBreakDown),
+            null, "Postfix", () => CheatState.QuickBreakDown),
         Spec(typeof(Panel_BreakDown), "Enable", typeof(Patch_BreakDown_Enable_Cleanup),
-            null, "Postfix", () => CheatState.QuickAction || CheatState.QuickBreakDown, null, PanelBreakDownEnableArgs),
+            null, "Postfix", () => CheatState.QuickBreakDown, null, PanelBreakDownEnableArgs),
 
         // v2.7.78:把一批原本静态常驻的中/高频 patch 动态化,逻辑不变。
         Spec(typeof(IceCrackingTrigger), "BreakIce", typeof(Patch_IceBreak_BreakIce),
@@ -202,17 +213,20 @@ internal static class DynamicPatch
         Spec(typeof(Panel_Container), "EnableAfterDelay", typeof(Patch_Container_EnableAfterDelay),
             "Prefix", null, () => CheatState.QuickOpenContainer, null, OneFloat),
         Spec(typeof(Panel_Container), "Enable", typeof(Patch_Container_Enable),
-            null, "Postfix", () => CheatState.QuickOpenContainer || CheatState.InfiniteContainer),
+            null, "Postfix", () => CheatState.QuickOpenContainer || CheatState.InfiniteContainer, null, ContainerEnableArgs),
 
         Spec(typeof(Il2CppTLD.Trader.TraderManager), "GetAvailableTradeExchanges",
             typeof(Patch_TraderManager_GetAvailableTradeExchanges),
             "Prefix", null, () => CheatState.TraderUnlimitedList || CheatState.TraderMaxTrust),
         Spec(typeof(Il2CppTLD.Trader.TraderManager), "IsTraderAvailable",
             typeof(Patch_TraderManager_IsTraderAvailable),
+            null, "Postfix", () => true),
+        Spec(typeof(Il2CppTLD.Trader.TraderRadio), "CanContactTrader",
+            typeof(Patch_TraderRadio_CanContactTrader),
             null, "Postfix", () => CheatState.TraderAlwaysAvailable),
         Spec(typeof(Il2CppTLD.Trader.ExchangeItem), "IsFullyExchanged",
             typeof(Patch_ExchangeItem_IsFullyExchanged),
-            "Prefix", null, () => CheatState.TraderInstantExchange),
+            "Prefix", "Postfix", () => CheatState.TraderInstantExchange),
 
         // v2.7.89 无后坐力:零化 GunItem 后坐参数(Prefix 归零 + Postfix 恢复)
         Spec(typeof(vp_FPSWeapon), "PlayFireAnimation", typeof(Patch_FPSWeapon_PlayFireAnimation),
@@ -303,9 +317,11 @@ internal static class DynamicPatch
         Spec(typeof(PlayerManager), "ComputeModifiedPickupRange", typeof(Patch_PickupRange),
             null, "Postfix", () => ModMain.Settings != null && Mathf.Abs(ModMain.Settings.PickupRange - 1f) >= 0.01f),
 
-        // 整合 SilentWalker:脚步静音(必须指定参数类型,有重载)
+        // 整合 SilentWalker:脚步静音 — PlayFootStepSound 有两个重载必须分别 patch
         Spec(typeof(FootStepSounds), "PlayFootStepSound", typeof(Patch_SilentFootsteps),
-            "Prefix", null, () => CheatState.SilentFootsteps, null, null),
+            "Prefix", null, () => CheatState.SilentFootsteps, null, FootStepArgs2),
+        Spec(typeof(FootStepSounds), "PlayFootStepSound", typeof(Patch_SilentFootsteps_3p),
+            "Prefix", null, () => CheatState.SilentFootsteps, null, FootStepArgs3),
         // 整合 SilentWalker:背包物品声音音量(仅调过音量时挂载)
         Spec(typeof(GameAudioManager), "SetRTPCValue", typeof(Patch_SilentWalker_RTPC),
             "Prefix", null, () => ModMain.Settings != null && (ModMain.Settings.InvWeightMetalVol != 100 || ModMain.Settings.InvWeightWoodVol != 100 || ModMain.Settings.InvWeightWaterVol != 100 || ModMain.Settings.InvWeightGeneralVol != 100), null, RTPCArgs),
@@ -353,7 +369,7 @@ internal static class DynamicPatch
 
         // 整合 CraftAnywhere: 制作位置覆写(hook Panel_Crafting.ItemPassesFilter, 非 BlueprintData.Awake)
         Spec(typeof(Panel_Crafting), "ItemPassesFilter", typeof(Patch_CraftAnywhere),
-            null, "Postfix", () => CheatState.Craft_Anywhere, null, new[] { typeof(BlueprintData) }),
+            "Prefix", "Postfix", () => CheatState.Craft_Anywhere, null, new[] { typeof(BlueprintData) }),
 
         // 整合 CaffeinatedSodas: 苏打水加减疲劳 buff
         Spec(typeof(GearItem), "Awake", typeof(Patch_GearItem_Awake_CaffeinatedSodas),
@@ -376,7 +392,7 @@ internal static class DynamicPatch
 
         // 整合 WakeUpCall: 睡眠唤醒+极光+时间+微光
         Spec(typeof(Rest), "BeginSleeping", typeof(Patch_WakeUpCall_BeginSleeping),
-            "Prefix", null, () => CheatState.QoL_WakeUpCall, null, BeginSleepArgs),
+            "Prefix", null, () => CheatState.QoL_WakeUpCall || CheatState.QoL_AuroraSense, null, BeginSleepArgs),
         Spec(typeof(AuroraManager), "UpdateAuroraValue", typeof(Patch_WakeUpCall_AuroraWake),
             null, "Postfix", () => CheatState.QoL_AuroraSense),
         Spec(typeof(InterfaceManager), "SetTimeWidgetActive", typeof(Patch_WakeUpCall_TimeWidget),
@@ -456,7 +472,7 @@ internal static class DynamicPatch
 
         // v2.8.1 Bug 5+6: 睡眠黑屏安全网 — EndSleeping 时强制恢复 HUD
         Spec(typeof(Rest), "EndSleeping", typeof(Patch_WakeUpCall_EndSleeping_Safety),
-            null, "Postfix", () => CheatState.QoL_WakeUpCall, null, OneBool),
+            null, "Postfix", () => CheatState.QoL_WakeUpCall || CheatState.QoL_AuroraSense, null, OneBool),
 
         // v2.8.1 Bug 2: 无限容器容量
         Spec(typeof(Container), "Awake", typeof(Patch_Container_Awake_InfiniteCapacity),
@@ -472,17 +488,121 @@ internal static class DynamicPatch
 
         // v2.8.1 Bug 9: 免费制作材料数量 — 方法在 TLD 2.55 中已移除,由 FreeCraft 其他 patches 覆盖
 
+        // ——— TinyTweaks 整合 ———
+        Spec(typeof(Freezing), "CalculateBodyTemperature", typeof(Patch_CapFeelsLikeTemp),
+            null, "Postfix", () => CheatState.TT_CapFeelsEnabled),
+
+        Spec(typeof(FallDeathTrigger), "OnTriggerEnter", typeof(Patch_FallDeathTrigger),
+            null, "Postfix", () => CheatState.TT_FallDeathGoat),
+        Spec(typeof(GameManager), "Awake", typeof(Patch_FallDamageMultiplier),
+            null, "Postfix", () => CheatState.TT_FallDeathGoat),
+
+        Spec(typeof(GameManager), "Start", typeof(Patch_DroppedObjectOrientation),
+            null, "Postfix", () => CheatState.TT_DroppedOrientation),
+
+        Spec(typeof(Panel_OptionsMenu), "ApplyGraphicsModeAndResolution", typeof(Patch_ExtendedFOV_Apply),
+            null, "Postfix", () => CheatState.TT_ExtendedFOV),
+        Spec(typeof(Panel_OptionsMenu), "OnDisplayTab", typeof(Patch_ExtendedFOV_Display),
+            null, "Postfix", () => CheatState.TT_ExtendedFOV),
+
+        Spec(typeof(Panel_ActionsRadial), "Enable", typeof(Patch_PauseOnRadial_Enable),
+            "Prefix", null, () => CheatState.TT_PauseOnRadial, null, new[] { typeof(bool), typeof(bool) }),
+        Spec(typeof(GameManager), "Update", typeof(Patch_PauseOnRadial_FoolProof),
+            null, "Postfix", () => CheatState.TT_PauseOnRadial),
+
+        // SpeedyInteractions — 只在任一倍率 != 1 时才挂载(避免 20 个无用 hook 拖 FPS)
+        Spec(typeof(PlayerManager), "UseFoodInventoryItem", typeof(Patch_Speedy_Eating),
+            "Prefix", "Postfix", () => ModMain.Settings.TT_EatingSpeedMult != 1f),
+        Spec(typeof(PlayerManager), "UseSmashableItem", typeof(Patch_Speedy_Smash),
+            "Prefix", "Postfix", () => ModMain.Settings.TT_EatingSpeedMult != 1f),
+        Spec(typeof(PlayerManager), "DrinkFromWaterSupply", typeof(Patch_Speedy_Drink),
+            "Prefix", "Postfix", () => ModMain.Settings.TT_EatingSpeedMult != 1f),
+        Spec(typeof(Panel_Inventory_Examine), "OnRefuel", typeof(Patch_Speedy_Refuel),
+            "Prefix", "Postfix", () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(PlayerManager), "UseWaterPurificationItem", typeof(Patch_Speedy_Purify),
+            "Prefix", "Postfix", () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_Inventory_Examine), "AccelerateTimeOfDay", typeof(Patch_Speedy_Examine),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f || ModMain.Settings.TT_ReadingSpeedMult != 1f),
+        Spec(typeof(RockCache), "OnBuild", typeof(Patch_Speedy_RockCacheBuild),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(RockCache), "OnDismantle", typeof(Patch_Speedy_RockCacheDismantle),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_BreakDown), "OnBreakDown", typeof(Patch_Speedy_Breakdown),
+            "Prefix", null, () => ModMain.Settings.TT_BreakdownSpeedMult != 1f),
+        Spec(typeof(Panel_Crafting), "CraftingStart", typeof(Patch_Speedy_Crafting),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_Cooking), "OnCook", typeof(Patch_Speedy_Cook1),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_Cooking), "OnCookRecipe", typeof(Patch_Speedy_Cook2),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_Milling), "BeginRepair", typeof(Patch_Speedy_Milling),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_SnowShelterBuild), "OnBuild", typeof(Patch_Speedy_SnowShelterBuild),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_SnowShelterInteract), "OnInteractionCommon", typeof(Patch_Speedy_SnowShelterInteract),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_PickWater), "TakeWater", typeof(Patch_Speedy_PickWater),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(Panel_IceFishingHoleClear), "UseTool", typeof(Patch_Speedy_IceFishing),
+            "Prefix", null, () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        // IL2CPP 原始名含多余 "d"(DurationdUsed),非 typo
+        Spec(typeof(AfflictionDefinition), "GetStandardDurationdUsed", typeof(Patch_Speedy_Affliction1),
+            null, "Postfix", () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(AfflictionDefinition), "GetAlternateDurationUsed", typeof(Patch_Speedy_Affliction2),
+            null, "Postfix", () => ModMain.Settings.TT_GlobalSpeedMult != 1f),
+        Spec(typeof(TimedHoldInteraction), "BeginHold", typeof(Patch_Speedy_HoldInteraction),
+            "Prefix", null, () => ModMain.Settings != null && (ModMain.Settings.TT_InteractionSpeedMult != 1f || CheatState.QuickSearch || Patch_Speedy_HoldInteraction.Data.Count > 0)),
+        Spec(typeof(GameManager), "ResetLists", typeof(Patch_Speedy_ResetDict),
+            null, "Postfix", () => ModMain.Settings.TT_InteractionSpeedMult != 1f || CheatState.QuickSearch),
+
+        // RespawnablePlants
+        Spec(typeof(Harvestable), "Awake", typeof(Patch_RespawnPlants_Awake),
+            "Prefix", null, () => CheatState.TT_RespawnPlants),
+        Spec(typeof(Harvestable), "Harvest", typeof(Patch_RespawnPlants_Harvest),
+            null, "Postfix", () => CheatState.TT_RespawnPlants),
+        Spec(typeof(Harvestable), "Deserialize", typeof(Patch_RespawnPlants_Deserialize),
+            "Prefix", "Postfix", () => CheatState.TT_RespawnPlants),
+        Spec(typeof(SaveGameSystem), "SaveSceneData", typeof(Patch_RespawnPlants_Save),
+            null, "Postfix", () => CheatState.TT_RespawnPlants),
+        Spec(typeof(SaveGameSystem), "LoadSceneData", typeof(Patch_RespawnPlants_Load),
+            null, "Postfix", () => CheatState.TT_RespawnPlants),
+
+        // HouseLights
+        Spec(typeof(GameManager), "InstantiatePlayerObject", typeof(Patch_HL_GameManager_InstantiatePlayer),
+            "Prefix", null, () => CheatState.HL_Enabled),
+        Spec(typeof(AuroraModularElectrolizer), "Initialize", typeof(Patch_HL_Electrolizer_Initialize),
+            null, "Postfix", () => CheatState.HL_Enabled),
+        Spec(typeof(AuroraManager), "RegisterAuroraLightSimple", typeof(Patch_HL_AuroraManager_RegisterLightSimple),
+            null, "Postfix", () => CheatState.HL_Enabled, null, HLRegisterLightArgs),
+        Spec(typeof(AuroraManager), "UpdateForceAurora", typeof(Patch_HL_AuroraManager_UpdateForceAurora),
+            null, "Postfix", () => CheatState.HL_Enabled),
+        Spec(typeof(PlayerManager), "UpdateHUDText", typeof(Patch_HL_PlayerManager_UpdateHUDText),
+            null, "Postfix", () => CheatState.HL_Enabled, null, HLUpdateHUDArgs),
+        Spec(typeof(PlayerManager), "InteractiveObjectsProcessInteraction", typeof(Patch_HL_PlayerManager_ProcessInteraction),
+            null, "Postfix", () => CheatState.HL_Enabled),
+        Spec(typeof(Weather), "IsTooDarkForAction", typeof(Patch_HL_Weather_IsTooDarkForAction),
+            null, "Postfix", () => CheatState.HL_Enabled, null, HLTooDarkArgs),
+
+        // FlashFlicker 已改为 [HarmonyPatch] 属性直接注册(IL2Cpp 下 DynamicPatch Prefix return false 不可靠)
+
     };
 
     public static void Reconcile()
     {
-        try
+        for (int i = 0; i < Specs.Length; i++)
         {
-            for (int i = 0; i < Specs.Length; i++) Specs[i].Sync();
-            // ItemPicker.OnUpdate 是第三方 mod 的每帧 hook,只有对应 toggle 开启时才挂。
-            AutoPickupGuard.ReconcileItemPickerPatch();
+            try { Specs[i].Sync(); }
+            catch (Exception ex)
+            {
+                if (!Specs[i]._failed)
+                {
+                    Specs[i]._failed = true;
+                    ModMain.Log?.Error($"[DynPatch] {Specs[i].Key} permanently disabled: {ex.GetType().Name}: {ex.Message}");
+                }
+            }
         }
-        catch (Exception ex) { ModMain.Log?.Error($"[DynPatch.Reconcile] {ex}"); }
+        try { AutoPickupGuard.ReconcileItemPickerPatch(); }
+        catch (Exception ex) { ModMain.Log?.Error($"[DynPatch.AutoPickup] {ex.Message}"); }
     }
 
     public static string ActiveSummary()
@@ -514,7 +634,7 @@ internal static class DynamicPatch
     {
         public readonly string Key;
         public bool Applied;
-        private bool _failed;
+        internal bool _failed;
 
         private readonly Type _target;
         private readonly string _method;

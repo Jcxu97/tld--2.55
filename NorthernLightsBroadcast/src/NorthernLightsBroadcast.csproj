@@ -1,0 +1,142 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>NorthernLightsBroadcast</AssemblyName>
+    <RootNamespace>NorthernLightsBroadcast</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>2.1.0</Version>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <TldRoot>D:\Steam\steamapps\common\TheLongDark</TldRoot>
+    <TldMlNet6>$(TldRoot)\MelonLoader\net6</TldMlNet6>
+    <TldInterop>$(TldRoot)\MelonLoader\Il2CppAssemblies</TldInterop>
+    <TldModsDir>$(TldRoot)\Mods</TldModsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="NorthernLightsBroadcast.Resources.northernlightsbroadcastbundle" />
+    <EmbeddedResource Include="NorthernLightsBroadcast.Resources.northernlightsbroadcastbundle" LogicalName="NorthernLightsBroadcast.Resources.northernlightsbroadcastbundle" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="MelonLoader">
+      <HintPath>$(TldMlNet6)\MelonLoader.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(TldMlNet6)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(TldMlNet6)\Il2CppInterop.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Common">
+      <HintPath>$(TldMlNet6)\Il2CppInterop.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(TldInterop)\Il2Cppmscorlib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppSystem">
+      <HintPath>$(TldInterop)\Il2CppSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(TldInterop)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(TldInterop)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(TldInterop)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(TldInterop)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(TldInterop)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(TldInterop)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.VideoModule">
+      <HintPath>$(TldInterop)\UnityEngine.VideoModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(TldInterop)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(TldInterop)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(TldInterop)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(TldInterop)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(TldInterop)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(TldInterop)\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(TldInterop)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ModSettings">
+      <HintPath>$(TldModsDir)\ModSettings.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ModData">
+      <HintPath>$(TldModsDir)\ModData.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AudioManager">
+      <HintPath>$(TldModsDir)\AudioManager.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppTLD.PDID">
+      <HintPath>$(TldInterop)\Il2CppTLD.PDID.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CopyToMods" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(TargetDir)NAudio.dll" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.Core.dll" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.Core.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.Wasapi.dll" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.Wasapi.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.WinMM.dll" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.WinMM.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.dll" DestinationFolder="$(TldRoot)\UserLibs" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.Core.dll" DestinationFolder="$(TldRoot)\UserLibs" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.Core.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.Wasapi.dll" DestinationFolder="$(TldRoot)\UserLibs" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.Wasapi.dll')" />
+    <Copy SourceFiles="$(TargetDir)NAudio.WinMM.dll" DestinationFolder="$(TldRoot)\UserLibs" SkipUnchangedFiles="false" Condition="Exists('$(TargetDir)NAudio.WinMM.dll')" />
+    <Message Importance="high" Text="==&gt; Deployed $(TargetFileName) + NAudio to $(TldModsDir) and UserLibs" />
+  </Target>
+
+</Project>

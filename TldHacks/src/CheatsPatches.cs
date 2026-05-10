@@ -607,15 +607,7 @@ internal static class BaseAiRegistry
         try
         {
             ai.m_DisableScanForTargets = true;
-            ai.m_DetectionRange = 0f;
-            ai.m_DetectionFOV = 0f;
-            ai.m_HearFootstepsRange = 0f;
-            ai.m_HearRifleRange = 0f;
-            ai.m_HearCarAlarmRange = 0f;
-            ai.m_SmellRange = 0f;
-            ai.m_DetectionRangeWhileFeeding = 0f;
-            ai.m_HearFootstepsRangeWhileFeeding = 0f;
-            ai.m_HearFootstepsRangeWhileSleeping = 0f;
+            ai.ClearTarget();
         }
         catch (System.Exception ex) { ModMain.Log?.Warning($"[TrueInvisible] field set failed: {ex.Message}"); }
     }
@@ -702,11 +694,11 @@ internal static class Patch_Container_EnableAfterDelay
 {
     internal static void Prefix(ref float delaySeconds)
     {
-        if (CheatState.QuickOpenContainer) delaySeconds = 0f;
+        if (CheatState.QuickOpenContainer) delaySeconds /= 50f;
     }
 }
 
-// 兜底:Enable(bool,bool,Action) Postfix 仍强制 elapsed=999 让任何残留 delay 立刻完成
+// 兜底:Enable(bool,bool,Action) Postfix 把 delay 缩短到 1/10
 internal static class Patch_Container_Enable
 {
     internal static void Postfix(Panel_Container __instance)
@@ -715,8 +707,7 @@ internal static class Patch_Container_Enable
         {
             if (CheatState.QuickOpenContainer)
             {
-                __instance.m_EnableDelaySeconds = 0f;
-                __instance.m_EnableDelayElapsed = 999f;
+                __instance.m_EnableDelaySeconds /= 50f;
             }
             if (CheatState.InfiniteContainer && __instance.m_Container != null)
                 __instance.m_Container.m_Capacity = Il2CppTLD.IntBackedUnit.ItemWeight.FromKilograms(10000f);
@@ -1182,7 +1173,13 @@ internal static class Patch_PickupRange
 
 // —— 脚步静音:FootStepSounds.PlayFootStepSound Prefix ——
 // 复制自 SilentWalker:toggle on 时完全不播放脚步声
+// 2 参数重载 PlayFootStepSound(Vector3, string)
 internal static class Patch_SilentFootsteps
+{
+    internal static bool Prefix() => !CheatState.SilentFootsteps;
+}
+// 3 参数重载 PlayFootStepSound(Vector3, string, State)
+internal static class Patch_SilentFootsteps_3p
 {
     internal static bool Prefix() => !CheatState.SilentFootsteps;
 }
@@ -1587,6 +1584,7 @@ internal static class CheatsTick
         bool anyOn = CheatState.NoAimSway || CheatState.NoAimStamina || CheatState.NoRecoil || CheatState.SuperAccuracy;
         // 全关 AND 上次也全关 → 零开销早退
         if (!anyOn && !_lastAnyAimToggle) return;
+        if (GameManager.IsMainMenuActive()) return;
 
         try
         {
@@ -1802,15 +1800,6 @@ internal static class CheatsTick
                         if (CheatState.TrueInvisible)
                         {
                             try { ai.ClearTarget(); } catch { }
-                            try { ai.m_DetectionRange = 0f; } catch { }
-                            try { ai.m_DetectionFOV = 0f; } catch { }
-                            try { ai.m_HearFootstepsRange = 0f; } catch { }
-                            try { ai.m_HearRifleRange = 0f; } catch { }
-                            try { ai.m_HearCarAlarmRange = 0f; } catch { }
-                            try { ai.m_SmellRange = 0f; } catch { }
-                            try { ai.m_DetectionRangeWhileFeeding = 0f; } catch { }
-                            try { ai.m_HearFootstepsRangeWhileFeeding = 0f; } catch { }
-                            try { ai.m_HearFootstepsRangeWhileSleeping = 0f; } catch { }
                         }
                     }
 
@@ -2184,22 +2173,35 @@ internal static class Patch_CookingPot_Update
     private static bool _logged;
     internal static void Prefix(CookingPotItem __instance, float cookTimeMinutes, float readyTimeMinutes)
     {
-        if (!CheatState.QuickCook) return;
+        if (!CheatState.QuickCook && !CheatState.NoBurn) return;
         try
         {
-            if (__instance.m_CookingState != CookingPotItem.CookingState.Cooking) return;
             if (cookTimeMinutes <= 0f) return;
-            if (!_logged)
+            var state = __instance.m_CookingState;
+            if (state == CookingPotItem.CookingState.Ruined) return;
+
+            float target = cookTimeMinutes / 60f * 1.01f;
+            if (state == CookingPotItem.CookingState.Cooking)
             {
-                _logged = true;
-                ModMain.Log.Msg($"[QuickCook] elapsed-push cookTimeMin={cookTimeMinutes}");
+                // 只有 QuickCook 才推(防烤焦单开不秒熟,需要正常等熟)
+                if (CheatState.QuickCook)
+                {
+                    if (!_logged)
+                    {
+                        _logged = true;
+                        ModMain.Log.Msg($"[QuickCook] elapsed-push cookTimeMin={cookTimeMinutes} target={target:F3}h");
+                    }
+                    __instance.m_CookingElapsedHours = target;
+                }
             }
-            // elapsed 单位小时,cookTime 单位分钟;推到 (cookTime/60)*1.01 刚过熟透阈值
-            //   原方法会自己算 percent = elapsed*60 / cookTime → 约 1.01 → 转 Ready
-            //   下一帧 state != Cooking,patch 直接 return 不再干扰
-            __instance.m_CookingElapsedHours = cookTimeMinutes / 60f * 1.01f;
+            else if (state == CookingPotItem.CookingState.Ready)
+            {
+                // 两个开关都需要 Ready clamp,防漂到 Ruined
+                if (__instance.m_CookingElapsedHours > target)
+                    __instance.m_CookingElapsedHours = target;
+            }
         }
-        catch (System.Exception e) { ModMain.Log.Error($"[QuickCook] {e.Message}"); }
+        catch (System.Exception e) { ModMain.Log.Error($"[QuickCook/NoBurn] {e.Message}"); }
     }
 }
 
@@ -2265,7 +2267,20 @@ internal static class Patch_TimedHold_UpdateHoldInteraction_QuickSearch
         try
         {
             var name = __instance.GetType().Name;
-            if (!name.Contains("Harvest") && !name.Contains("PickUp")) return;
+            // v5.0: 按 toggle 拆分白名单 — 秒搜刮(QuickSearch)= 容器/储物;秒采集(QuickAction)= 采集/破坏/拾取.
+            //   修 bug:之前 ContainerInteraction 被合并进单一白名单,导致只开秒采集时容器也被加速.
+            // v3.0.6: exclude Locked* to avoid breaking cave/interior entry hold
+            bool searchType = name == "ContainerInteraction"
+                           || name == "RockCacheInteraction"
+                           || name == "WildlifeItemInteraction";
+            bool actionType = name == "HarvestableInteraction"
+                           || name == "BodyHarvestInteraction"
+                           || name == "BrokenDecorationInteraction"
+                           || name.Contains("Harvest")
+                           || name.Contains("PickUp");
+            bool apply = (CheatState.QuickSearch && searchType)
+                      || (CheatState.QuickAction && actionType);
+            if (!apply) return;
 
             __instance.m_DefaultHoldTime = 0.001f;
             __instance.HoldTime = 0.001f;
@@ -2626,41 +2641,44 @@ internal static class Patch_HeatSource_Update
     }
 }
 
-// —— 篝火永不熄灭 v2.7.49 加 snapshot+restore ——
-//   v2.7.48 写 IsPerpetual=true / MaxOnTODSeconds=INF / ElapsedOnTODSeconds=0 / BurnMinutesIfLit=99999
-//   toggle off 时必须复原这些字段,不然火堆"永久烙印"
-// v2.7.75 DynamicPatch: 去掉 [HarmonyPatch] attribute
+// —— 篝火永不熄灭 v3.0.5 重写 ——
+// 旧版写 m_IsPerpetual=true 导致 Fire 状态机走永久火分支,toggle off 后状态不一致(0°/不可灭/不可加燃料)。
+// 新版不碰 m_IsPerpetual,只阻止两种死亡条件:时间超时 + 燃料耗尽。关闭后火自然倒计时,无需恢复。
 internal static class Patch_Fire_Update_NeverDie
 {
-    // (isPerpetual, maxOnTOD, elapsedOnTOD, burnMinutesIfLit)
-    internal static readonly System.Collections.Generic.Dictionary<System.IntPtr, (bool, float, float, float)> Snapshots
-        = new System.Collections.Generic.Dictionary<System.IntPtr, (bool, float, float, float)>();
+    private const float FUEL_FLOOR = 1000f;
 
     internal static void Prefix(Fire __instance)
     {
         try
         {
-            var ptr = __instance.Pointer;
-            if (CheatState.FireNeverDie)
-            {
-                if (!Snapshots.ContainsKey(ptr))
-                    Snapshots[ptr] = (__instance.m_IsPerpetual,
-                                      __instance.m_MaxOnTODSeconds,
-                                      __instance.m_ElapsedOnTODSeconds,
-                                      __instance.m_BurnMinutesIfLit);
-                __instance.m_IsPerpetual = true;
-                __instance.m_MaxOnTODSeconds = float.PositiveInfinity;
-                __instance.m_ElapsedOnTODSeconds = 0f;
-                __instance.m_BurnMinutesIfLit = 99999f;
-            }
-            else if (Snapshots.TryGetValue(ptr, out var s))
-            {
-                __instance.m_IsPerpetual = s.Item1;
-                __instance.m_MaxOnTODSeconds = s.Item2;
-                __instance.m_ElapsedOnTODSeconds = s.Item3;
-                __instance.m_BurnMinutesIfLit = s.Item4;
-                Snapshots.Remove(ptr);
-            }
+            if (!CheatState.FireNeverDie) return;
+            __instance.m_ElapsedOnTODSeconds = 0f;
+            if (__instance.m_BurnMinutesIfLit < FUEL_FLOOR)
+                __instance.m_BurnMinutesIfLit = FUEL_FLOOR;
+        }
+        catch { }
+    }
+}
+
+// —— 篝火燃烧上限解锁 v3.0.7 ——
+// 原版 cap 来源:FireManager.m_MaxDurationHoursOfFire = 12,在 PlayerCalculateFireStartTime
+// 里 clamp 玩家加燃料后火能烧多久。AddFuel 本身不直接 clamp,它信任 PlayerCalculateFireStartTime
+// 的结果。所以正确做法是改 m_MaxDurationHoursOfFire,等价 CT 表里的方法。
+// 这样玩家加燃料就是正常的"在当前 burn 上累加,直到 cap",不会出现"先 4000h 加满后改 9999h
+// 加不进"的情况(那是因为旧版 hack 直接覆写 fire 实例 m_BurnMinutesIfLit,vanilla 自己的累加
+// 被冻住了)。
+internal static class Patch_FireManager_CalcStartTime_Uncap
+{
+    // Prefix:在原方法计算前先把 cap 字段改大,vanilla 内部 clamp 会按新 cap 算。
+    // CT 等价代码:MonoMethodInit { mov [rcx+m_MaxDurationHoursOfFire],(float)1000; jmp original; }
+    internal static void Prefix(FireManager __instance)
+    {
+        try
+        {
+            if (__instance == null) return;
+            if (CheatState.FireMaxBurnHours <= 12f) return;
+            __instance.m_MaxDurationHoursOfFire = CheatState.FireMaxBurnHours;
         }
         catch { }
     }
@@ -2715,12 +2733,25 @@ internal static class Patch_TraderManager_IsTraderAvailable
 {
     internal static void Postfix(ref bool __result)
     {
+        if (CheatState.TraderAlwaysAvailable) { __result = true; return; }
+        float days = ModMain.Settings.TraderArrivalDays;
+        float hoursPlayed = GameManager.GetTimeOfDayComponent().GetHoursPlayedNotPaused();
+        __result = hoursPlayed >= days * 24f;
+    }
+}
+
+// —— 商人:无线电随时可联系(CT: CanContactTrader → true) ——
+internal static class Patch_TraderRadio_CanContactTrader
+{
+    internal static void Postfix(ref bool __result)
+    {
         if (CheatState.TraderAlwaysAvailable) __result = true;
     }
 }
 
-// —— 商人:交易秒完成 ——
-//   CT: ExchangeItem.IsFullyExchanged Prefix,把 Exchanged* 三个字段 = 源字段,让 IsFullyExchanged 自动 return true
+// —— 商人:免费即时交易 ——
+//   Prefix: 填充已交换数量(免费,不需要投入物品)
+//   Postfix: 强制 true(秒完成,跳过等待)
 internal static class Patch_ExchangeItem_IsFullyExchanged
 {
     internal static void Prefix(Il2CppTLD.Trader.ExchangeItem __instance)
@@ -2733,6 +2764,11 @@ internal static class Patch_ExchangeItem_IsFullyExchanged
             __instance.m_ExchangedLiquidVolume = __instance.m_LiquidVolume;
         }
         catch { }
+    }
+
+    internal static void Postfix(ref bool __result)
+    {
+        if (CheatState.TraderInstantExchange) __result = true;
     }
 }
 
