@@ -1,0 +1,29 @@
+{
+    "GEAR_TV_CRT" : {
+							"English" : "CRT TV"
+    },
+    "GEAR_TV_CRTDescription" : {
+                            "English" : "Old timey CRT TV"
+    },
+	"GEAR_TV_CRTAction" : {
+                            "English" : "Reveal secrets"
+    },
+	"GEAR_TV_LCD" : {
+							"English" : "LCD TV"
+    },
+    "GEAR_TV_LCDDescription" : {
+                            "English" : "LCD TV with stand"
+    },
+	"GEAR_TV_LCDAction" : {
+                            "English" : "Reveal secrets"
+    },
+	"GEAR_TV_WALL" : {
+							"English" : "LCD TV"
+    },
+    "GEAR_TV_WALLDescription" : {
+                            "English" : "LCD TV to hang on walls"
+    },
+	"GEAR_TV_WALLAction" : {
+                            "English" : "Reveal secrets"
+    }    
+}

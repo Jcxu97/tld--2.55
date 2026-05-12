@@ -1,0 +1,4 @@
+D:\Github\tld--2.55\TldHacks\_decompiled\BlueprintCleaner\obj\Release\BlueprintCleaner.csproj.AssemblyReference.cache
+D:\Github\tld--2.55\TldHacks\_decompiled\BlueprintCleaner\obj\Release\BlueprintCleaner.GeneratedMSBuildEditorConfig.editorconfig
+D:\Github\tld--2.55\TldHacks\_decompiled\BlueprintCleaner\obj\Release\BlueprintCleaner.csproj.CoreCompileInputs.cache
+D:\Github\tld--2.55\TldHacks\_decompiled\BlueprintCleaner\obj\Release\BlueprintCleaner.sourcelink.json

@@ -307,6 +307,7 @@
 	"World_SodaGrapeInitial": 5.3076925,
 	"World_SodaGrapeDuration": 1,
 	"World_CarcassMoving": false,
+	"World_CarcassMovingAll": false,
 	"World_ElectricTorch": false,
 	"TT_CapFeelsHigh": 0,
 	"TT_CapFeelsLow": 0,

@@ -15,10 +15,15 @@ internal static class Stacking
     // 如果 cell 已经被复用到别的 gear,跳过本次,等 RefreshDataItem Postfix 重新登记。
     // v2.7.32 改回每帧 —— t1 bug:hover 时 label 被游戏重置为 "1",4 帧延迟肉眼可见(67ms)
     //   每帧 reapply SeenItems 里只有 panel 打开时活跃的 cell(几十个),字符串比较非 set,开销可忽略
+    private static int _lateFrame;
+    private static readonly System.Collections.Generic.List<System.IntPtr> _staleList = new();
+
     public static void OnLateUpdate()
     {
         // v2.7.60 性能:stacking toggle 关时不跑
         if (ModMain.Settings != null && !ModMain.Settings.StackingEnabled) return;
+        // v6.1 性能:每 3 帧扫一次(~50ms),HoverItem/SelectGridItem/Refresh Postfix 覆盖实时操作
+        if (++_lateFrame % 3 != 0) return;
         try
         {
             if (StackState.Counts.Count == 0) return;
@@ -40,53 +45,54 @@ internal static class Stacking
                 return;
             }
 
-            System.Collections.Generic.List<System.IntPtr> stale = null;
+            _staleList.Clear();
 
             foreach (var kv in StackState.SeenItems)
             {
                 var (item, cachedDi, cachedGiPtr) = kv.Value;
                 if (item == null || item.Pointer == System.IntPtr.Zero)
-                { (stale ??= new()).Add(kv.Key); continue; }
+                { _staleList.Add(kv.Key); continue; }
+
+                // 快速过滤：count ≤ 1 的不需要显示堆叠标签,跳过 IL2Cpp 访问
+                if (!StackState.Counts.TryGetValue(cachedDi.Pointer, out int cachedCount) || cachedCount <= 1)
+                    continue;
 
                 Il2Cpp.GearItem curGi = null;
-                try { curGi = item.m_GearItem; } catch { (stale ??= new()).Add(kv.Key); continue; }
+                try { curGi = item.m_GearItem; } catch { _staleList.Add(kv.Key); continue; }
                 if (curGi == null) continue;
 
                 if (curGi.Pointer == cachedGiPtr)
                 {
-                    LabelFix.Reapply(item, cachedDi);
+                    var label = item.m_StackLabel;
+                    if (label != null) label.text = CountStr.Get(cachedCount);
                 }
                 else
                 {
-                    // v2.7.89: cell 被复用到新 gi — 用 CountsByGi 回退显示 label
                     if (StackState.CountsByGi.TryGetValue(curGi.Pointer, out int c) && c > 1)
                     {
                         var label = item.m_StackLabel;
-                        if (label != null)
-                        {
-                            string want = "x" + c;
-                            if (label.text != want) label.text = want;
-                            if (label.gameObject != null && !label.gameObject.activeSelf)
-                                label.gameObject.SetActive(true);
-                        }
-                        var unitLabel = item.m_UnitLabel;
-                        if (unitLabel != null && unitLabel.gameObject != null && unitLabel.gameObject.activeSelf)
-                            unitLabel.gameObject.SetActive(false);
-                        var unitSprite = item.m_UnitSprite;
-                        if (unitSprite != null && unitSprite.gameObject != null && unitSprite.gameObject.activeSelf)
-                            unitSprite.gameObject.SetActive(false);
+                        if (label != null) label.text = CountStr.Get(c);
                     }
                 }
             }
 
-            if (stale != null)
-                foreach (var k in stale) StackState.SeenItems.Remove(k);
+            for (int i = 0; i < _staleList.Count; i++) StackState.SeenItems.Remove(_staleList[i]);
         }
         catch (System.Exception ex)
         {
             ModMain.Log?.Error($"[OnLateUpdate] {ex}");
         }
     }
+}
+
+internal static class CountStr
+{
+    private static readonly string[] _cache = new string[64];
+    static CountStr()
+    {
+        for (int i = 0; i < _cache.Length; i++) _cache[i] = "x" + i;
+    }
+    public static string Get(int count) => (uint)count < (uint)_cache.Length ? _cache[count] : "x" + count;
 }
 
 internal static class StackState
@@ -126,13 +132,16 @@ internal static class StackState
 
 internal static class Dedupe
 {
+    private static readonly Dictionary<string, (System.IntPtr di, System.IntPtr gi)> _firstOfGroup = new(64);
+
     public static void Process(Il2CppSystem.Collections.Generic.List<InventoryGridDataItem> list)
     {
         if (list == null || list.Count <= 1) return;
         if (ModMain.Settings != null && !ModMain.Settings.StackingEnabled) return;
 
         // key → (dataItem.Pointer, gi.Pointer) 代表
-        var firstOfGroup = new Dictionary<string, (System.IntPtr di, System.IntPtr gi)>();
+        _firstOfGroup.Clear();
+        var firstOfGroup = _firstOfGroup;
         var keep = new Il2CppSystem.Collections.Generic.List<InventoryGridDataItem>();
 
         for (int i = 0; i < list.Count; i++)
@@ -190,8 +199,8 @@ internal static class Dedupe
     private static string MakeKey(GearItem gi, string prefab)
     {
         var food = gi.GetComponent<FoodItem>();
-        string opened = food != null ? (food.m_Opened ? "O" : "C") : "_";
-        return prefab + "|" + opened;
+        char opened = food != null ? (food.m_Opened ? 'O' : 'C') : '_';
+        return string.Concat(prefab, "|", opened.ToString());
     }
 }
 
@@ -240,6 +249,23 @@ internal static class Patch_Container_RefreshTables
 
 internal static class LabelFix
 {
+    public static void ReapplyStackLabelOnly(InventoryGridItem item, InventoryGridDataItem di)
+    {
+        try
+        {
+            if (item == null || di == null) return;
+            if (!StackState.Counts.TryGetValue(di.Pointer, out int count)) return;
+            if (count <= 1) return;
+            var label = item.m_StackLabel;
+            if (label == null) return;
+            // 无条件写 — 避免读 label.text(读操作会分配托管字符串)
+            label.text = CountStr.Get(count);
+            // unitLabel/unitSprite 已在 RefreshDataItem/HoverItem Postfix 里处理,
+            // 游戏不会在帧间自动 un-hide 它们,不需要每帧检查
+        }
+        catch { }
+    }
+
     public static void Reapply(InventoryGridItem item, InventoryGridDataItem di)
     {
         try
@@ -262,7 +288,7 @@ internal static class LabelFix
             var label = item.m_StackLabel;
             if (label != null)
             {
-                string want = "x" + count;
+                string want = CountStr.Get(count);
                 if (label.text != want) label.text = want;
                 if (label.gameObject != null && !label.gameObject.activeSelf)
                     label.gameObject.SetActive(true);
@@ -405,7 +431,7 @@ internal static class Patch_InventoryGridItem_Refresh
             var label = __instance.m_StackLabel;
             if (label != null)
             {
-                string want = "x" + count;
+                string want = CountStr.Get(count);
                 if (label.text != want) label.text = want;
                 if (label.gameObject != null && !label.gameObject.activeSelf)
                     label.gameObject.SetActive(true);

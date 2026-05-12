@@ -1,0 +1,31 @@
+using System;
+using System.Linq;
+
+namespace ModComponent.Utils;
+
+internal static class EnumUtils
+{
+	public static T ParseEnum<T>(string? text) where T : Enum
+	{
+		if (!string.IsNullOrEmpty(text))
+		{
+			return (T)Enum.Parse(typeof(T), text, ignoreCase: true);
+		}
+		return default(T);
+	}
+
+	public static T TranslateEnumValue<T, E>(E value) where T : Enum where E : Enum
+	{
+		return (T)Enum.Parse(typeof(T), Enum.GetName(typeof(E), value));
+	}
+
+	public static T GetMaxValue<T>() where T : Enum
+	{
+		return Enum.GetValues(typeof(T)).Cast<T>().Max();
+	}
+
+	public static T GetMinValue<T>() where T : Enum
+	{
+		return Enum.GetValues(typeof(T)).Cast<T>().Min();
+	}
+}

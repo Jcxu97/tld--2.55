@@ -1,0 +1,6 @@
+loottable=LootCargoRifle
+item=GEAR_Shotgun w=10
+loottable=LootTableRifleSupplies
+item=GEAR_ShotgunAmmoBoxSlug w=12
+item=GEAR_ShotgunAmmoBoxBuckshot w=12
+item=GEAR_ShotgunAmmoBoxBirdshot w=8

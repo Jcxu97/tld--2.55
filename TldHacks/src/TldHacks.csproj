@@ -8,7 +8,8 @@
     <RootNamespace>TldHacks</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <Version>3.0.4</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>6.6.0</Version>
 
     <TldRoot>D:\Steam\steamapps\common\TheLongDark</TldRoot>
     <TldMlNet6>$(TldRoot)\MelonLoader\net6</TldMlNet6>
@@ -19,6 +20,10 @@
   <ItemGroup>
     <Reference Include="MelonLoader">
       <HintPath>$(TldMlNet6)\MelonLoader.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(TldMlNet6)\Newtonsoft.Json.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
@@ -105,6 +110,18 @@
       <HintPath>$(TldInterop)\Il2CppTLD.PDID.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(TldInterop)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(TldInterop)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="HouseLights.hlbundle" />
   </ItemGroup>
 
   <Target Name="CopyToMods" AfterTargets="Build">

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ModComponent</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <TargetFramework>netcoreapp6.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>11.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="ILRepack.List" />
+    <EmbeddedResource Include="ILRepack.List" LogicalName="ILRepack.List" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="MelonLoader" />
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="ModSettings">
+      <HintPath>..\..\..\..\..\Steam\steamapps\common\TheLongDark\Mods\ModSettings.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule" />
+    <Reference Include="UnityEngine.AssetBundleModule" />
+    <Reference Include="Il2Cppmscorlib" />
+    <Reference Include="Newtonsoft.Json" />
+    <Reference Include="Il2CppAK.Wwise.Unity.API.WwiseTypes" />
+    <Reference Include="UnityEngine.TerrainModule" />
+    <Reference Include="Il2CppInterop.Runtime" />
+    <Reference Include="MelonLoader" />
+    <Reference Include="Unity.Addressables" />
+    <Reference Include="0Harmony" />
+    <Reference Include="ModSettings">
+      <HintPath>..\..\..\..\..\Steam\steamapps\common\TheLongDark\Mods\ModSettings.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.ResourceManager" />
+    <Reference Include="Il2CppTLD.OptionalContent" />
+    <Reference Include="Il2CppTLD.IntBackedUnit" />
+    <Reference Include="Il2CppAK.Wwise.Unity.API" />
+  </ItemGroup>
+</Project>

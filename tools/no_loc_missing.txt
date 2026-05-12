@@ -1,0 +1,136 @@
+Catalog-missing without direct GAMEPLAY_ key: 166
+(After excluding *_Mat/_Dif/_MAT/_Transparent/_ForAnim)
+
+=== Items with FUZZY-matched localization (likely real items) ===
+  GEAR_AcornGrounds_A                               via GAMEPLAY_AcornGrounds  zh=橡实渣  en=Acorn Grounds
+  GEAR_AcornGrounds_B                               via GAMEPLAY_AcornGrounds  zh=橡实渣  en=Acorn Grounds
+  GEAR_AcornShelled_A                               via GAMEPLAY_AcornShelled  zh=制好的橡实  en=Prepared Acorns
+  GEAR_ArrowHardened_A                              via GAMEPLAY_ArrowHardened  zh=淬火箭  en=Fire Hardened Arrow
+  GEAR_ArrowHead_A                                  via GAMEPLAY_ArrowHead  zh=箭头  en=Arrowhead
+  GEAR_ArrowShaft_A                                 via GAMEPLAY_ArrowShaft  zh=箭杆  en=Arrow Shaft
+  GEAR_Arrow_A                                      via GAMEPLAY_Arrow  zh=简单的箭  en=Simple Arrow
+  GEAR_BackPack_A                                   via GAMEPLAY_BackPack  zh=背包  en=Backpack
+  GEAR_BearSkinBedRoll_A                            via GAMEPLAY_BearSkinBedRollDescription  zh=用熊皮制作的睡袋。很重，但是很暖和。散发的味道可以吓走动物。  en=Bedroll crafted from Bear Skin. Heavy, but very warm. The smell might scare animals away.
+  GEAR_BearSkinCoat_A                               via GAMEPLAY_BearSkinCoat  zh=熊皮大衣  en=Bearskin Coat
+  GEAR_BearSpear_A                                  via GAMEPLAY_BearSpear  zh=猎熊矛  en=Bear Spear
+  GEAR_BirchbarkPrepared_A                          via GAMEPLAY_BirchbarkPrepared  zh=加工过的桦树皮  en=Prepared Birch Bark 
+  GEAR_Bow_A                                        via GAMEPLAY_Bow  zh=生存的弓  en=Survival Bow
+  GEAR_Bullet_A                                     via GAMEPLAY_Bullet  zh=弹头  en=Bullet
+  GEAR_BurdockPrepared_A                            via GAMEPLAY_BurdockPrepared  zh=加工过的牛蒡  en=Prepared Burdock
+  GEAR_Cereal_A                                     via GAMEPLAY_Cereal  zh=麦片  en=Cereal
+  GEAR_Cereal_B                                     via GAMEPLAY_Cereal  zh=麦片  en=Cereal
+  GEAR_DeerSkinBoots_A                              via GAMEPLAY_DeerSkinBoots  zh=鹿皮靴  en=Deerskin Boots
+  GEAR_DeerSkinPants_A                              via GAMEPLAY_DeerSkinPants  zh=鹿皮短裤  en=Deerskin Pants
+  GEAR_GunpowderCan_A                               via GAMEPLAY_GunpowderCan  zh=火药罐  en=Can of Gunpowder
+  GEAR_HatchetImprovised_A                          via GAMEPLAY_HatchetImprovised  zh=简易小斧  en=Improvised Hatchet
+  GEAR_Hook_A                                       via GAMEPLAY_Hook  zh=钩子  en=Hook
+  GEAR_ImprovisedHat_A                              via GAMEPLAY_ImprovisedHat  zh=简易头巾  en=Improvised Head Wrap
+  GEAR_ImprovisedMittens_A                          via GAMEPLAY_ImprovisedMittens  zh=简易扎手带  en=Improvised Hand Wraps
+  GEAR_InsulatedFlask_A                             via GAMEPLAY_InsulatedFlask  zh=隔热真空保温瓶  en=Insulated Flask
+  GEAR_InsulatedFlask_B                             via GAMEPLAY_InsulatedFlask  zh=隔热真空保温瓶  en=Insulated Flask
+  GEAR_InsulatedFlask_C                             via GAMEPLAY_InsulatedFlask  zh=隔热真空保温瓶  en=Insulated Flask
+  GEAR_InsulatedFlask_D                             via GAMEPLAY_InsulatedFlask  zh=隔热真空保温瓶  en=Insulated Flask
+  GEAR_InsulatedFlask_E                             via GAMEPLAY_InsulatedFlask  zh=隔热真空保温瓶  en=Insulated Flask
+  GEAR_KnifeImprovised_A                            via GAMEPLAY_KnifeImprovised  zh=简易小刀  en=Improvised Knife
+  GEAR_Line_A                                       via GAMEPLAY_Line  zh=鱼线  en=Line
+  GEAR_MooseHideBag_A                               via GAMEPLAY_MooseHideBag  zh=驼鹿皮背包  en=Moose-Hide Satchel
+  GEAR_MooseHideCloak_A                             via GAMEPLAY_MooseHideCloak  zh=驼鹿皮斗篷  en=Moose-Hide Cloak
+  GEAR_NoiseMaker_A                                 via GAMEPLAY_NoiseMaker  zh=制噪器  en=Noisemaker
+  GEAR_NoiseMaker_B                                 via GAMEPLAY_NoiseMaker  zh=制噪器  en=Noisemaker
+  GEAR_OldMansBeardDressing_B                       via GAMEPLAY_OldMansBeardDressing  zh=胡须地衣伤口敷料  en=Old Man's Beard Wound Dressing
+  GEAR_RabbitskinHat_A                              via GAMEPLAY_RabbitskinHat  zh=兔皮帽  en=Rabbitskin Hat
+  GEAR_RockCache_A                                  via GAMEPLAY_RockCache  zh=岩石贮藏处  en=Rock Cache
+  GEAR_RoseHip_A                                    via GAMEPLAY_RoseHip  zh=玫瑰果  en=Rose Hip
+  GEAR_Snare_A                                      via GAMEPLAY_Snare  zh=陷阱  en=Snare
+  GEAR_SpearHead_A                                  via GAMEPLAY_SpearHead  zh=矛尖  en=Spear Head
+  GEAR_Tinder_A                                     via GAMEPLAY_Tinder  zh=火绒  en=Tinder
+  GEAR_Tinder_C                                     via GAMEPLAY_Tinder  zh=火绒  en=Tinder
+  GEAR_Tinder_D                                     via GAMEPLAY_Tinder  zh=火绒  en=Tinder
+  GEAR_Tinder_E                                     via GAMEPLAY_Tinder  zh=火绒  en=Tinder
+  GEAR_TipUp_A                                      via GAMEPLAY_TipUp  zh=上钩指示器  en=Fishing Tip-Up
+  GEAR_Torch_B                                      via GAMEPLAY_Torch  zh=火把  en=Torch
+  GEAR_WolfSkinCape_A                               via GAMEPLAY_WolfSkinCape  zh=狼皮大衣  en=Wolfskin Coat
+
+=== Items with NO localization at all (118) ===
+(usually unspawnable: triggers, story-bound, animation rigs, region-internal)
+  GEAR_AccelerantLighterFuel_Mat_Old
+  GEAR_BackPackForestTalker_A
+  GEAR_BackPackForestTalker_A01
+  GEAR_BackerNote1A
+  GEAR_BackerNote1B
+  GEAR_BackerNote1C
+  GEAR_BackerNote2A
+  GEAR_BackerNote2B
+  GEAR_BackerNote2C
+  GEAR_BackerNote3A
+  GEAR_BackerNote3B
+  GEAR_BackerNote3C
+  GEAR_BackerNote4A
+  GEAR_BackerNote4B
+  GEAR_BackerNote4C
+  GEAR_BearSpearBrokenStory
+  GEAR_BearSpearStory
+  GEAR_Bear_Spear_complete
+  GEAR_BedRoll_A01
+  GEAR_BoxedCrackers_Mat_Old
+  GEAR_BunkerClue1a
+  GEAR_BunkerClue1b
+  GEAR_BunkerClue1c
+  GEAR_BunkerClue1d
+  GEAR_CannedSardines_Mat_Old
+  GEAR_CanyonFishingHutJournal
+  GEAR_CashBundle
+  GEAR_CoffeeTin_Mat_Old
+  GEAR_CondensedMilk_Dif_Open
+  GEAR_CondensedMilk_Mat_Old
+  GEAR_DarkwalkerID
+  GEAR_DecoContainer_A
+  GEAR_DepositBoxRing_15_Farmer
+  GEAR_DepositBoxRing_7_DK1
+  GEAR_DogFood_Mat_Old
+  GEAR_FishingLureA_A
+  GEAR_FishingLureB_A
+  GEAR_FishingLureC_A
+  GEAR_FoodBeefJerky_Mat_Old
+  GEAR_FoodCannedPeaches_Mat_Old
+  GEAR_FoodEnergyBar_Mat_Old
+  GEAR_FoodMRE_Mat_Old
+  GEAR_FoodPorkAndBeans_Mat_Old
+  GEAR_FoodSodaGrape_Mat_Old
+  GEAR_FoodSodaMountain_Mat_Old
+  GEAR_FoodSodaOrange_Mat_Old
+  GEAR_GoldNugget
+  GEAR_GranolaBar_Mat_Old
+  GEAR_GreenTeaPackage_Mat_Old
+  GEAR_HeavyBandage_B
+  GEAR_HookAndLine_B
+  GEAR_HuntingRifle_custom_noise
+  GEAR_InsulatedFlask_F
+  GEAR_InsulatedFlask_G
+  GEAR_JerrycanWater_A01
+  GEAR_Jerrycan_A
+  GEAR_Jerrycan_A01
+  GEAR_KeroseneLampBGlass_01
+  GEAR_KeroseneLampB_01
+  GEAR_LakeCabinKey_2
+  GEAR_LakeCabinKey_7
+  GEAR_LakeCabinKey_8
+  GEAR_Matches_Mat_Old
+  GEAR_MetalContainer_A01
+  GEAR_MetalContainer_Red_A01
+  GEAR_NULL
+  GEAR_NewsprintA_01
+  GEAR_PeanutButter_Mat_Old
+  GEAR_Pickled_Eggs_Glass
+  GEAR_Pickled_Onions_Glass
+  GEAR_Pickles_Glass
+  GEAR_PostCard_AC_CentralSpire
+  GEAR_PostCard_AC_TopShelf
+  GEAR_PostCard_BI_EchoOne
+  GEAR_PostCard_BR_Canyon
+  GEAR_PostCard_BR_Prison
+  GEAR_PostCard_CR_AbandonedLookout
+  GEAR_PostCard_FM_MuskegOverlook
+  GEAR_PostCard_FM_ShortwaveTower
+  GEAR_PostCard_ML_ForestryLookout
+  ... +38 more

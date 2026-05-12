@@ -1,0 +1,58 @@
+{
+  "Pastime Reading Settings": "悠闲阅读 设置",
+
+  "General settings": "常规设置",
+  "Controls": "控制",
+  "Customization": "自定义",
+  "Reload": "重载",
+  "Debug": "调试",
+
+  "Current page": "当前页",
+  "Current page. Use to quickly navigate the book. \n\nCurrently there's no way to get actual number of pages for your book, so it's set to 999.": "当前页。用于快速翻阅书籍。\n\n目前无法获取书籍的实际页数,因此上限固定为 999。",
+
+  "Font size": "字体大小",
+  "Page font size. Default: 16": "页面字体大小。默认:16",
+
+  "RTL language": "RTL 语言(从右至左)",
+  "Enable right-to-left way of writing. \n\nThis option also enables Arabic diacritics and makes the book open to the right. \n\nSupports Farsi, Arabic and Hebrew. \n\nLTR languages break when turning this on. No fix for that.": "启用从右至左的书写方式。\n\n该选项还会启用阿拉伯字符变形,并让书本向右翻开。\n\n支持波斯语、阿拉伯语和希伯来语。\n\n开启后从左至右的语言会显示异常,无法兼顾。",
+
+  "Text alignment": "文字对齐",
+  "Default: Justified. \n\nOption is there in case your language looks bad with it. Or if you want to be fancy when reading poetry": "默认:两端对齐。\n\n如果你的语言用两端对齐效果不佳,或者想在读诗歌时显得风雅,可以更换。",
+  "Justified": "两端对齐",
+  "Left": "左对齐",
+  "Right": "右对齐",
+  "Centered": "居中",
+
+  "Time slowdown": "时间减速",
+  "Slowdown time while reading so you can immerse yourself better into the story. Doesn't affect wildlife. \n\nDefault: 1": "阅读时减慢时间流逝,让你更沉浸于故事。不影响野生动物。\n\n默认:1",
+
+  "Disable interactions": "禁用交互",
+  "Disable interactions while reading. You can still interact while looking over the book. \n\nDoesn't work well with classic book tilt, since you can't really look over the book\n\nSince new tilt is enabled by default, Default: true": "阅读时禁用交互。当你越过书本朝外看时仍可交互。\n\n搭配经典倾斜模式效果不好,因为无法真正越过书本看外面。\n\n由于默认启用了新的倾斜模式,默认:开启",
+
+  "Keybinding": "快捷键",
+  "The key you press to take out the book. Press again to open it. Flip pages with left/right action(Q and E). Holster to close. \n\nDefault: 5": "按下该键可取出书本,再按一次打开。用左/右按键(Q 和 E)翻页。按收起武器键关闭。\n\n默认:5",
+
+  "Book tilt": "书本倾斜",
+  "Change book tilt based on Y mouse movement. New behavior allows you to see more when looking forward\n\nDefault: New": "根据鼠标 Y 轴移动改变书本倾斜。新模式让你向前看时视野更广。\n\n默认:新模式",
+  "New": "新模式",
+  "Classic": "经典",
+
+  "Book texture": "书本贴图",
+  "Book appearance. \n\nYou can modify textures yourself. They should be here ...Mods/pastimeReading/textures/": "书本外观。\n\n你可以自行修改贴图,文件位置:...Mods/pastimeReading/textures/",
+  "Simple Red": "纯色红",
+  "Simple Blue": "纯色蓝",
+  "Simple White": "纯色白",
+  "Simple Yellow": "纯色黄",
+  "Detailed Grey": "细节灰",
+  "Detailed Yellow": "细节黄",
+  "Detailed Black": "细节黑",
+
+  "Reload book from text file?": "从文本文件重新加载书籍?",
+  "Check this to reload book from file when pressing CONFIRM.": "勾选后,按下确认时将从文件重新加载书籍。",
+
+  "Enable debug messages": "启用调试日志",
+
+  "Failed to load AssetBundle": "加载 AssetBundle 失败",
+  "Book content is empty!": "书籍内容为空!",
+  "Book texture is missing": "找不到书本贴图"
+}

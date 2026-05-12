@@ -1,0 +1,11 @@
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\Shotgun.csproj.AssemblyReference.cache
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\Shotgun.GeneratedMSBuildEditorConfig.editorconfig
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\Shotgun.csproj.CoreCompileInputs.cache
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\Shotgun.sourcelink.json
+D:\Github\tld--2.55\_decompiled\Shotgun\src\bin\Release\Shotgun.deps.json
+D:\Github\tld--2.55\_decompiled\Shotgun\src\bin\Release\Shotgun.dll
+D:\Github\tld--2.55\_decompiled\Shotgun\src\bin\Release\Shotgun.pdb
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\Shotgun.dll
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\refint\Shotgun.dll
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\Shotgun.pdb
+D:\Github\tld--2.55\_decompiled\Shotgun\src\obj\Release\ref\Shotgun.dll

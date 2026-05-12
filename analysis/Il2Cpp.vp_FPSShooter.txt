@@ -1,0 +1,902 @@
+using System;
+using System.Runtime.CompilerServices;
+using Il2CppInterop.Common.Attributes;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.Runtime;
+using UnityEngine;
+
+namespace Il2Cpp;
+
+public class vp_FPSShooter : vp_Component
+{
+	private static readonly IntPtr NativeFieldInfoPtr_m_Weapon;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_Camera;
+
+	private static readonly IntPtr NativeFieldInfoPtr_BulletEmissionLocator;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ProjectilePrefab;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ProjectileCustomPrefab;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ProjectileScale;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ProjectileCount;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ProjectileSpread;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_NextAllowedFireTime;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionPositionRecoil;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionRotationRecoil;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionPositionReset;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionRotationReset;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionPositionPause;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionRotationPause;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MotionDryFireRecoil;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MuzzleFlashPosition;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MuzzleFlashScale;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MuzzleFlashFadeSpeed;
+
+	private static readonly IntPtr NativeFieldInfoPtr_MuzzleFlashPrefab;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_MuzzleFlash;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_MuzzleFlashComponent;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellPrefab;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellScale;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellEjectDirection;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellEjectPosition;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellEjectVelocity;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellEjectDelay;
+
+	private static readonly IntPtr NativeFieldInfoPtr_ShellEjectSpin;
+
+	private static readonly IntPtr NativeFieldInfoPtr_JamConditionThreshold;
+
+	private static readonly IntPtr NativeFieldInfoPtr_JamMinimumChance;
+
+	private static readonly IntPtr NativeFieldInfoPtr_JamMaximumChance;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_NextAllowedReloadTime;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_LastFiredTime;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_WeaponRotatedForShot;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_MuzzleFlashTagObject;
+
+	private static readonly IntPtr NativeFieldInfoPtr_m_SendGunShotAudioEventTimer;
+
+	private static readonly IntPtr NativeMethodInfoPtr_get_MuzzleFlash_Public_get_GameObject_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_get_NextAllowedReloadTime_Public_get_Single_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_set_NextAllowedReloadTime_Public_set_Void_Single_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_get_NextAllowedFireTime_Public_get_Single_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_set_NextAllowedFireTime_Public_set_Void_Single_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_get_IsReloadCooldownActive_Public_get_Boolean_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Awake_Protected_Virtual_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Start_Protected_Virtual_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Update_Protected_Virtual_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Fire_Public_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_DryFire_Public_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Reload_Public_Boolean_Int32_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_PreventFiring_Public_Void_Single_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_Refresh_Public_Virtual_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_OnBulletLoaded_Public_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_OnClipLoaded_Public_Void_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr_ShowMuzzleFlash_Private_Void_Boolean_0;
+
+	private static readonly IntPtr NativeMethodInfoPtr__ctor_Public_Void_0;
+
+	public unsafe vp_FPSWeapon m_Weapon
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Weapon);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<vp_FPSWeapon>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Weapon)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe vp_FPSCamera m_Camera
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Camera);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<vp_FPSCamera>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_Camera)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe Transform BulletEmissionLocator
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_BulletEmissionLocator);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<Transform>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_BulletEmissionLocator)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject ProjectilePrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectilePrefab);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectilePrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe bool ProjectileCustomPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileCustomPrefab);
+			return *(bool*)num;
+		}
+		set
+		{
+			*(bool*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileCustomPrefab)) = value;
+		}
+	}
+
+	public unsafe float ProjectileScale
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileScale);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileScale)) = value;
+		}
+	}
+
+	public unsafe int ProjectileCount
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileCount);
+			return *(int*)num;
+		}
+		set
+		{
+			*(int*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileCount)) = value;
+		}
+	}
+
+	public unsafe float ProjectileSpread
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileSpread);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ProjectileSpread)) = value;
+		}
+	}
+
+	public unsafe float m_NextAllowedFireTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NextAllowedFireTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NextAllowedFireTime)) = value;
+		}
+	}
+
+	public unsafe Vector3 MotionPositionRecoil
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionPositionRecoil);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionPositionRecoil)) = value;
+		}
+	}
+
+	public unsafe Vector3 MotionRotationRecoil
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionRotationRecoil);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionRotationRecoil)) = value;
+		}
+	}
+
+	public unsafe float MotionPositionReset
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionPositionReset);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionPositionReset)) = value;
+		}
+	}
+
+	public unsafe float MotionRotationReset
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionRotationReset);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionRotationReset)) = value;
+		}
+	}
+
+	public unsafe float MotionPositionPause
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionPositionPause);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionPositionPause)) = value;
+		}
+	}
+
+	public unsafe float MotionRotationPause
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionRotationPause);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionRotationPause)) = value;
+		}
+	}
+
+	public unsafe float MotionDryFireRecoil
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionDryFireRecoil);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MotionDryFireRecoil)) = value;
+		}
+	}
+
+	public unsafe Vector3 MuzzleFlashPosition
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashPosition);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashPosition)) = value;
+		}
+	}
+
+	public unsafe Vector3 MuzzleFlashScale
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashScale);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashScale)) = value;
+		}
+	}
+
+	public unsafe float MuzzleFlashFadeSpeed
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashFadeSpeed);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashFadeSpeed)) = value;
+		}
+	}
+
+	public unsafe GameObject MuzzleFlashPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashPrefab);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_MuzzleFlashPrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject m_MuzzleFlash
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_MuzzleFlash);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_MuzzleFlash)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe vp_MuzzleFlash m_MuzzleFlashComponent
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_MuzzleFlashComponent);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<vp_MuzzleFlash>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_MuzzleFlashComponent)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe GameObject ShellPrefab
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellPrefab);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellPrefab)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe float ShellScale
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellScale);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellScale)) = value;
+		}
+	}
+
+	public unsafe Vector3 ShellEjectDirection
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectDirection);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectDirection)) = value;
+		}
+	}
+
+	public unsafe Vector3 ShellEjectPosition
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectPosition);
+			return *(Vector3*)num;
+		}
+		set
+		{
+			*(Vector3*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectPosition)) = value;
+		}
+	}
+
+	public unsafe float ShellEjectVelocity
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectVelocity);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectVelocity)) = value;
+		}
+	}
+
+	public unsafe float ShellEjectDelay
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectDelay);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectDelay)) = value;
+		}
+	}
+
+	public unsafe float ShellEjectSpin
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectSpin);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_ShellEjectSpin)) = value;
+		}
+	}
+
+	public unsafe float JamConditionThreshold
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_JamConditionThreshold);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_JamConditionThreshold)) = value;
+		}
+	}
+
+	public unsafe float JamMinimumChance
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_JamMinimumChance);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_JamMinimumChance)) = value;
+		}
+	}
+
+	public unsafe float JamMaximumChance
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_JamMaximumChance);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_JamMaximumChance)) = value;
+		}
+	}
+
+	public unsafe float m_NextAllowedReloadTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NextAllowedReloadTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_NextAllowedReloadTime)) = value;
+		}
+	}
+
+	public unsafe float m_LastFiredTime
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_LastFiredTime);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_LastFiredTime)) = value;
+		}
+	}
+
+	public unsafe bool m_WeaponRotatedForShot
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_WeaponRotatedForShot);
+			return *(bool*)num;
+		}
+		set
+		{
+			*(bool*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_WeaponRotatedForShot)) = value;
+		}
+	}
+
+	public unsafe GameObject m_MuzzleFlashTagObject
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_MuzzleFlashTagObject);
+			IntPtr intPtr = *(IntPtr*)num;
+			return (intPtr != (IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr) : null;
+		}
+		set
+		{
+			IntPtr num = IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IL2CPP.il2cpp_gc_wbarrier_set_field(num, (IntPtr)((nint)num + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_MuzzleFlashTagObject)), IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)value));
+		}
+	}
+
+	public unsafe float m_SendGunShotAudioEventTimer
+	{
+		get
+		{
+			nint num = (nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_SendGunShotAudioEventTimer);
+			return *(float*)num;
+		}
+		set
+		{
+			*(float*)((nint)IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this) + (int)IL2CPP.il2cpp_field_get_offset(NativeFieldInfoPtr_m_SendGunShotAudioEventTimer)) = value;
+		}
+	}
+
+	public unsafe GameObject MuzzleFlash
+	{
+		[CallerCount(0)]
+		get
+		{
+			IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IntPtr* ptr = null;
+			Unsafe.SkipInit(out IntPtr intPtr);
+			IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_get_MuzzleFlash_Public_get_GameObject_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+			return (intPtr2 != (IntPtr)0) ? Il2CppObjectPool.Get<GameObject>(intPtr2) : null;
+		}
+	}
+
+	public unsafe float NextAllowedReloadTime
+	{
+		[CallerCount(0)]
+		get
+		{
+			IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IntPtr* ptr = null;
+			Unsafe.SkipInit(out IntPtr intPtr);
+			IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_get_NextAllowedReloadTime_Public_get_Single_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+			return *(float*)IL2CPP.il2cpp_object_unbox(intPtr2);
+		}
+		[CallerCount(0)]
+		set
+		{
+			IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IntPtr* ptr = stackalloc IntPtr[1];
+			*ptr = (nint)(&value);
+			Unsafe.SkipInit(out IntPtr intPtr);
+			IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_set_NextAllowedReloadTime_Public_set_Void_Single_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		}
+	}
+
+	public unsafe float NextAllowedFireTime
+	{
+		[CallerCount(0)]
+		get
+		{
+			IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IntPtr* ptr = null;
+			Unsafe.SkipInit(out IntPtr intPtr);
+			IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_get_NextAllowedFireTime_Public_get_Single_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+			return *(float*)IL2CPP.il2cpp_object_unbox(intPtr2);
+		}
+		[CallerCount(0)]
+		set
+		{
+			IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IntPtr* ptr = stackalloc IntPtr[1];
+			*ptr = (nint)(&value);
+			Unsafe.SkipInit(out IntPtr intPtr);
+			IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_set_NextAllowedFireTime_Public_set_Void_Single_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		}
+	}
+
+	public unsafe bool IsReloadCooldownActive
+	{
+		[CallerCount(2)]
+		[CachedScanResults(RefRangeStart = 46300, RefRangeEnd = 46302, XrefRangeStart = 46298, XrefRangeEnd = 46300, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+		get
+		{
+			IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+			IntPtr* ptr = null;
+			Unsafe.SkipInit(out IntPtr intPtr);
+			IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_get_IsReloadCooldownActive_Public_get_Boolean_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+			Il2CppException.RaiseExceptionIfNecessary(intPtr);
+			return *(bool*)IL2CPP.il2cpp_object_unbox(intPtr2);
+		}
+	}
+
+	static vp_FPSShooter()
+	{
+		Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr = IL2CPP.GetIl2CppClass("Assembly-CSharp.dll", "", "vp_FPSShooter");
+		IL2CPP.il2cpp_runtime_class_init(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr);
+		NativeFieldInfoPtr_m_Weapon = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_Weapon");
+		NativeFieldInfoPtr_m_Camera = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_Camera");
+		NativeFieldInfoPtr_BulletEmissionLocator = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "BulletEmissionLocator");
+		NativeFieldInfoPtr_ProjectilePrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ProjectilePrefab");
+		NativeFieldInfoPtr_ProjectileCustomPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ProjectileCustomPrefab");
+		NativeFieldInfoPtr_ProjectileScale = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ProjectileScale");
+		NativeFieldInfoPtr_ProjectileCount = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ProjectileCount");
+		NativeFieldInfoPtr_ProjectileSpread = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ProjectileSpread");
+		NativeFieldInfoPtr_m_NextAllowedFireTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_NextAllowedFireTime");
+		NativeFieldInfoPtr_MotionPositionRecoil = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionPositionRecoil");
+		NativeFieldInfoPtr_MotionRotationRecoil = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionRotationRecoil");
+		NativeFieldInfoPtr_MotionPositionReset = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionPositionReset");
+		NativeFieldInfoPtr_MotionRotationReset = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionRotationReset");
+		NativeFieldInfoPtr_MotionPositionPause = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionPositionPause");
+		NativeFieldInfoPtr_MotionRotationPause = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionRotationPause");
+		NativeFieldInfoPtr_MotionDryFireRecoil = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MotionDryFireRecoil");
+		NativeFieldInfoPtr_MuzzleFlashPosition = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MuzzleFlashPosition");
+		NativeFieldInfoPtr_MuzzleFlashScale = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MuzzleFlashScale");
+		NativeFieldInfoPtr_MuzzleFlashFadeSpeed = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MuzzleFlashFadeSpeed");
+		NativeFieldInfoPtr_MuzzleFlashPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "MuzzleFlashPrefab");
+		NativeFieldInfoPtr_m_MuzzleFlash = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_MuzzleFlash");
+		NativeFieldInfoPtr_m_MuzzleFlashComponent = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_MuzzleFlashComponent");
+		NativeFieldInfoPtr_ShellPrefab = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellPrefab");
+		NativeFieldInfoPtr_ShellScale = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellScale");
+		NativeFieldInfoPtr_ShellEjectDirection = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellEjectDirection");
+		NativeFieldInfoPtr_ShellEjectPosition = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellEjectPosition");
+		NativeFieldInfoPtr_ShellEjectVelocity = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellEjectVelocity");
+		NativeFieldInfoPtr_ShellEjectDelay = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellEjectDelay");
+		NativeFieldInfoPtr_ShellEjectSpin = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "ShellEjectSpin");
+		NativeFieldInfoPtr_JamConditionThreshold = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "JamConditionThreshold");
+		NativeFieldInfoPtr_JamMinimumChance = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "JamMinimumChance");
+		NativeFieldInfoPtr_JamMaximumChance = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "JamMaximumChance");
+		NativeFieldInfoPtr_m_NextAllowedReloadTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_NextAllowedReloadTime");
+		NativeFieldInfoPtr_m_LastFiredTime = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_LastFiredTime");
+		NativeFieldInfoPtr_m_WeaponRotatedForShot = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_WeaponRotatedForShot");
+		NativeFieldInfoPtr_m_MuzzleFlashTagObject = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_MuzzleFlashTagObject");
+		NativeFieldInfoPtr_m_SendGunShotAudioEventTimer = IL2CPP.GetIl2CppField(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, "m_SendGunShotAudioEventTimer");
+		NativeMethodInfoPtr_get_MuzzleFlash_Public_get_GameObject_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663571);
+		NativeMethodInfoPtr_get_NextAllowedReloadTime_Public_get_Single_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663572);
+		NativeMethodInfoPtr_set_NextAllowedReloadTime_Public_set_Void_Single_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663573);
+		NativeMethodInfoPtr_get_NextAllowedFireTime_Public_get_Single_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663574);
+		NativeMethodInfoPtr_set_NextAllowedFireTime_Public_set_Void_Single_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663575);
+		NativeMethodInfoPtr_get_IsReloadCooldownActive_Public_get_Boolean_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663576);
+		NativeMethodInfoPtr_Awake_Protected_Virtual_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663577);
+		NativeMethodInfoPtr_Start_Protected_Virtual_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663578);
+		NativeMethodInfoPtr_Update_Protected_Virtual_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663579);
+		NativeMethodInfoPtr_Fire_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663580);
+		NativeMethodInfoPtr_DryFire_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663581);
+		NativeMethodInfoPtr_Reload_Public_Boolean_Int32_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663582);
+		NativeMethodInfoPtr_PreventFiring_Public_Void_Single_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663583);
+		NativeMethodInfoPtr_Refresh_Public_Virtual_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663584);
+		NativeMethodInfoPtr_OnBulletLoaded_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663585);
+		NativeMethodInfoPtr_OnClipLoaded_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663586);
+		NativeMethodInfoPtr_ShowMuzzleFlash_Private_Void_Boolean_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663587);
+		NativeMethodInfoPtr__ctor_Public_Void_0 = IL2CPP.GetIl2CppMethodByToken(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr, 100663588);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46302, XrefRangeEnd = 46323, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe override void Awake()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(IL2CPP.il2cpp_object_get_virtual_method(IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)this), NativeMethodInfoPtr_Awake_Protected_Virtual_Void_0), IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46323, XrefRangeEnd = 46373, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe override void Start()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(IL2CPP.il2cpp_object_get_virtual_method(IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)this), NativeMethodInfoPtr_Start_Protected_Virtual_Void_0), IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46373, XrefRangeEnd = 46407, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe override void Update()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(IL2CPP.il2cpp_object_get_virtual_method(IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)this), NativeMethodInfoPtr_Update_Protected_Virtual_Void_0), IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(1)]
+	[CachedScanResults(RefRangeStart = 46443, RefRangeEnd = 46444, XrefRangeStart = 46407, XrefRangeEnd = 46443, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void Fire()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_Fire_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46444, XrefRangeEnd = 46457, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void DryFire()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_DryFire_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(1)]
+	[CachedScanResults(RefRangeStart = 46474, RefRangeEnd = 46475, XrefRangeStart = 46457, XrefRangeEnd = 46474, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe bool Reload(int ammoCount)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = stackalloc IntPtr[1];
+		*ptr = (nint)(&ammoCount);
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_Reload_Public_Boolean_Int32_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+		return *(bool*)IL2CPP.il2cpp_object_unbox(intPtr2);
+	}
+
+	[CallerCount(3)]
+	[CachedScanResults(RefRangeStart = 46477, RefRangeEnd = 46480, XrefRangeStart = 46475, XrefRangeEnd = 46477, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void PreventFiring(float seconds)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = stackalloc IntPtr[1];
+		*ptr = (nint)(&seconds);
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_PreventFiring_Public_Void_Single_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46480, XrefRangeEnd = 46523, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe override void Refresh()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(IL2CPP.il2cpp_object_get_virtual_method(IL2CPP.Il2CppObjectBaseToPtr((Il2CppObjectBase)(object)this), NativeMethodInfoPtr_Refresh_Public_Virtual_Void_0), IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46523, XrefRangeEnd = 46571, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void OnBulletLoaded()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_OnBulletLoaded_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46571, XrefRangeEnd = 46624, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void OnClipLoaded()
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_OnClipLoaded_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46624, XrefRangeEnd = 46643, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe void ShowMuzzleFlash(bool hasMisfired)
+	{
+		IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this);
+		IntPtr* ptr = stackalloc IntPtr[1];
+		*ptr = (nint)(&hasMisfired);
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr_ShowMuzzleFlash_Private_Void_Boolean_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	[CallerCount(0)]
+	[CachedScanResults(RefRangeStart = 0, RefRangeEnd = 0, XrefRangeStart = 46643, XrefRangeEnd = 46648, MetadataInitTokenRva = 0L, MetadataInitFlagRva = 0L)]
+	public unsafe vp_FPSShooter()
+		: this(IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<vp_FPSShooter>.NativeClassPtr))
+	{
+		IntPtr* ptr = null;
+		Unsafe.SkipInit(out IntPtr intPtr);
+		IntPtr intPtr2 = IL2CPP.il2cpp_runtime_invoke(NativeMethodInfoPtr__ctor_Public_Void_0, IL2CPP.Il2CppObjectBaseToPtrNotNull((Il2CppObjectBase)(object)this), (void**)ptr, ref intPtr);
+		Il2CppException.RaiseExceptionIfNecessary(intPtr);
+	}
+
+	public vp_FPSShooter(IntPtr pointer)
+		: base(pointer)
+	{
+	}
+}
+You are not using the latest version of the tool, please update.
+Latest version is '10.0.1.8346' (yours is '8.2.0.7535-95108c96')

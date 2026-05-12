@@ -1,0 +1,17 @@
+{
+    "Name": "LCD TV",
+	"RequiredGear":[{"Item":"GEAR_Wirebundle","Count":4},{"Item":"GEAR_Fuse","Count":2},{"Item":"GEAR_CarBattery","Count":1},{"Item":"GEAR_Scrapmetal","Count":5}],
+    "KeroseneLitersRequired": 0,
+    "GunpowderKGRequired": 0,
+    "RequiredTool": "",
+    "OptionalTools": [],
+    "RequiredCraftingLocation": "Workbench",
+    "RequiresLitFire": false,
+    "RequiresLight": true,
+    "CraftedResult": "GEAR_TV_LCD",
+    "CraftedResultCount": 1,
+    "DurationMinutes": 60,
+    "CraftingAudio": "Play_CraftingMetalAmmo",
+    "AppliedSkill" : "ToolRepair",
+    "ImprovedSkill" : "ToolRepair"
+}

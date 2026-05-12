@@ -56,7 +56,8 @@ internal static class CheatState
     public static bool QuickClimb;         // 爬绳速度 ×5
     public static bool QuickAction;        // 采集 / 修理 / 拆解 自动时间加速
     // CT 复刻 v2.7.45+
-    public static bool QuickCook;          // 秒烤肉
+    public static bool QuickCook;          // 秒烤肉(自带防烤焦,Ready 状态 elapsed clamp 不进 Ruined)
+    public static bool NoBurn;             // 防烤焦独立开关(只锁 Ready elapsed,不秒熟)
     public static bool QuickSearch;        // 秒搜索
     public static bool QuickHarvest;       // 秒割肉
     public static bool QuickBreakDown;     // 秒打碎
@@ -70,6 +71,7 @@ internal static class CheatState
     public static bool InfiniteContainer;  // 容器无限
     public static bool FireTemp300;        // 篝火 300℃
     public static bool FireNeverDie;       // 篝火永不熄
+    public static float FireMaxBurnHours;  // 篝火燃烧上限(小时)
     public static bool NoFrostbiteRisk;    // 无冻伤风险(CT: DealFrostbiteDamageToLocation=0)
     public static bool WellFedBuff;        // 饱饱 buff(CT: WellFed.Update NOP)
     public static bool FreezingBuff;       // 温度加成(CT: FreezingBuffActive=true)
@@ -101,6 +103,20 @@ internal static class CheatState
     public static bool AutoExtinguishOnRest;
     public static bool DisableTorchLeftClick;
     public static bool DisableLampLeftClick;
+    // 天气锁定
+    public static bool WeatherLocked;
+    public static int WeatherLockedStage;
+    // HouseLights 整合
+    public static bool HL_Enabled;
+    public static bool HL_EnableOutside;
+    public static bool HL_WhiteLights;
+    public static bool HL_NoFlicker = true;
+    public static bool HL_CastShadows;
+    public static bool HL_LightAudio;
+    public static float HL_Intensity = 2f;
+    public static float HL_RangeMultiplier = 1.4f;
+    public static float HL_CullDistance = 50f;
+    public static float HL_InteractDistance = 1f;
     // v2.7.96 整合 Batch 2
     public static bool PauseInJournal;
     public static bool SkipIntro;
@@ -140,6 +156,7 @@ internal static class CheatState
     public static bool QoL_BuryCorpses;
     public static bool QoL_SleepAnywhere;
     public static bool QoL_AutoSurvey;
+    public static bool QoL_ImprovedFlasks;
 
 
     // ═══════════════════════════════════════════════════════════════
@@ -181,7 +198,17 @@ internal static class CheatState
     public static bool World_SodaSummitEnabled;
     public static bool World_SodaGrapeEnabled;
     public static bool World_CarcassMoving;
+    public static bool World_CarcassMovingAll;
     public static bool World_ElectricTorch;
+
+    // TinyTweaks
+    public static bool TT_CapFeelsEnabled;
+    public static bool TT_FallDeathGoat;
+    public static bool TT_DroppedOrientation;
+    public static bool TT_ExtendedFOV;
+    public static bool TT_PauseOnRadial;
+    public static bool TT_RespawnPlants;
+    public static bool TT_ShowTraderTrust;
 }
 
 // 工具函数:刷物品/清 affliction/天气/时间/耐久恢复
@@ -198,6 +225,7 @@ internal static class Cheats
             var s = ModMain.Settings;
             if (s == null) return;
 
+            // ═══ 核心作弊 ═══
             s.GodMode = false;
             s.NoFallDamage = false;
             s.AlwaysWarm = false;
@@ -230,6 +258,7 @@ internal static class Cheats
             s.QuickClimb = false;
             s.QuickAction = false;
             s.QuickCook = false;
+            s.NoBurn = false;
             s.QuickSearch = false;
             s.QuickHarvest = false;
             s.QuickBreakDown = false;
@@ -261,13 +290,92 @@ internal static class Cheats
             s.TraderAlwaysAvailable = false;
             s.CougarInstantActivate = false;
             s.BlockAutoPickupOwnDrops = false;
+
+
+            // ═══ Movement Detail ═══
+            s.SpeedTweaksEnabled = false;
+            s.SilentFootsteps = false;
+            s.JumpEnabled = false;
+            s.GunZoomEnabled = false;
+            s.RunWithLantern = false;
+            s.NoAutoEquipCharcoal = false;
+            s.AutoExtinguishOnRest = false;
+
+            // ═══ Light Sources ═══
+            s.LampMute = false;
+            s.DisableTorchLeftClick = false;
+            s.DisableLampLeftClick = false;
+
+            // ═══ HouseLights ═══
+            s.HL_Enabled = false;
+
+            // ═══ QoL Batch 2 ═══
+            s.PauseInJournal = false;
+            s.SkipIntro = false;
+            s.MuteCougarMenuSound = false;
+            s.VehicleKeepFov = false;
+            s.DroppableUndroppables = false;
+            s.RememberBreakdownTool = false;
+            s.VehicleFreeLook = false;
+
+            // ═══ Crosshair ═══
+            s.CrosshairEnabled = false;
+
+            // ═══ QoL General ═══
+            s.QoL_Enabled = false;
+            s.QoL_NoSaveOnSprain = false;
+            s.QoL_NoSaveOnSprainFalls = false;
+            s.QoL_WakeUpCall = false;
+            s.QoL_AuroraSense = false;
+            s.QoL_ShowTimeSleep = false;
+            s.QoL_NoPitchBlack = false;
+            s.QoL_MapTextOutlineEnabled = false;
+            s.QoL_BuryCorpses = false;
+            s.QoL_SleepAnywhere = false;
+            s.QoL_AutoSurvey = false;
+
+            // ═══ Crafting & Fire ═══
+            s.Craft_Anywhere = false;
+            s.Craft_MoreCookingSlots = false;
+
+            // ═══ World & Items ═══
+            s.World_Sprainkle = false;
+            s.PlaceFromInv_Enabled = false;
+            s.World_BowRepair = false;
+            s.World_CaffeinatedSodas = false;
+            s.World_CarcassMoving = false;
+            s.World_CarcassMovingAll = false;
+            s.World_ElectricTorch = false;
+            s.MapClickTP = false;
+
+            // ═══ UT 手电筒 ═══
+            s.UT_FlashInfiniteBattery = false;
+
+            // ═══ StackManager ═══
+            s.Stack_AddComponent = false;
+            s.Stack_UseMaxHP = false;
+
+            // ═══ TinyTweaks ═══
+            s.TT_CapFeelsEnabled = false;
+            s.TT_FallDeathGoat = false;
+            s.TT_PauseOnRadial = false;
+            s.TT_RespawnPlants = false;
+            s.TT_ShowTraderTrust = false;
+
+            // ═══ UT 其他 ═══
+            s.UT_RevolverImprovements = false;
+            s.UT_ToiletWaterPotable = false;
+            s.UT_RemoveHeadacheDebuff = false;
+            s.UT_RockCacheIndoors = false;
+            s.UT_GlowingDecals = false;
+
             s.Save();
 
             SyncCheatStateInline(s);
             DynamicPatch.Reconcile();
 
-            CheatState.LastActionLog = "已关闭全部作弊 toggle(立即生效)";
-            ModMain.Log?.Msg("[DisableAll] 所有作弊 toggle 已关,CheatState 同步,动态 patch Reconcile");
+            CheatState.LastActionLog = I18n.T("已关闭全部功能(立即生效)", "All features disabled (immediate)");
+            ModMain.Log?.Msg("[DisableAll] 所有功能 toggle 已关,CheatState 同步,动态 patch Reconcile");
         }
         catch (Exception ex) { ModMain.Log?.Error($"[DisableAll] {ex}"); }
     }
@@ -275,6 +383,7 @@ internal static class Cheats
     // 内联版 Settings → CheatState(避免反射 ModMain.SyncStateFromSettings private)
     private static void SyncCheatStateInline(TldHacksSettings s)
     {
+        // ═══ 核心作弊 ═══
         CheatState.GodMode = s.GodMode;
         CheatState.NoFallDamage = s.NoFallDamage;
         CheatState.AlwaysWarm = s.AlwaysWarm;
@@ -307,6 +416,7 @@ internal static class Cheats
         CheatState.QuickClimb = s.QuickClimb;
         CheatState.QuickAction = s.QuickAction;
         CheatState.QuickCook = s.QuickCook;
+        CheatState.NoBurn = s.NoBurn;
         CheatState.QuickSearch = s.QuickSearch;
         CheatState.QuickHarvest = s.QuickHarvest;
         CheatState.QuickBreakDown = s.QuickBreakDown;
@@ -319,6 +429,7 @@ internal static class Cheats
         CheatState.InfiniteContainer = s.InfiniteContainer;
         CheatState.FireTemp300 = s.FireTemp300;
         CheatState.FireNeverDie = s.FireNeverDie;
+        CheatState.FireMaxBurnHours = s.FireMaxBurnHours;
         CheatState.NoFrostbiteRisk = s.NoFrostbiteRisk;
         CheatState.WellFedBuff = s.WellFedBuff;
         CheatState.FreezingBuff = s.FreezingBuff;
@@ -331,12 +442,72 @@ internal static class Cheats
         CheatState.TechBackpack = s.TechBackpack;
         CheatState.TorchFullValue = s.TorchFullValue;
         CheatState.InfiniteStamina = s.InfiniteStamina;
+        CheatState.MapClickTP = s.MapClickTP;
         CheatState.TraderUnlimitedList = s.TraderUnlimitedList;
         CheatState.TraderMaxTrust = s.TraderMaxTrust;
         CheatState.TraderInstantExchange = s.TraderInstantExchange;
         CheatState.TraderAlwaysAvailable = s.TraderAlwaysAvailable;
         CheatState.CougarInstantActivate = s.CougarInstantActivate;
         CheatState.BlockAutoPickupOwnDrops = s.BlockAutoPickupOwnDrops;
+        // ═══ Movement / QoL / Integrated ═══
+        CheatState.SilentFootsteps = s.SilentFootsteps;
+        CheatState.RunWithLantern = s.RunWithLantern;
+        CheatState.NoAutoEquipCharcoal = s.NoAutoEquipCharcoal;
+        CheatState.AutoExtinguishOnRest = s.AutoExtinguishOnRest;
+        CheatState.DisableTorchLeftClick = s.DisableTorchLeftClick;
+        CheatState.DisableLampLeftClick = s.DisableLampLeftClick;
+        CheatState.LampMute = s.LampMute;
+        // ═══ HouseLights ═══
+        CheatState.HL_Enabled = s.HL_Enabled;
+        CheatState.HL_EnableOutside = s.HL_EnableOutside;
+        CheatState.HL_WhiteLights = s.HL_WhiteLights;
+        CheatState.HL_NoFlicker = s.HL_NoFlicker;
+        CheatState.HL_CastShadows = s.HL_CastShadows;
+        CheatState.HL_LightAudio = s.HL_LightAudio;
+        CheatState.HL_Intensity = s.HL_Intensity;
+        CheatState.HL_RangeMultiplier = s.HL_RangeMultiplier;
+        CheatState.HL_CullDistance = s.HL_CullDistance;
+        CheatState.HL_InteractDistance = s.HL_InteractDistance;
+        // ═══ QoL Batch 2 ═══
+        CheatState.PauseInJournal = s.PauseInJournal;
+        CheatState.SkipIntro = s.SkipIntro;
+        CheatState.MuteCougarMenuSound = s.MuteCougarMenuSound;
+        CheatState.VehicleKeepFov = s.VehicleKeepFov;
+        CheatState.DroppableUndroppables = s.DroppableUndroppables;
+        CheatState.RememberBreakdownTool = s.RememberBreakdownTool;
+        CheatState.VehicleFreeLook = s.VehicleFreeLook;
+        // ═══ QoL General ═══
+        CheatState.QoL_Enabled = s.QoL_Enabled;
+        CheatState.QoL_NoSaveOnSprain = s.QoL_NoSaveOnSprain;
+        CheatState.QoL_NoSaveOnSprainFalls = s.QoL_NoSaveOnSprainFalls;
+        CheatState.QoL_WakeUpCall = s.QoL_WakeUpCall;
+        CheatState.QoL_AuroraSense = s.QoL_AuroraSense;
+        CheatState.QoL_ShowTimeSleep = s.QoL_ShowTimeSleep;
+        CheatState.QoL_NoPitchBlack = s.QoL_NoPitchBlack;
+        CheatState.QoL_MapTextOutline = s.QoL_MapTextOutlineEnabled;
+        CheatState.QoL_BuryCorpses = s.QoL_BuryCorpses;
+        CheatState.QoL_SleepAnywhere = s.QoL_SleepAnywhere;
+        CheatState.QoL_AutoSurvey = s.QoL_AutoSurvey;
+        CheatState.QoL_ImprovedFlasks = s.QoL_ImprovedFlasks;
+        // ═══ Crafting & Fire ═══
+        CheatState.Craft_Anywhere = s.Craft_Anywhere;
+        CheatState.Craft_MoreCookingSlots = s.Craft_MoreCookingSlots;
+        // ═══ World & Items ═══
+        CheatState.World_Sprainkle = s.World_Sprainkle;
+        CheatState.World_BowRepair = s.World_BowRepair;
+        CheatState.World_BowRepairDLC = s.World_BowRepairDLC;
+        CheatState.World_CaffeinatedSodas = s.World_CaffeinatedSodas;
+        CheatState.World_CarcassMoving = s.World_CarcassMoving;
+        CheatState.World_CarcassMovingAll = s.World_CarcassMovingAll;
+        CheatState.World_ElectricTorch = s.World_ElectricTorch;
+        // ═══ TinyTweaks ═══
+        CheatState.TT_CapFeelsEnabled = s.TT_CapFeelsEnabled;
+        CheatState.TT_FallDeathGoat = s.TT_FallDeathGoat;
+        CheatState.TT_DroppedOrientation = s.TT_DroppedOrientation;
+        CheatState.TT_ExtendedFOV = s.TT_ExtendedFOV;
+        CheatState.TT_PauseOnRadial = s.TT_PauseOnRadial;
+        CheatState.TT_RespawnPlants = s.TT_RespawnPlants;
+        CheatState.TT_ShowTraderTrust = s.TT_ShowTraderTrust;
     }
 
 
@@ -420,40 +591,40 @@ internal static class Cheats
             try { c.m_ElapsedWarmTime = 0f; } catch { }
             try { c.m_StartHasBeenCalled = false; } catch { }
             try { c.m_SuppressHypothermia = true; c.HypothermiaEnd(true); c.m_SuppressHypothermia = false; } catch { }
-            if (had) { cleared++; log.Append("低温; "); }
-        }} catch (Exception ex) { log.Append($"低温-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("低温; ", "Hypothermia; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"低温-err:{ex.Message}; ", $"Hypothermia-err:{ex.Message}; ")); }
 
         // —— Frostbite ——
         try { var c = GameManager.GetFrostbiteComponent(); if (c != null) {
             bool had = c.HasFrostbite();
             try { c.FrostbiteEnd(); } catch { }
             try { c.m_SuppressFrostbite = true; } catch { }
-            if (had) { cleared++; log.Append("冻伤; "); }
-        }} catch (Exception ex) { log.Append($"冻伤-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("冻伤; ", "Frostbite; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"冻伤-err:{ex.Message}; ", $"Frostbite-err:{ex.Message}; ")); }
 
         // —— CabinFever ——
         try { var c = GameManager.GetCabinFeverComponent(); if (c != null) {
             bool had = c.HasCabinFever();
             try { c.m_Active = false; } catch { }
             try { c.CabinFeverEnd(); c.ClearCabinFeverRisk(); } catch { }
-            if (had) { cleared++; log.Append("幽闭症; "); }
-        }} catch (Exception ex) { log.Append($"幽闭症-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("幽闭症; ", "Cabin Fever; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"幽闭症-err:{ex.Message}; ", $"CabinFever-err:{ex.Message}; ")); }
 
         // —— Dysentery ——
         try { var c = GameManager.GetDysenteryComponent(); if (c != null) {
             bool had = c.HasDysentery();
             try { c.m_Active = false; } catch { }
             try { c.DysenteryEnd(true); } catch { }
-            if (had) { cleared++; log.Append("痢疾; "); }
-        }} catch (Exception ex) { log.Append($"痢疾-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("痢疾; ", "Dysentery; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"痢疾-err:{ex.Message}; ", $"Dysentery-err:{ex.Message}; ")); }
 
         // —— FoodPoisoning ——
         try { var c = GameManager.GetFoodPoisoningComponent(); if (c != null) {
             bool had = c.HasFoodPoisoning();
             try { c.m_Active = false; } catch { }
             try { c.FoodPoisoningEnd(true); } catch { }
-            if (had) { cleared++; log.Append("食物中毒; "); }
-        }} catch (Exception ex) { log.Append($"食物中毒-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("食物中毒; ", "Food Poisoning; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"食物中毒-err:{ex.Message}; ", $"FoodPoisoning-err:{ex.Message}; ")); }
 
         // —— SprainedWrist / Ankle ——
         try { var c = GameManager.GetSprainedWristComponent(); if (c != null) {
@@ -462,67 +633,67 @@ internal static class Cheats
             // 没 Active 字段,直接 End(0)
             try { c.SprainedWristEnd(0, (AfflictionOptions)0); } catch { }
             try { c.SprainedWristEnd(1, (AfflictionOptions)0); } catch { } // 另一只手
-            if (had) { cleared++; log.Append("扭腕; "); }
-        }} catch (Exception ex) { log.Append($"扭腕-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("扭腕; ", "Sprained Wrist; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"扭腕-err:{ex.Message}; ", $"Wrist-err:{ex.Message}; ")); }
 
         try { var c = GameManager.GetSprainedAnkleComponent(); if (c != null) {
             bool had = c.HasSprainedAnkle();
             try { c.SprainedAnkleEnd(0, (AfflictionOptions)0); } catch { }
             try { c.SprainedAnkleEnd(1, (AfflictionOptions)0); } catch { }
-            if (had) { cleared++; log.Append("扭踝; "); }
-        }} catch (Exception ex) { log.Append($"扭踝-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("扭踝; ", "Sprained Ankle; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"扭踝-err:{ex.Message}; ", $"Ankle-err:{ex.Message}; ")); }
 
         // —— BloodLoss ——
         try { var c = GameManager.GetBloodLossComponent(); if (c != null) {
             bool had = c.HasBloodLoss();
             // 对每个身体部位都 End
             for (int i = 0; i < 6; i++) try { c.BloodLossEnd(i, (AfflictionOptions)0); } catch { }
-            if (had) { cleared++; log.Append("出血; "); }
-        }} catch (Exception ex) { log.Append($"出血-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("出血; ", "Blood Loss; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"出血-err:{ex.Message}; ", $"BloodLoss-err:{ex.Message}; ")); }
 
         // —— Infection ——
         try { var c = GameManager.GetInfectionComponent(); if (c != null) {
             bool had = c.HasInfection();
             for (int i = 0; i < 6; i++) try { c.InfectionEnd(i); } catch { }
-            if (had) { cleared++; log.Append("感染; "); }
-        }} catch (Exception ex) { log.Append($"感染-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("感染; ", "Infection; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"感染-err:{ex.Message}; ", $"Infection-err:{ex.Message}; ")); }
 
         // —— BrokenRib ——
         try { var c = GameManager.GetBrokenRibComponent(); if (c != null) {
             bool had = c.HasBrokenRib();
             for (int i = 0; i < 6; i++) try { c.BrokenRibEnd(i, true); } catch { }
-            if (had) { cleared++; log.Append("骨折; "); }
-        }} catch (Exception ex) { log.Append($"骨折-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("骨折; ", "Broken Rib; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"骨折-err:{ex.Message}; ", $"BrokenRib-err:{ex.Message}; ")); }
 
         // —— SprainPain (扭伤疼痛 / "疼痛"主来源) —— v2.7.21 新增
         try { var c = GameManager.GetSprainPainComponent(); if (c != null) {
             bool had = c.HasSprainPain();
             try { c.Cure(); } catch { }
-            if (had) { cleared++; log.Append("疼痛; "); }
-        }} catch (Exception ex) { log.Append($"疼痛-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("疼痛; ", "Pain; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"疼痛-err:{ex.Message}; ", $"Pain-err:{ex.Message}; ")); }
 
         // —— Headache (头痛) —— v2.7.21 新增
         try { var c = GameManager.GetHeadacheComponent(); if (c != null) {
             bool had = c.HasHeadache();
             try { c.Cure(); } catch { }
-            if (had) { cleared++; log.Append("头痛; "); }
-        }} catch (Exception ex) { log.Append($"头痛-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("头痛; ", "Headache; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"头痛-err:{ex.Message}; ", $"Headache-err:{ex.Message}; ")); }
 
         // —— Burns (烧伤) —— v2.7.21 新增
         try { var c = GameManager.GetBurnsComponent(); if (c != null) {
             bool had = c.HasBurns();
             try { c.m_Active = false; } catch { }
             try { c.BurnsEnd(true); } catch { }
-            if (had) { cleared++; log.Append("烧伤; "); }
-        }} catch (Exception ex) { log.Append($"烧伤-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("烧伤; ", "Burns; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"烧伤-err:{ex.Message}; ", $"Burns-err:{ex.Message}; ")); }
 
         // —— IntestinalParasites (肠寄生虫) —— v2.7.21 新增
         try { var c = GameManager.GetIntestinalParasitesComponent(); if (c != null) {
             bool had = c.HasIntestinalParasites();
             try { c.m_HasParasites = false; c.m_HasParasiteRisk = false; } catch { }
             try { c.IntestinalParasitesEnd(true); } catch { }
-            if (had) { cleared++; log.Append("肠寄生虫; "); }
-        }} catch (Exception ex) { log.Append($"肠寄生虫-err:{ex.Message}; "); }
+            if (had) { cleared++; log.Append(I18n.T("肠寄生虫; ", "Intestinal Parasites; ")); }
+        }} catch (Exception ex) { log.Append(I18n.T($"肠寄生虫-err:{ex.Message}; ", $"Parasites-err:{ex.Message}; ")); }
 
         string summary = cleared > 0
             ? (I18n.IsEnglish ? $"Cleared {cleared} afflictions: {log}" : $"已清 {cleared} 项: {log}")
@@ -566,8 +737,30 @@ internal static class Cheats
             // WeatherStage 是 enum,int 可以直接转
             WeatherStage stageEnum = (WeatherStage)stage;
             wt.ActivateWeatherSetImmediate(stageEnum);
-            ModMain.Log?.Msg($"[Weather] ActivateWeatherSetImmediate({stageEnum})");
-            CheatState.LastActionLog = $"[Weather] → {stageEnum}";
+            // 锁定天气:记录 stage,tick 里持续刷新防止自动切换
+            CheatState.WeatherLocked = true;
+            CheatState.WeatherLockedStage = stage;
+            ModMain.Log?.Msg($"[Weather] ActivateWeatherSetImmediate({stageEnum}) + locked");
+            CheatState.LastActionLog = $"[Weather] → {stageEnum} (locked)";
+        }
+        catch (Exception ex) { ModMain.Log?.Error($"[Weather] {ex.Message}"); }
+    }
+
+    // tick 用:静默刷新天气(不改 Locked 状态,不输出日志)
+    public static void SetWeatherStageInternal(int stage)
+    {
+        try
+        {
+            WeatherTransition wt = null;
+            try
+            {
+                var m = typeof(GameManager).GetMethod("GetWeatherTransitionComponent", BindingFlags.Static | BindingFlags.Public);
+                if (m != null) wt = m.Invoke(null, null) as WeatherTransition;
+            }
+            catch { }
+            if (wt == null) try { wt = UnityEngine.Object.FindObjectOfType<WeatherTransition>(); } catch { }
+            if (wt == null) return;
+            wt.ActivateWeatherSetImmediate((WeatherStage)stage);
         }
         catch (Exception ex) { ModMain.Log?.Error($"[Weather] {ex.Message}"); }
     }

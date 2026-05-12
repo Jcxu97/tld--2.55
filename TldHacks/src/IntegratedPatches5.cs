@@ -124,14 +124,13 @@ internal static class Patch_PlaceFromInv_ExitMesh
     }
 }
 
-[HarmonyPatch(typeof(PlayerManager), "DoPositionCheck")]
+// DoPositionCheck 每帧被游戏调用 — 迁到 DynamicPatch,功能关时零 trampoline
 internal static class Patch_PlaceFromInv_PositionCheck
 {
-    static void Postfix(ref MeshLocationCategory __result)
+    public static void Postfix(ref MeshLocationCategory __result)
     {
         try
         {
-            if (ModMain.Settings == null || !ModMain.Settings.PlaceFromInv_AllowClose) return;
             if ((int)__result == 11) __result = (MeshLocationCategory)0;
         }
         catch { }

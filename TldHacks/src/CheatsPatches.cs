@@ -9,6 +9,51 @@ using UnityEngine;
 
 namespace TldHacks;
 
+// ═══════════════════════════════════════════════════════════════════
+//  帧级武器状态缓存 — 避免同一帧多次穿越 IL2CPP bridge 查 GetComponent<GunItem>
+// ═══════════════════════════════════════════════════════════════════
+internal static class WeaponCache
+{
+    private static int _frame = -1;
+    private static bool _holdingGun;
+    private static IntPtr _lastItemPtr;
+    private static bool _isRifle;
+    private static bool _isRevolver;
+
+    internal static bool IsHoldingGun()
+    {
+        int f = Time.frameCount;
+        if (f == _frame) return _holdingGun;
+        _frame = f;
+        _holdingGun = false;
+        _isRifle = false;
+        _isRevolver = false;
+        _lastItemPtr = IntPtr.Zero;
+        try
+        {
+            var pm = GameManager.GetPlayerManagerComponent();
+            if (pm == null || pm.m_ItemInHands == null) return false;
+            var gi = pm.m_ItemInHands;
+            _lastItemPtr = gi.Pointer;
+            _holdingGun = gi.GetComponent<GunItem>() != null;
+            if (_holdingGun)
+            {
+                string n = ((UnityEngine.Object)gi).name;
+                if (n != null)
+                {
+                    _isRifle = n.IndexOf("Rifle", StringComparison.OrdinalIgnoreCase) >= 0;
+                    _isRevolver = n.IndexOf("Revolver", StringComparison.OrdinalIgnoreCase) >= 0;
+                }
+            }
+        }
+        catch { _holdingGun = false; }
+        return _holdingGun;
+    }
+
+    internal static bool IsRifle => IsHoldingGun() && _isRifle;
+    internal static bool IsRevolver => IsHoldingGun() && _isRevolver;
+}
+
 // —— 武器相关的方法级 patch(比 tick 改字段更可靠)——
 
 // 无限弹药:每次 RemoveNextFromClip 被调用,若 InfiniteAmmo 则 skip
@@ -730,6 +775,7 @@ internal static class Patch_Container_Enable
 // 值为 0 → 不施加力 → 无后坐。Postfix 恢复原值避免持久修改。
 internal static class Patch_FPSWeapon_PlayFireAnimation
 {
+    internal static bool InFireAnimation;
     private static GunItem _gun;
     private static float _pitchMin, _pitchMax, _yawMin, _yawMax;
 
@@ -775,8 +821,28 @@ internal static class Patch_FPSWeapon_PlayFireAnimation
         }
         catch { }
         _gun = null;
-        // v2.7.90 魔法子弹:开枪后直接对目标施加伤害
-        try { MagicBulletSystem.OnFired(); } catch { }
+    }
+}
+
+// 拦截 AddForce2:PlayFireAnimation 内部调此方法施加后坐力到 weapon spring
+// 在开火动画执行期间 + NoRecoil 时,清零所有力参数
+internal static class Patch_FPSWeapon_AddForce2
+{
+    internal static bool Prefix()
+    {
+        if (!Patch_FPSWeapon_PlayFireAnimation.InFireAnimation) return true;
+        if (!CheatState.NoRecoil && !CheatState.SuperAccuracy) return true;
+        return false;
+    }
+}
+
+internal static class Patch_FPSCamera_AddForce2
+{
+    internal static bool Prefix()
+    {
+        if (!Patch_FPSWeapon_PlayFireAnimation.InFireAnimation) return true;
+        if (!CheatState.NoRecoil && !CheatState.SuperAccuracy) return true;
+        return false;
     }
 }
 
@@ -785,24 +851,20 @@ internal static class Patch_FPSWeapon_PlayFireAnimation
 internal static class Patch_FPSCamera_ClearRecoil
 {
     private static bool _logged;
-
-    private static bool IsHoldingGun()
-    {
-        try
-        {
-            var pm = GameManager.GetPlayerManagerComponent();
-            if (pm == null || pm.m_ItemInHands == null) return false;
-            return pm.m_ItemInHands.GetComponent<GunItem>() != null;
-        }
-        catch { return false; }
-    }
+    // 帧级缓存：Prefix 计算一次，Postfix 直接复用，避免重复 CheatState 读取
+    private static bool _recoilOn;
+    private static bool _swayOn;
+    private static bool _gunHeld;
 
     internal static void Prefix(vp_FPSCamera __instance)
     {
-        bool recoilOn = CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f;
-        bool swayOn = CheatState.NoAimSway;
-        if (!recoilOn && !swayOn) return;
-        if (!IsHoldingGun()) return;
+        _recoilOn = CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f;
+        _swayOn = CheatState.NoAimSway;
+        bool recoilOn = _recoilOn;
+        bool swayOn = _swayOn;
+        if (!recoilOn && !swayOn) { _gunHeld = false; return; }
+        _gunHeld = WeaponCache.IsHoldingGun();
+        if (!_gunHeld) return;
 
         if (recoilOn)
         {
@@ -837,10 +899,46 @@ internal static class Patch_FPSCamera_ClearRecoil
 
     internal static void Postfix(vp_FPSCamera __instance)
     {
+        // 直接复用 Prefix 缓存的结果，不重复读取 CheatState / WeaponCache
+        if (_recoilOn && _gunHeld)
+        {
+            try
+            {
+                var spring = __instance.m_RecoilSpring;
+                __instance.m_Pitch -= spring.m_Current.x;
+                __instance.m_Yaw -= spring.m_Current.y;
+                __instance.ShakeAmplitude = UnityEngine.Vector3.zero;
+                __instance.ShakeSpeed = 0f;
+            }
+            catch { }
+        }
+        if ((_swayOn || CheatState.SuperAccuracy) && _gunHeld)
+        {
+            try
+            {
+                var pm = GameManager.GetPlayerManagerComponent();
+                var gi = pm?.m_ItemInHands;
+                if (gi != null)
+                {
+                    var gun = gi.GetComponent<GunItem>();
+                    if (gun != null)
+                    {
+                        gun.m_SwayValue = 0f;
+                        gun.m_SwayValueZeroFatigue = 0f;
+                        gun.m_SwayValueMaxFatigue = 0f;
+                    }
+                }
+                __instance.m_CurrentMaxAmbientSwayAngle = 0f;
+                __instance.m_CurrentAmbientSwaySpeed = 0f;
+                __instance.ShakeAmplitude = UnityEngine.Vector3.zero;
+                __instance.ShakeSpeed = 0f;
+            }
+            catch { }
+        }
         if (!_logged && (CheatState.NoRecoil || CheatState.NoAimSway))
         {
             _logged = true;
-            try { ModMain.Log?.Msg($"[Aim] Camera Update Prefix active (recoil={CheatState.NoRecoil} sway={CheatState.NoAimSway})"); } catch { }
+            try { ModMain.Log?.Msg($"[Aim] Camera Update Postfix active (recoil={CheatState.NoRecoil} sway={CheatState.NoAimSway})"); } catch { }
         }
     }
 }
@@ -850,9 +948,11 @@ internal static class Patch_FPSCamera_ClearRecoil
 internal static class Patch_FPSCamera_LateUpdate
 {
     internal static float LastFireTime;
-    private const float RecoilWindow = 0.7f;
+    private const float RecoilWindow = 0.5f;
     private static Quaternion _preRot;
     private static float _prePitch, _preYaw;
+    // 帧级缓存：Prefix 判断一次，Postfix 复用，避免重复读 CheatState
+    private static bool _activeThisFrame;
 
     private static bool ShouldActivate()
     {
@@ -861,8 +961,9 @@ internal static class Patch_FPSCamera_LateUpdate
 
     internal static void Prefix(vp_FPSCamera __instance)
     {
-        if (!ShouldActivate()) return;
-        if (Time.time - LastFireTime > RecoilWindow) return;
+        bool inWindow = ShouldActivate() && Time.time - LastFireTime <= RecoilWindow;
+        _activeThisFrame = inWindow;
+        if (!inWindow) return;
         _preRot = __instance.transform.rotation;
         _prePitch = __instance.m_Pitch;
         _preYaw = __instance.m_Yaw;
@@ -870,37 +971,27 @@ internal static class Patch_FPSCamera_LateUpdate
 
     internal static void Postfix(vp_FPSCamera __instance)
     {
-        if (ShouldActivate() && Time.time - LastFireTime <= RecoilWindow)
+        if (_activeThisFrame)
         {
             try
             {
                 float dPitch = __instance.m_Pitch - _prePitch;
                 float dYaw = __instance.m_Yaw - _preYaw;
                 var noRecoilRot = _preRot * Quaternion.Euler(dPitch, dYaw, 0f);
-                float suppress = 1f;
-                if (CheatState.NoRecoil || CheatState.SuperAccuracy)
-                    suppress = 1f;
-                else
-                    suppress = 1f - CheatStateESP.RecoilScale;
                 __instance.transform.rotation = Quaternion.Slerp(
-                    __instance.transform.rotation, noRecoilRot, suppress);
+                    __instance.transform.rotation, noRecoilRot, 1f);
             }
             catch { }
         }
-        // 稳定瞄准:LateUpdate 结束后再清一次 sway,防游戏在 LateUpdate 里重写(仅持枪时)
-        if (CheatState.NoAimSway)
+        if (CheatState.NoAimSway && WeaponCache.IsHoldingGun())
         {
             try
             {
-                var pm = GameManager.GetPlayerManagerComponent();
-                if (pm != null && pm.m_ItemInHands != null && pm.m_ItemInHands.GetComponent<GunItem>() != null)
-                {
-                    __instance.ShakeAmplitude = UnityEngine.Vector3.zero;
-                    __instance.ShakeSpeed = 0f;
-                    __instance.BobAmplitude = UnityEngine.Vector4.zero;
-                    __instance.m_CurrentMaxAmbientSwayAngle = 0f;
-                    __instance.m_CurrentAmbientSwaySpeed = 0f;
-                }
+                __instance.ShakeAmplitude = UnityEngine.Vector3.zero;
+                __instance.ShakeSpeed = 0f;
+                __instance.BobAmplitude = UnityEngine.Vector4.zero;
+                __instance.m_CurrentMaxAmbientSwayAngle = 0f;
+                __instance.m_CurrentAmbientSwaySpeed = 0f;
             }
             catch { }
         }
@@ -932,11 +1023,9 @@ internal static class GunZoomState
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (scroll == 0f) return;
 
-        var pm = GameManager.GetPlayerManagerComponent();
-        if (pm == null || pm.m_ItemInHands == null) return;
-        string name = ((UnityEngine.Object)pm.m_ItemInHands).name.ToLower();
-        bool rifle = name.Contains("rifle");
-        bool revolver = name.Contains("revolver");
+        if (!WeaponCache.IsHoldingGun()) return;
+        bool rifle = WeaponCache.IsRifle;
+        bool revolver = WeaponCache.IsRevolver;
         if (!rifle && !revolver) return;
 
         if (rifle)
@@ -964,11 +1053,9 @@ internal static class GunZoomState
                 return;
             }
 
-            var pm = GameManager.GetPlayerManagerComponent();
-            if (pm == null || pm.m_ItemInHands == null) { if (_wasZooming) RestoreFOV(cam); return; }
-            string name = ((UnityEngine.Object)pm.m_ItemInHands).name.ToLower();
-            bool rifle = name.Contains("rifle");
-            bool revolver = name.Contains("revolver");
+            if (!WeaponCache.IsHoldingGun()) { if (_wasZooming) RestoreFOV(cam); return; }
+            bool rifle = WeaponCache.IsRifle;
+            bool revolver = WeaponCache.IsRevolver;
             if (!rifle && !revolver) { if (_wasZooming) RestoreFOV(cam); return; }
 
             if (_baseSensitivity <= 0f)
@@ -1012,21 +1099,10 @@ internal static class Patch_FPSWeapon_SteadyAim
     [ThreadStatic] private static Quaternion _savedRot;
     [ThreadStatic] private static bool _hasSaved;
 
-    private static bool IsHoldingGun()
-    {
-        try
-        {
-            var pm = GameManager.GetPlayerManagerComponent();
-            if (pm == null || pm.m_ItemInHands == null) return false;
-            return pm.m_ItemInHands.GetComponent<GunItem>() != null;
-        }
-        catch { return false; }
-    }
-
     internal static void Prefix(vp_FPSWeapon __instance)
     {
         if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) { _hasSaved = false; return; }
-        if (!IsHoldingGun()) { _hasSaved = false; return; }
+        if (!WeaponCache.IsHoldingGun()) { _hasSaved = false; return; }
         try
         {
             var t = __instance.transform;
@@ -1038,7 +1114,8 @@ internal static class Patch_FPSWeapon_SteadyAim
 
     internal static void Postfix(vp_FPSWeapon __instance)
     {
-        if (!CheatState.NoAimSway && !CheatState.SuperAccuracy) return;
+        // _hasSaved 只有在 Prefix 确认了 NoAimSway/SuperAccuracy + IsHoldingGun 后才为 true
+        // 故直接用它作早退出，省去重复读 CheatState + WeaponCache
         if (!_hasSaved) return;
         try { __instance.transform.localPosition = _savedPos; } catch { }
         try { __instance.transform.localRotation = _savedRot; } catch { }
@@ -1050,6 +1127,12 @@ internal static class Patch_FPSWeapon_SteadyAim
     }
 }
 
+
+// 跳过 camera ambient sway 计算 → 瞄准视角不晃
+internal static class Patch_Camera_NoAmbientSway
+{
+    internal static bool Prefix() => !(CheatState.NoAimSway || CheatState.SuperAccuracy);
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //   v2.7.86 新增功能 —— 随意生火 / 生火材料不减 / 科技背包 / 火把满值 / 无条件冲刺 / 无限体力
@@ -1098,6 +1181,7 @@ internal static class Patch_StaminaTweaks
     private static float _initRecovery;
     private static float _initSeconds;
     private static bool _inited;
+    private static float _lastRecharge, _lastDelay;
 
     internal static void Postfix(PlayerMovement __instance)
     {
@@ -1112,8 +1196,11 @@ internal static class Patch_StaminaTweaks
                 _inited = true;
             }
             if (!s.SpeedTweaksEnabled) return;
-            __instance.m_SprintStaminaRecoverPerHour = _initRecovery * s.StaminaRecharge;
-            __instance.m_SecondsNotSprintingBeforeRecovery = _initSeconds * s.StaminaRecoveryDelay;
+            float recharge = s.StaminaRecharge, delay = s.StaminaRecoveryDelay;
+            if (recharge == _lastRecharge && delay == _lastDelay) return;
+            _lastRecharge = recharge; _lastDelay = delay;
+            __instance.m_SprintStaminaRecoverPerHour = _initRecovery * recharge;
+            __instance.m_SecondsNotSprintingBeforeRecovery = _initSeconds * delay;
         }
         catch { }
     }
@@ -1208,15 +1295,26 @@ internal static class Patch_SilentWalker_RTPC
 // 复制自 GearDecayModifier:根据物品类型乘以对应衰减系数
 internal static class Patch_GearDegrade
 {
+    private static readonly System.Collections.Generic.Dictionary<IntPtr, float> _cache = new();
+    internal static void InvalidateCache() => _cache.Clear();
+
     internal static bool Prefix(GearItem __instance, ref float hp)
     {
         try
         {
-            // v2.8.1: 坠落衣物保护 — IL2CPP 可能忽略 return false,改用 hp=0 让 Degrade 无效化
             if (FallClothingGuard.Active) { hp = 0f; return true; }
             if (CheatState.InfiniteDurability) { hp = 0f; return true; }
             if (CheatState.QuickCraft) { hp = 0f; return true; }
             if (__instance == null) return true;
+
+            // 快速路径：已知物品直接用缓存倍率
+            if (_cache.TryGetValue(__instance.Pointer, out float cached))
+            {
+                hp *= cached;
+                if (!__instance.m_BeenInspected && !__instance.m_BeenInPlayerInventory)
+                    hp *= DecayState.DecayBeforePickup;
+                return true;
+            }
 
             float mult = DecayState.GeneralDecay;
             string name = __instance.gameObject.name;
@@ -1282,6 +1380,8 @@ internal static class Patch_GearDegrade
                 mult = DecayState.ClothingDecayRate;
             }
 
+            _cache[__instance.Pointer] = mult;
+
             if (!__instance.m_BeenInspected && !__instance.m_BeenInPlayerInventory)
                 mult *= DecayState.DecayBeforePickup;
 
@@ -1324,12 +1424,16 @@ internal static class Patch_ConsumeUnit
 //   照抄 UniversalTweaks 写法: 每帧 Postfix 写 7 字段(开销可忽略,Update 1 次/帧)
 internal static class Patch_TechBackpack
 {
+    private static float _lastKg;
+
     internal static void Postfix(Encumber __instance)
     {
         try
         {
             if (__instance == null || !CheatState.TechBackpack) return;
             float kg = CheatState.TechBackpackKg;
+            if (kg == _lastKg && __instance.m_MaxCarryCapacity == ItemWeight.FromKilograms(kg)) return;
+            _lastKg = kg;
             __instance.m_MaxCarryCapacity = ItemWeight.FromKilograms(kg);
             __instance.m_MaxCarryCapacityWhenExhausted = ItemWeight.FromKilograms(kg * 0.5f);
             __instance.m_NoSprintCarryCapacity = ItemWeight.FromKilograms(kg + 10f);
@@ -1459,6 +1563,7 @@ internal static class CheatsTick
     private static FieldInfo _fi_currentWeapon;   // FindWeapon 路径 1 用
     private static FieldInfo _fi_recoilSpring;    // TickCamera NoRecoil struct 操作用
     private static FieldInfo _fi_rsCur, _fi_rsTgt, _fi_rsVel;
+    private static FieldInfo _fiBob, _fiShake, _fiShakeSpd;
     private static bool _reflectionInited = false;
 
     // v2.7.84:跨场景时清相机缓存 + 重置诊断开关 —— 从 ModMain.OnSceneWasInitialized 调
@@ -1468,6 +1573,14 @@ internal static class CheatsTick
         _aimDiagDone = false;
         _camNullLogCount = 0;
         _lastCamScanFrame = -999;
+        // 同时清空 TickStatus 组件缓存,场景切换后组件引用失效
+        _cFrostbite = null;
+        _cFatigue = null;
+        _cHunger = null;
+        _cThirst = null;
+        _cFreezing = null;
+        _cCondition = null;
+        _cPlayerManager = null;
     }
 
     // v2.7.83:多路径查找武器实例(反射 → PlayerManager → GetComponentInChildren)
@@ -1706,18 +1819,13 @@ internal static class CheatsTick
             {
                 try
                 {
-                    var wBob = weapon.GetType().GetField("BobAmplitude", BindingFlags.Instance | BindingFlags.Public);
-                    if (wBob != null) wBob.SetValue(weapon, UnityEngine.Vector4.zero);
-                } catch { }
-                try
-                {
-                    var wShake = weapon.GetType().GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public);
-                    if (wShake != null) wShake.SetValue(weapon, UnityEngine.Vector3.zero);
-                } catch { }
-                try
-                {
-                    var wShakeSpd = weapon.GetType().GetField("ShakeSpeed", BindingFlags.Instance | BindingFlags.Public);
-                    if (wShakeSpd != null) wShakeSpd.SetValue(weapon, 0f);
+                    var wType = weapon.GetType();
+                    _fiBob ??= wType.GetField("BobAmplitude", BindingFlags.Instance | BindingFlags.Public);
+                    _fiShake ??= wType.GetField("ShakeAmplitude", BindingFlags.Instance | BindingFlags.Public);
+                    _fiShakeSpd ??= wType.GetField("ShakeSpeed", BindingFlags.Instance | BindingFlags.Public);
+                    _fiBob?.SetValue(weapon, UnityEngine.Vector4.zero);
+                    _fiShake?.SetValue(weapon, UnityEngine.Vector3.zero);
+                    _fiShakeSpd?.SetValue(weapon, 0f);
                 } catch { }
             }
 
@@ -1925,16 +2033,44 @@ internal static class CheatsTick
     //   - Freezing: 0 —— 同上
     //   - GodMode 走 max HP 路径(玩家不会死,与吃喝睡 UI 无关)
     private static bool _frostbiteWasOn;
+    // v2.7.x 性能:组件缓存,避免每帧 IL2CPP bridge 分配 managed wrapper
+    private static Frostbite _cFrostbite;
+    private static Fatigue _cFatigue;
+    private static Hunger _cHunger;
+    private static Thirst _cThirst;
+    private static Freezing _cFreezing;
+    private static Condition _cCondition;
+    private static PlayerManager _cPlayerManager;
+
+    private static void EnsureStatusComponents()
+    {
+        if (_cFrostbite != null) return;
+        try { _cFrostbite = GameManager.GetFrostbiteComponent(); } catch { }
+        try { _cFatigue = GameManager.GetFatigueComponent(); } catch { }
+        try { _cHunger = GameManager.GetHungerComponent(); } catch { }
+        try { _cThirst = GameManager.GetThirstComponent(); } catch { }
+        try { _cFreezing = GameManager.GetFreezingComponent(); } catch { }
+        try { _cCondition = GameManager.GetConditionComponent(); } catch { }
+        try { _cPlayerManager = GameManager.GetPlayerManagerComponent(); } catch { }
+    }
+
     public static void TickStatus()
     {
+        // master early exit: 全部关掉且 frostbite 也不需要关闭时跳过
+        bool needFrostbite = CheatState.NoFrostbiteRisk || _frostbiteWasOn;
+        if (!needFrostbite && !CheatState.NoFatigue && !CheatState.NoHunger
+            && !CheatState.NoThirst && !CheatState.AlwaysWarm
+            && !CheatState.GodMode && !CheatState.FatigueBuff) return;
+
+        EnsureStatusComponents();
+
         // NoFrostbiteRisk: 只用 m_SuppressFrostbite 标志,不清列表(清列表会破坏游戏状态导致关不掉)
         if (CheatState.NoFrostbiteRisk)
         {
             _frostbiteWasOn = true;
             try
             {
-                var fb = GameManager.GetFrostbiteComponent();
-                if (fb != null) fb.m_SuppressFrostbite = true;
+                if (_cFrostbite != null) _cFrostbite.m_SuppressFrostbite = true;
             }
             catch { }
         }
@@ -1943,8 +2079,7 @@ internal static class CheatsTick
             _frostbiteWasOn = false;
             try
             {
-                var fb = GameManager.GetFrostbiteComponent();
-                if (fb != null) fb.m_SuppressFrostbite = false;
+                if (_cFrostbite != null) _cFrostbite.m_SuppressFrostbite = false;
             }
             catch { }
         }
@@ -1957,38 +2092,32 @@ internal static class CheatsTick
         {
             if (CheatState.NoFatigue || CheatState.GodMode)
             {
-                var fat = GameManager.GetFatigueComponent();
-                if (fat != null) { try { fat.m_CurrentFatigue = 10f; } catch { } }
+                if (_cFatigue != null) { try { _cFatigue.m_CurrentFatigue = 10f; } catch { } }
             }
             else if (CheatState.FatigueBuff)
             {
                 // 保持原生 buff 的剩余时间不归零,防止游戏倒计时关掉 buff
                 try
                 {
-                    var pm = GameManager.GetPlayerManagerComponent();
-                    if (pm != null) pm.m_FatigueBuffHoursRemaining = 100f;
+                    if (_cPlayerManager != null) _cPlayerManager.m_FatigueBuffHoursRemaining = 100f;
                 }
                 catch { }
             }
             if (CheatState.NoHunger || CheatState.GodMode)
             {
-                var h = GameManager.GetHungerComponent();
-                if (h != null) { try { h.m_CurrentReserveCalories = 2450f; } catch { } }
+                if (_cHunger != null) { try { _cHunger.m_CurrentReserveCalories = 2450f; } catch { } }
             }
             if (CheatState.NoThirst || CheatState.GodMode)
             {
-                var t = GameManager.GetThirstComponent();
-                if (t != null) { try { t.m_CurrentThirst = 0f; } catch { } }
+                if (_cThirst != null) { try { _cThirst.m_CurrentThirst = 0f; } catch { } }
             }
             if (CheatState.AlwaysWarm || CheatState.GodMode)
             {
-                var f = GameManager.GetFreezingComponent();
-                if (f != null) { try { f.m_CurrentFreezing = 0f; } catch { } }
+                if (_cFreezing != null) { try { _cFreezing.m_CurrentFreezing = 0f; } catch { } }
             }
             if (CheatState.GodMode)
             {
-                var c = GameManager.GetConditionComponent();
-                if (c != null) { try { c.m_CurrentHP = c.m_MaxHP; } catch { } }
+                if (_cCondition != null) { try { _cCondition.m_CurrentHP = _cCondition.m_MaxHP; } catch { } }
             }
         }
         catch { }
@@ -1999,13 +2128,24 @@ internal static class CheatsTick
     private static FieldInfo _fi_breakdownSecs;
     public static void TickQuickActions()
     {
-        // v2.7.82 兜底:toggle OFF 后如果 Snapshots 还有残留(UpdateDurationLabel 没被调),
-        //   在 tick 里主动 restore m_TimeCostHours,避免"关了秒打碎还是秒"
-        if (!CheatState.QuickBreakDown && Patch_BreakDown_UpdateDuration.Snapshots.Count > 0)
+        bool needRestore = !CheatState.QuickBreakDown && Patch_BreakDown_UpdateDuration.Snapshots.Count > 0;
+        bool needZero = CheatState.QuickAction;
+        if (!needRestore && !needZero) return;
+
+        try
         {
-            try
+            if (_fi_breakdownSecs == null)
+                _fi_breakdownSecs = typeof(Panel_BreakDown).GetField("m_SecondsToBreakDown",
+                    BindingFlags.Instance | BindingFlags.Public);
+            if (_fi_breakdownSecs == null) return;
+
+            // 只调一次 FindObjectsOfType,两个逻辑共用结果
+            var panels = UnityEngine.Object.FindObjectsOfType<Panel_BreakDown>();
+            if (panels == null) return;
+
+            if (needRestore)
             {
-                foreach (var p in UnityEngine.Object.FindObjectsOfType<Panel_BreakDown>())
+                foreach (var p in panels)
                 {
                     try
                     {
@@ -2017,25 +2157,17 @@ internal static class CheatsTick
                             bd.m_TimeCostHours = snap.timeCost;
                             _fi_breakdownSecs.SetValue(p, snap.seconds);
                             Patch_BreakDown_UpdateDuration.Snapshots.Remove(ptr);
-                            ModMain.Log?.Msg($"[QuickBD] tick restore TimeCost={snap.timeCost:F2} Secs={snap.seconds:F1}");
                         }
                     }
                     catch { }
                 }
             }
-            catch { }
-        }
 
-        if (!CheatState.QuickAction) return;
-        try
-        {
-            if (_fi_breakdownSecs == null)
-                _fi_breakdownSecs = typeof(Panel_BreakDown).GetField("m_SecondsToBreakDown",
-                    BindingFlags.Instance | BindingFlags.Public);
-            if (_fi_breakdownSecs == null) return;
-
-            foreach (var p in UnityEngine.Object.FindObjectsOfType<Panel_BreakDown>())
-                try { _fi_breakdownSecs.SetValue(p, 0f); } catch { }
+            if (needZero)
+            {
+                foreach (var p in panels)
+                    try { _fi_breakdownSecs.SetValue(p, 0f); } catch { }
+            }
         }
         catch { }
     }
@@ -2541,14 +2673,259 @@ internal static class Patch_Flask_UpdateVolume
     internal static bool Prefix() => !CheatState.FlaskInfiniteVol;
 }
 
-// —— 保温瓶装任意 CT:IsItemCompatibleWithFlask 强 true ——
-// v2.7.75 DynamicPatch
-internal static class Patch_Flask_IsCompatible
+// —— 保温瓶 UI 过滤: 让所有饮品显示(不限类型) ——
+internal static class Patch_Flask_ForceTrue
 {
-    internal static void Postfix(ref bool __result)
+    internal static void Postfix(ref bool __result) { __result = true; }
+}
+
+internal static class Patch_Flask_IsCompatibleDrink
+{
+    internal static void Postfix(ref bool __result, GearItem gearItem)
     {
-        if (CheatState.FlaskAnyItem) __result = true;
+        if (__result) return;
+        if (gearItem == null) return;
+        try
+        {
+            if (gearItem.m_FoodItem == null || !gearItem.m_FoodItem.m_IsDrink) return;
+            var name = ((UnityEngine.Object)gearItem).name;
+            if (name != null && (name.Contains("Cup") || name.Contains("Tea")))
+                __result = true;
+        }
+        catch { }
     }
+}
+
+// —— 无后坐力 v6.1.0: 原生 code cave 注入 ——
+// —— 保温瓶装任意饮品 v6.0.8: 原生 NOP patch ——
+// IsItemCompatibleWithFlask: AOB NOP(跟 CT 一样)
+// IsAllowed: 直接把函数开头改成 mov al,1; ret(始终返回 true)
+internal static class FlaskNativePatch
+{
+    private static byte[] _origBytes;
+    private static IntPtr _patchAddr;
+    private static byte[] _origBytesAllowed;
+    private static IntPtr _patchAddrAllowed;
+    private static byte[] _origBytesMatchType;
+    private static IntPtr _patchAddrMatchType;
+    private static byte[] _origBytesTryAdd;
+    private static IntPtr _patchAddrTryAdd;
+    private static bool _applied;
+
+    public static void Sync()
+    {
+        if (CheatState.FlaskAnyItem && !_applied) Apply();
+        else if (!CheatState.FlaskAnyItem && _applied) Remove();
+    }
+
+    // AOB: 前 6 字节是要 NOP 的,后续是验证签名
+    // CT pattern: x x x x x x 488B??????????488B????83????????????75??
+    private static readonly byte?[] Pattern = new byte?[]
+    {
+        null, null, null, null, null, null, // 6 bytes to NOP
+        0x48, 0x8B, null, null, null, null, null, // mov reg,[rip+...]
+        0x48, 0x8B, null, null,                   // mov reg,[reg+...]
+        0x83, null, null, null, null, null, null,  // cmp ...
+        0x75, null,                                // jne
+    };
+
+    public static unsafe void Apply()
+    {
+        try
+        {
+            // 获取 IL2CPP native method info pointer(跟 CT 的 TLD.Gear.InsulatedFlask.IsItemCompatibleWithFlask 一样）
+            var field = typeof(Il2CppTLD.Gear.InsulatedFlask).GetField(
+                "NativeMethodInfoPtr_IsItemCompatibleWithFlask_Public_Boolean_GearItem_0",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            if (field == null)
+            {
+                ModMain.Log?.Warning("[FlaskNOP] NativeMethodInfoPtr field not found");
+                return;
+            }
+            IntPtr methodInfo = (IntPtr)field.GetValue(null);
+            if (methodInfo == IntPtr.Zero) { ModMain.Log?.Warning("[FlaskNOP] methodInfo is zero"); return; }
+            // Il2Cpp MethodInfo 第一个字段就是 native code pointer
+            IntPtr methodPtr = *(IntPtr*)methodInfo;
+            if (methodPtr == IntPtr.Zero) { ModMain.Log?.Warning("[FlaskNOP] native code ptr is zero"); return; }
+
+            // scan within first 1500 bytes for the pattern
+            _patchAddr = ScanForPattern(methodPtr, 1500);
+            if (_patchAddr == IntPtr.Zero)
+            {
+                ModMain.Log?.Warning("[FlaskNOP] AOB pattern not found in IsItemCompatibleWithFlask");
+                return;
+            }
+
+            // save original 6 bytes
+            _origBytes = new byte[6];
+            System.Runtime.InteropServices.Marshal.Copy(_patchAddr, _origBytes, 0, 6);
+
+            // write 6x NOP (0x90)
+            WriteNops(_patchAddr, 6);
+            ModMain.Log?.Msg($"[FlaskNOP] IsItemCompatibleWithFlask: patched 6 bytes at 0x{_patchAddr:X}");
+
+            // 同样处理 IsAllowed: 直接改函数开头为 mov al,1; ret
+            var fieldAllowed = typeof(Il2CppTLD.Gear.InsulatedFlaskLiquidTypeConstraint).GetField(
+                "NativeMethodInfoPtr_IsAllowed_Public_Boolean_GearItem_0",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            if (fieldAllowed != null)
+            {
+                IntPtr miAllowed = (IntPtr)fieldAllowed.GetValue(null);
+                if (miAllowed != IntPtr.Zero)
+                {
+                    IntPtr ptrAllowed = *(IntPtr*)miAllowed;
+                    if (ptrAllowed != IntPtr.Zero)
+                    {
+                        _origBytesAllowed = new byte[3];
+                        System.Runtime.InteropServices.Marshal.Copy(ptrAllowed, _origBytesAllowed, 0, 3);
+                        _patchAddrAllowed = ptrAllowed;
+                        // mov al,1 (B0 01); ret (C3)
+                        WriteBytes(ptrAllowed, new byte[] { 0xB0, 0x01, 0xC3 });
+                        ModMain.Log?.Msg($"[FlaskNOP] IsAllowed: patched to ret true at 0x{ptrAllowed:X}");
+                    }
+                }
+            }
+
+            // IsMatchingType on InsulatedFlask (检查已存类型是否匹配新物品)
+            var fieldMatch = typeof(Il2CppTLD.Gear.InsulatedFlask).GetField(
+                "NativeMethodInfoPtr_IsMatchingType_Public_Boolean_GearItem_0",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            if (fieldMatch != null)
+            {
+                IntPtr miMatch = (IntPtr)fieldMatch.GetValue(null);
+                if (miMatch != IntPtr.Zero)
+                {
+                    IntPtr ptrMatch = *(IntPtr*)miMatch;
+                    if (ptrMatch != IntPtr.Zero)
+                    {
+                        _origBytesMatchType = new byte[3];
+                        System.Runtime.InteropServices.Marshal.Copy(ptrMatch, _origBytesMatchType, 0, 3);
+                        _patchAddrMatchType = ptrMatch;
+                        WriteBytes(ptrMatch, new byte[] { 0xB0, 0x01, 0xC3 });
+                        ModMain.Log?.Msg($"[FlaskNOP] IsMatchingType: patched to ret true at 0x{ptrMatch:X}");
+                    }
+                }
+            }
+
+            // NOP TryAddItem 内部的兼容性检查跳转(offset 172: 0F 84 xx xx xx xx = je far)
+            var fieldTryAdd = typeof(Il2CppTLD.Gear.InsulatedFlask).GetField(
+                "NativeMethodInfoPtr_TryAddItem_Public_Boolean_GearItem_0",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            if (fieldTryAdd != null)
+            {
+                IntPtr miTryAdd = (IntPtr)fieldTryAdd.GetValue(null);
+                if (miTryAdd != IntPtr.Zero)
+                {
+                    IntPtr ptrTryAdd = *(IntPtr*)miTryAdd;
+                    if (ptrTryAdd != IntPtr.Zero)
+                    {
+                        // offset 172 from function start: the je that skips on compatibility failure
+                        IntPtr jeAddr = ptrTryAdd + 172;
+                        byte* p = (byte*)jeAddr;
+                        // verify it's actually 0F 84 (je near)
+                        if (p[0] == 0x0F && p[1] == 0x84)
+                        {
+                            _origBytesTryAdd = new byte[6];
+                            System.Runtime.InteropServices.Marshal.Copy(jeAddr, _origBytesTryAdd, 0, 6);
+                            _patchAddrTryAdd = jeAddr;
+                            WriteNops(jeAddr, 6);
+                            ModMain.Log?.Msg($"[FlaskNOP] TryAddItem: NOP'd je at offset 172 (0x{jeAddr:X})");
+                        }
+                        else
+                        {
+                            ModMain.Log?.Warning($"[FlaskNOP] TryAddItem offset 172: expected 0F 84, got {p[0]:X2} {p[1]:X2}");
+                        }
+                    }
+                }
+            }
+
+            // Dump TryAddItem 头 200 字节到日志,方便找到类型检查的位置
+            var fieldTry = typeof(Il2CppTLD.Gear.InsulatedFlask).GetField(
+                "NativeMethodInfoPtr_TryAddItem_Public_Boolean_GearItem_0",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            if (fieldTry != null)
+            {
+                IntPtr miTry = (IntPtr)fieldTry.GetValue(null);
+                if (miTry != IntPtr.Zero)
+                {
+                    IntPtr ptrTry = *(IntPtr*)miTry;
+                    if (ptrTry != IntPtr.Zero)
+                    {
+                        var bytes = new byte[1024];
+                        System.Runtime.InteropServices.Marshal.Copy(ptrTry, bytes, 0, 1024);
+                        for (int chunk = 0; chunk < 4; chunk++)
+                        {
+                            var seg = new byte[256];
+                            Array.Copy(bytes, chunk * 256, seg, 0, 256);
+                            ModMain.Log?.Msg($"[FlaskNOP] TryAddItem+{chunk*256}: {BitConverter.ToString(seg).Replace("-"," ")}");
+                        }
+                    }
+                }
+            }
+
+            _applied = true;
+        }
+        catch (Exception ex) { ModMain.Log?.Error($"[FlaskNOP] {ex}"); }
+    }
+
+    public static void Remove()
+    {
+        if (_patchAddr == IntPtr.Zero || _origBytes == null) return;
+        try
+        {
+            WriteBytes(_patchAddr, _origBytes);
+            if (_patchAddrAllowed != IntPtr.Zero && _origBytesAllowed != null)
+                WriteBytes(_patchAddrAllowed, _origBytesAllowed);
+            if (_patchAddrMatchType != IntPtr.Zero && _origBytesMatchType != null)
+                WriteBytes(_patchAddrMatchType, _origBytesMatchType);
+            if (_patchAddrTryAdd != IntPtr.Zero && _origBytesTryAdd != null)
+                WriteBytes(_patchAddrTryAdd, _origBytesTryAdd);
+            _applied = false;
+            ModMain.Log?.Msg("[FlaskNOP] restored original bytes");
+            _patchAddr = IntPtr.Zero; _origBytes = null;
+            _patchAddrAllowed = IntPtr.Zero; _origBytesAllowed = null;
+            _patchAddrMatchType = IntPtr.Zero; _origBytesMatchType = null;
+            _patchAddrTryAdd = IntPtr.Zero; _origBytesTryAdd = null;
+        }
+        catch (Exception ex) { ModMain.Log?.Error($"[FlaskNOP.Remove] {ex}"); }
+    }
+
+    private static unsafe IntPtr ScanForPattern(IntPtr start, int length)
+    {
+        byte* p = (byte*)start;
+        int patLen = Pattern.Length;
+        for (int i = 0; i <= length - patLen; i++)
+        {
+            bool match = true;
+            for (int j = 0; j < patLen; j++)
+            {
+                if (Pattern[j].HasValue && p[i + j] != Pattern[j].Value)
+                { match = false; break; }
+            }
+            if (match) return (IntPtr)(p + i);
+        }
+        return IntPtr.Zero;
+    }
+
+    private static unsafe void WriteNops(IntPtr addr, int count)
+    {
+        uint oldProtect;
+        VirtualProtect(addr, (UIntPtr)count, 0x40, out oldProtect); // PAGE_EXECUTE_READWRITE
+        byte* p = (byte*)addr;
+        for (int i = 0; i < count; i++) p[i] = 0x90;
+        VirtualProtect(addr, (UIntPtr)count, oldProtect, out _);
+    }
+
+    private static unsafe void WriteBytes(IntPtr addr, byte[] bytes)
+    {
+        uint oldProtect;
+        VirtualProtect(addr, (UIntPtr)bytes.Length, 0x40, out oldProtect);
+        System.Runtime.InteropServices.Marshal.Copy(bytes, 0, addr, bytes.Length);
+        VirtualProtect(addr, (UIntPtr)bytes.Length, oldProtect, out _);
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
 }
 
 // —— 加工秒完成 CT:EvolveItem.Update 设 TimeToEvolveGameDays=0, TimeSpentEvolvingGameHours=1 ——
@@ -2653,6 +3030,7 @@ internal static class Patch_Fire_Update_NeverDie
         try
         {
             if (!CheatState.FireNeverDie) return;
+            if (__instance.m_ElapsedOnTODSeconds == 0f && __instance.m_BurnMinutesIfLit >= FUEL_FLOOR) return;
             __instance.m_ElapsedOnTODSeconds = 0f;
             if (__instance.m_BurnMinutesIfLit < FUEL_FLOOR)
                 __instance.m_BurnMinutesIfLit = FUEL_FLOOR;

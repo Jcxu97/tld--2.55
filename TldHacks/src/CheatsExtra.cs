@@ -13,10 +13,12 @@ namespace TldHacks;
 internal class Waypoint
 {
     public string Label;
+    public string LabelEn;
     public string Scene;
     public Vector3 Pos;
-    public Waypoint(string label, string scene, float x, float y, float z)
-    { Label = label; Scene = scene; Pos = new Vector3(x, y, z); }
+    public Waypoint(string label, string scene, float x, float y, float z, string labelEn = null)
+    { Label = label; Scene = scene; Pos = new Vector3(x, y, z); LabelEn = labelEn ?? label; }
+    public string DisplayLabel => I18n.IsEnglish ? LabelEn : Label;
 }
 
 internal static class Teleport
@@ -31,44 +33,44 @@ internal static class Teleport
     public static readonly List<Waypoint> Destinations = new()
     {
         // A —— AirfieldRegion(废弃机场)
-        new Waypoint("废弃机场(控制塔)",       "AirfieldRegion",            81.90f, 160.30f, -455.30f),
-        new Waypoint("废弃机场·应急舱",         "AirfieldRegion",          1209.80f, 304.71f, -726.11f),
+        new Waypoint("废弃机场(控制塔)",       "AirfieldRegion",            81.90f, 160.30f, -455.30f, "Forsaken Airfield (Tower)"),
+        new Waypoint("废弃机场·应急舱",         "AirfieldRegion",          1209.80f, 304.71f, -726.11f, "Forsaken Airfield · Pod"),
         // A —— AshCanyonRegion(灰烬峡谷)
-        new Waypoint("灰烬峡谷地堡",            "AshCanyonRegion",          -42.12f, 172.95f, -796.68f),
+        new Waypoint("灰烬峡谷地堡",            "AshCanyonRegion",          -42.12f, 172.95f, -796.68f, "Ash Canyon Bunker"),
         // B —— BlackrockRegion(黑岩监狱)
-        new Waypoint("黑岩监狱地堡",            "BlackrockRegion",          705.04f, 373.98f,  816.38f),
+        new Waypoint("黑岩监狱地堡",            "BlackrockRegion",          705.04f, 373.98f,  816.38f, "Blackrock Bunker"),
         // C —— CanneryRegion(荒凉水湾)
-        new Waypoint("荒凉水湾地堡",            "CanneryRegion",            328.37f, 344.50f,  833.16f),
-        new Waypoint("荒凉水湾·应急舱",         "CanneryRegion",            -39.50f, 103.38f,  501.57f),
+        new Waypoint("荒凉水湾地堡",            "CanneryRegion",            328.37f, 344.50f,  833.16f, "Bleak Inlet Bunker"),
+        new Waypoint("荒凉水湾·应急舱",         "CanneryRegion",            -39.50f, 103.38f,  501.57f, "Bleak Inlet · Pod"),
         // C —— CoastalRegion(沿海公路)
-        new Waypoint("沿海公路·加油站",         "CoastalRegion",            760.51f,  24.00f,  645.93f),
-        new Waypoint("沿海公路·交易地点",       "CoastalRegion",            325.76f,  26.22f,  118.83f),
+        new Waypoint("沿海公路·加油站",         "CoastalRegion",            760.51f,  24.00f,  645.93f, "Coastal Hwy · Gas Station"),
+        new Waypoint("沿海公路·交易地点",       "CoastalRegion",            325.76f,  26.22f,  118.83f, "Coastal Hwy · Trader Spot"),
         // C —— CrashMountainRegion(林狼雪岭)
-        new Waypoint("林狼雪岭(机舱)",         "CrashMountainRegion",      934.50f, 470.10f, 1174.40f),
-        new Waypoint("林狼雪岭·地堡",           "CrashMountainRegion",     1675.41f, 207.32f,  968.21f),
+        new Waypoint("林狼雪岭(机舱)",         "CrashMountainRegion",      934.50f, 470.10f, 1174.40f, "Timberwolf Mtn (Plane)"),
+        new Waypoint("林狼雪岭·地堡",           "CrashMountainRegion",     1675.41f, 207.32f,  968.21f, "Timberwolf Mtn · Bunker"),
         // L —— LakeRegion(神秘湖)
-        new Waypoint("神秘湖·营地办公室",       "LakeRegion",              1015.87f,  25.91f,  450.86f),
-        new Waypoint("神秘湖地堡",              "LakeRegion",              1029.06f,  91.99f,  -52.52f),
+        new Waypoint("神秘湖·营地办公室",       "LakeRegion",              1015.87f,  25.91f,  450.86f, "Mystery Lake · Camp Office"),
+        new Waypoint("神秘湖地堡",              "LakeRegion",              1029.06f,  91.99f,  -52.52f, "Mystery Lake Bunker"),
         // M —— MarshRegion(孤寂沼地)
-        new Waypoint("孤寂沼地",                "MarshRegion",             1116.10f,-130.60f,  969.10f),
-        new Waypoint("孤寂沼地·地堡",           "MarshRegion",              593.07f, -83.38f, -104.89f),
+        new Waypoint("孤寂沼地",                "MarshRegion",             1116.10f,-130.60f,  969.10f, "Forlorn Muskeg"),
+        new Waypoint("孤寂沼地·地堡",           "MarshRegion",              593.07f, -83.38f, -104.89f, "Forlorn Muskeg · Bunker"),
         // M —— MiningRegion(污染区)
-        new Waypoint("污染区(井架)",           "MiningRegion",            -169.20f, 201.80f,  231.70f),
+        new Waypoint("污染区(井架)",           "MiningRegion",            -169.20f, 201.80f,  231.70f, "Blackrock Mine (Rig)"),
         // M —— MountainPassRegion(破碎山道)
-        new Waypoint("破碎山道(气象站)",       "MountainPassRegion",       532.10f, 592.10f, -601.20f),
+        new Waypoint("破碎山道(气象站)",       "MountainPassRegion",       532.10f, 592.10f, -601.20f, "Mountain Pass (Weather)"),
         // M —— MountainTownRegion(山间小镇)
-        new Waypoint("山间小镇地堡",            "MountainTownRegion",      1828.20f, 444.39f, 1771.27f),
+        new Waypoint("山间小镇地堡",            "MountainTownRegion",      1828.20f, 444.39f, 1771.27f, "Milton Bunker"),
         // R —— RiverValleyRegion(寂静河谷)
-        new Waypoint("寂静河谷·地堡",           "RiverValleyRegion",        363.44f, 238.61f,  375.49f),
-        new Waypoint("寂静河谷·应急舱",         "RiverValleyRegion",        171.97f, 126.65f,  731.10f),
+        new Waypoint("寂静河谷·地堡",           "RiverValleyRegion",        363.44f, 238.61f,  375.49f, "Hushed River Valley · Bunker"),
+        new Waypoint("寂静河谷·应急舱",         "RiverValleyRegion",        171.97f, 126.65f,  731.10f, "Hushed River Valley · Pod"),
         // R —— RuralRegion(宜人山谷)
-        new Waypoint("宜人山谷(农庄)",         "RuralRegion",             1460.70f,  48.40f, 1032.40f),
-        new Waypoint("宜人山谷·地堡",           "RuralRegion",              423.89f, 177.93f, 1458.51f),
-        new Waypoint("宜人山谷·应急舱",         "RuralRegion",             1113.96f,  98.49f,  140.33f),
+        new Waypoint("宜人山谷(农庄)",         "RuralRegion",             1460.70f,  48.40f, 1032.40f, "Pleasant Valley (Farm)"),
+        new Waypoint("宜人山谷·地堡",           "RuralRegion",              423.89f, 177.93f, 1458.51f, "Pleasant Valley · Bunker"),
+        new Waypoint("宜人山谷·应急舱",         "RuralRegion",             1113.96f,  98.49f,  140.33f, "Pleasant Valley · Pod"),
         // T —— TracksRegion(断开的铁路)
-        new Waypoint("断开的铁路(维修站)",     "TracksRegion",             588.20f, 199.00f,  565.50f),
+        new Waypoint("断开的铁路(维修站)",     "TracksRegion",             588.20f, 199.00f,  565.50f, "Broken Railroad (Maint.)"),
         // W —— WhalingStationRegion(荒芜据点)
-        new Waypoint("荒芜据点(孤寂灯塔)",     "WhalingStationRegion",     728.00f,  46.80f,  766.60f),
+        new Waypoint("荒芜据点(孤寂灯塔)",     "WhalingStationRegion",     728.00f,  46.80f,  766.60f, "Desolation Point (Lighthouse)"),
     };
 
     // 正解:PlayerManager.TeleportPlayer(Vector3, Quaternion) 是公开方法。
@@ -114,14 +116,14 @@ internal static class Teleport
 
             if (activeScene.name == w.Scene || string.IsNullOrEmpty(w.Scene))
             {
-                if (!hasExactCoord) { Log(I18n.IsEnglish ? $"[TP] → {w.Label}: already in region, no exact coord" : $"[TP] → {w.Label}:已在本区,无精确坐标不传送"); return; }
-                Log(I18n.IsEnglish ? $"[TP] → {w.Label} (same region)" : $"[TP] → {w.Label} (同区)");
+                if (!hasExactCoord) { Log(I18n.IsEnglish ? $"[TP] → {w.LabelEn}: already in region, no exact coord" : $"[TP] → {w.Label}:已在本区,无精确坐标不传送"); return; }
+                Log(I18n.IsEnglish ? $"[TP] → {w.LabelEn} (same region)" : $"[TP] → {w.Label} (同区)");
                 MovePlayerTo(w.Pos);
                 return;
             }
 
             Log(I18n.IsEnglish
-                ? $"[TP] Cross-scene → {w.Label} ({w.Scene}), saving + loading..."
+                ? $"[TP] Cross-scene → {w.LabelEn} ({w.Scene}), saving + loading..."
                 : $"[TP] 跨场景 → {w.Label} ({w.Scene}),开始保存 + 加载...");
 
             // 1) 存当前档 —— FastTravel 用的是 SaveGameSystem.SaveGame("autosave", currentSceneName) 有参版本
@@ -229,7 +231,7 @@ internal static class Teleport
             if (target.Pos == Vector3.zero)
             {
                 Log(I18n.IsEnglish
-                    ? $"[TP] Scene ready, using default landing ({target.Label})"
+                    ? $"[TP] Scene ready, using default landing ({target.LabelEn})"
                     : $"[TP] 场景就绪,使用默认落点({target.Label})");
                 return;
             }
@@ -305,35 +307,51 @@ internal static class Skills
     private static void Log(string s) { CheatState.LastActionLog = s; ModMain.Log?.Msg(s); }
 }
 
-// 壮举解锁 —— 反射扫所有 Feat_XXX 类,设它们的单例 IsUnlocked = true
+// 壮举解锁 —— 直接设内部进度字段到满值(仿 CT 做法)
 internal static class Feats
 {
     public static void UnlockAllFeats()
     {
         try
         {
-            int n = 0;
-            var asm = typeof(GameManager).Assembly;
-            foreach (var t in asm.GetTypes())
+            int ok = 0, fail = 0;
+            var fm = GameManager.GetFeatsManager();
+            if (fm == null) { Log("[Feats] FeatsManager null"); return; }
+            int total = fm.GetNumFeats();
+            Log($"[Feats] Starting unlock, {total} feats found");
+
+            for (int i = 0; i < total; i++)
             {
-                if (t.Name.StartsWith("Feat_") && typeof(MonoBehaviour).IsAssignableFrom(t))
+                try
                 {
+                    var feat = fm.GetFeatFromIndex(i);
+                    if (feat == null) { fail++; continue; }
+                    string name = ((UnityEngine.Object)feat).name;
+
+                    // 强制 SetNormalizedProgress(1) — 不管是否已 unlocked
+                    feat.SetNormalizedProgress(1.0f);
+
+                    // 额外：布尔型 feat 直接设 m_Unlocked 字段
+                    var unlockField = feat.GetType().GetField("m_Unlocked",
+                        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                    if (unlockField != null)
+                        unlockField.SetValue(feat, true);
+
+                    // 触发 HandleOnFeatUnlocked 显示 UI 通知
                     try
                     {
-                        // 每个 Feat_XXX 是 MonoBehaviour,实例挂在场景里
-                        var instances = UnityEngine.Object.FindObjectsOfType(Il2CppType.From(t));
-                        if (instances == null) continue;
-                        foreach (var inst in instances)
-                        {
-                            var f = t.GetField("m_IsUnlocked", BindingFlags.Instance | BindingFlags.Public)
-                                 ?? t.GetField("IsUnlocked",   BindingFlags.Instance | BindingFlags.Public);
-                            if (f != null) { f.SetValue(inst, true); n++; }
-                        }
+                        var handler = typeof(Feat).GetMethod("HandleOnFeatUnlocked",
+                            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                        if (handler != null) handler.Invoke(feat, null);
                     }
                     catch { }
+
+                    ok++;
+                    ModMain.Log?.Msg($"[Feats] #{i} {name} → SetProgress(1) + unlocked={feat.IsUnlocked()}");
                 }
+                catch (Exception ex) { fail++; ModMain.Log?.Warning($"[Feats] #{i} failed: {ex.Message}"); }
             }
-            Log(I18n.IsEnglish ? $"[Feats] Unlocked {n} feats" : $"[Feats] 解锁 {n} 项壮举");
+            Log(I18n.IsEnglish ? $"[Feats] Done: {ok} ok, {fail} failed" : $"[Feats] 完成: {ok} 成功, {fail} 失败");
         }
         catch (Exception ex) { Log($"[Feats] {ex.Message}"); }
     }

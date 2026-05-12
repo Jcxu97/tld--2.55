@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>NorthernLightsBroadcast</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <TargetFramework>netcoreapp6.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>11.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="NorthernLightsBroadcast.Resources.northernlightsbroadcastbundle" />
+    <EmbeddedResource Include="NorthernLightsBroadcast.Resources.northernlightsbroadcastbundle" LogicalName="NorthernLightsBroadcast.Resources.northernlightsbroadcastbundle" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="MelonLoader" />
+    <Reference Include="UnityEngine.CoreModule" />
+    <Reference Include="Il2CppInterop.Runtime" />
+    <Reference Include="AudioManager" />
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="UnityEngine.VideoModule" />
+    <Reference Include="UnityEngine.UI" />
+    <Reference Include="UnityEngine.UIModule" />
+    <Reference Include="Unity.TextMeshPro" />
+    <Reference Include="0Harmony" />
+    <Reference Include="UnityEngine.AssetBundleModule" />
+    <Reference Include="UnityEngine.PhysicsModule" />
+    <Reference Include="ModData" />
+    <Reference Include="ModSettings" />
+    <Reference Include="UnityEngine.AudioModule" />
+    <Reference Include="Il2CppTLD.PDID" />
+    <Reference Include="Il2Cppmscorlib" />
+  </ItemGroup>
+</Project>

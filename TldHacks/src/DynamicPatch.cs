@@ -147,11 +147,12 @@ internal static class DynamicPatch
             "Prefix", null, () => CheatState.FlaskNoHeatLoss),
         Spec(typeof(Il2CppTLD.Gear.InsulatedFlask), "UpdateVolume", typeof(Patch_Flask_UpdateVolume),
             "Prefix", null, () => CheatState.FlaskInfiniteVol),
-        Spec(typeof(Il2CppTLD.Gear.InsulatedFlask), "IsItemCompatibleWithFlask", typeof(Patch_Flask_IsCompatible),
+        // FlaskAnyItem: NOP 处理 IsItemCompatibleWithFlask 内部调用, Harmony 处理 UI + 外部类型检查
+        Spec(typeof(Panel_InsulatedFlask), "IsCompatibleDrink", typeof(Patch_Flask_IsCompatibleDrink),
             null, "Postfix", () => CheatState.FlaskAnyItem, null, OneGearItem),
-        Spec(typeof(Panel_InsulatedFlask), "IsCompatibleDrink", typeof(Patch_Flask_IsCompatible),
+        Spec(typeof(Il2CppTLD.Gear.InsulatedFlaskLiquidTypeConstraint), "IsAllowed", typeof(Patch_Flask_ForceTrue),
             null, "Postfix", () => CheatState.FlaskAnyItem, null, OneGearItem),
-        Spec(typeof(Il2CppTLD.Gear.InsulatedFlaskLiquidTypeConstraint), "IsAllowed", typeof(Patch_Flask_IsCompatible),
+        Spec(typeof(Il2CppTLD.Gear.InsulatedFlask), "IsItemCompatibleWithFlask", typeof(Patch_Flask_ForceTrue),
             null, "Postfix", () => CheatState.FlaskAnyItem, null, OneGearItem),
 
         Spec(typeof(CraftingOperation), "Update", typeof(Patch_CraftingOp_Update),
@@ -231,12 +232,14 @@ internal static class DynamicPatch
         // v2.7.89 无后坐力:零化 GunItem 后坐参数(Prefix 归零 + Postfix 恢复)
         Spec(typeof(vp_FPSWeapon), "PlayFireAnimation", typeof(Patch_FPSWeapon_PlayFireAnimation),
             "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f),
+        // Phase 2 NativeDetour pending — keep Harmony for now
         Spec(typeof(vp_FPSCamera), "Update", typeof(Patch_FPSCamera_ClearRecoil),
             "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f || CheatState.NoAimSway),
         Spec(typeof(vp_FPSCamera), "LateUpdate", typeof(Patch_FPSCamera_LateUpdate),
             "Prefix", "Postfix", () => CheatState.NoRecoil || CheatState.SuperAccuracy || CheatStateESP.RecoilScale < 0.99f || CheatState.NoAimSway || (ModMain.Settings != null && ModMain.Settings.GunZoomEnabled)),
         Spec(typeof(vp_FPSWeapon), "Update", typeof(Patch_FPSWeapon_SteadyAim),
             "Prefix", "Postfix", () => CheatState.NoAimSway || CheatState.SuperAccuracy),
+        // vp_FPSWeapon.LateUpdate 在 IL2CPP 中不存在,已移除
         // vp_FPSWeapon.LateUpdate 在 IL2CPP 中不存在,已移除
 
         // v2.7.86 新增功能
@@ -418,7 +421,7 @@ internal static class DynamicPatch
         Spec(typeof(Fatigue), "CalculateFatigueIncrease", typeof(Patch_Carcass_Fatigue),
             null, "Postfix", () => CheatState.World_CarcassMoving, null, OneFloat),
         Spec(typeof(PlayerManager), "CalculateModifiedCalorieBurnRate", typeof(Patch_Carcass_Calorie),
-            null, "Postfix", () => CheatState.World_CarcassMoving, null, OneFloat),
+            null, "Postfix", () => CheatState.World_CarcassMoving || CheatState.TechBackpack, null, OneFloat),
         Spec(typeof(Inventory), "GetExtraScentIntensity", typeof(Patch_Carcass_Scent),
             null, "Postfix", () => CheatState.World_CarcassMoving),
         Spec(typeof(RopeClimbPoint), "OnRopeTransition", typeof(Patch_Carcass_RopeDrop),
@@ -555,6 +558,24 @@ internal static class DynamicPatch
         Spec(typeof(GameManager), "ResetLists", typeof(Patch_Speedy_ResetDict),
             null, "Postfix", () => ModMain.Settings.TT_InteractionSpeedMult != 1f || CheatState.QuickSearch),
 
+        // ImprovedFlasks
+        Spec(typeof(GearItem), "Awake", typeof(Patch_ImprovedFlasks_Awake),
+            null, "Postfix", () => CheatState.QoL_ImprovedFlasks),
+        Spec(typeof(ItemDescriptionPage), "UpdateButtons", typeof(Patch_ImprovedFlasks_Buttons),
+            null, "Postfix", () => CheatState.QoL_ImprovedFlasks, null, new[] { typeof(GearItem) }),
+        Spec(typeof(ItemDescriptionPage), "OnEquip", typeof(Patch_ImprovedFlasks_OnEquip),
+            "Prefix", null, () => CheatState.QoL_ImprovedFlasks),
+        Spec(typeof(Panel_ActionsRadial), "GetDrinkItemsInInventory", typeof(Patch_ImprovedFlasks_Radial),
+            "Prefix", "Postfix", () => CheatState.QoL_ImprovedFlasks),
+        Spec(typeof(Panel_ActionsRadial), "UseItem", typeof(Patch_ImprovedFlasks_UseItem),
+            "Prefix", "Postfix", () => CheatState.QoL_ImprovedFlasks, null, new[] { typeof(GearItem) }),
+        Spec(typeof(RadialMenuArm), "SetRadialInfoGear", typeof(Patch_ImprovedFlasks_RadialName),
+            null, "Postfix", () => CheatState.QoL_ImprovedFlasks),
+        Spec(typeof(ItemDescriptionPage), "UpdateInsulatedFlaskIndicators", typeof(Patch_ImprovedFlasks_Indicators),
+            null, "Postfix", () => CheatState.QoL_ImprovedFlasks, null, new[] { typeof(InsulatedFlask) }),
+        Spec(typeof(Panel_InsulatedFlask), "RefreshTables", typeof(Patch_ImprovedFlasks_RefreshTables),
+            null, "Postfix", () => CheatState.QoL_ImprovedFlasks),
+
         // RespawnablePlants
         Spec(typeof(Harvestable), "Awake", typeof(Patch_RespawnPlants_Awake),
             "Prefix", null, () => CheatState.TT_RespawnPlants),
@@ -584,6 +605,25 @@ internal static class DynamicPatch
             null, "Postfix", () => CheatState.HL_Enabled, null, HLTooDarkArgs),
 
         // FlashFlicker 已改为 [HarmonyPatch] 属性直接注册(IL2Cpp 下 DynamicPatch Prefix return false 不可靠)
+
+        // v6.1 性能优化: 原常驻 Update patch 迁移到 DynamicPatch,toggle 关时零开销
+        Spec(typeof(vp_FPSPlayer), "Update", typeof(Patch_UT_RevolverWalk),
+            null, "Postfix", () => ModMain.Settings != null && ModMain.Settings.UT_RevolverImprovements),
+        Spec(typeof(Panel_HUD), "Update", typeof(Patch_UT_RevolverUI),
+            null, "Postfix", () => ModMain.Settings != null && ModMain.Settings.UT_RevolverImprovements),
+        Spec(typeof(WaterSource), "Update", typeof(Patch_UT_ToiletWater),
+            null, "Postfix", () => ModMain.Settings != null && ModMain.Settings.UT_ToiletWaterPotable),
+        Spec(typeof(FlashlightItem), "Update", typeof(Patch_FlashInfiniteBattery),
+            null, "Postfix", () => ModMain.Settings != null && ModMain.Settings.UT_FlashInfiniteBattery),
+        // 渲染路径: 每帧 × 每喷漆标记,不开功能时完全卸载
+        Spec(typeof(DynamicDecalsManager), "RenderDynamicDecal", typeof(Patch_UT_GlowingDecals),
+            "Prefix", null, () => ModMain.Settings != null && ModMain.Settings.UT_GlowingDecals),
+        // DoPositionCheck 每帧被游戏调用,功能关时零 trampoline
+        Spec(typeof(PlayerManager), "DoPositionCheck", typeof(Patch_PlaceFromInv_PositionCheck),
+            null, "Postfix", () => ModMain.Settings != null && ModMain.Settings.PlaceFromInv_AllowClose),
+        // 呼吸可见性:默认开启(true)时不需要 patch;用户关闭时才挂载抑制
+        Spec(typeof(Breath), "PlayBreathEffect", typeof(Patch_UT_BreathVisibility),
+            null, "Postfix", () => ModMain.Settings != null && !ModMain.Settings.UT_BreathVisibility),
 
     };
 

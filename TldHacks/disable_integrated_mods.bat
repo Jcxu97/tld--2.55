@@ -70,6 +70,7 @@ call :check "TinyTweaks-MapTextOuline.dll"
 call :check "TinyTweaks-NoSaveOnSprain.dll"
 call :check "TinyTweaks-WakeUpCall.dll"
 call :check "TinyTweaks-BuryHumanCorpses.dll"
+call :check "TinyTweaks-RunWithLantern.dll"
 call :check "SleepWithoutABed.dll"
 call :check "SkipIntroRedux.dll"
 :: MapManager 不整合, 用户保留独立 mod
@@ -95,6 +96,16 @@ call :check "UniversalTweaks.dll"
 call :check "StackManager.dll"
 
 echo.
+echo [整合冗余 - 植物再生 / EdiblePlants]
+:: TldHacks 已整合 RespawnablePlants (植物重生功能)
+call :check "EdiblePlants.dll"
+
+echo.
+echo [整合冗余 - 保温瓶增强]
+:: TldHacks v6.5 已整合 ImprovedFlasks (轮盘喝水/按钮文字/温度显示)
+call :check "ImprovedFlasks.dll"
+
+echo.
 echo [已知冲突 / 有害 MOD]
 :: GfxBoost / LightCull: v3.0.2 实测会破坏山洞/夜晚动态灯光,导致漆黑
 :: DarkerNights: 弃坑 3 年,在 TLD 2.55 上死循环,直接卡启动
@@ -112,10 +123,11 @@ exit /b
 
 :check
 if exist "%MODS%\%~1" (
-    ren "%MODS%\%~1" "%~1.disabled"
+    if not exist "%MODS%\_disabled" mkdir "%MODS%\_disabled"
+    move /y "%MODS%\%~1" "%MODS%\_disabled\%~1" >nul
     echo [已禁用] %~1
     set /a disabled+=1
-) else if exist "%MODS%\%~1.disabled" (
+) else if exist "%MODS%\_disabled\%~1" (
     echo [已禁用] %~1 (之前)
     set /a already+=1
 ) else (

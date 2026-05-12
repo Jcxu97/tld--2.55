@@ -18,21 +18,31 @@ namespace TldHacks;
 internal static class AutoSurveyHelper
 {
     private static float _timer;
+    private static int _skip;
 
     internal static void OnUpdateTick()
     {
         if (!CheatState.QoL_AutoSurvey) return;
+        if (++_skip < 15) return; // 每 15 帧检查一次(~250ms),减少 IL2Cpp bridge 开销
+        _skip = 0;
         if (GameManager.IsMainMenuActive()) return;
         if (InterfaceManager.IsPanelEnabled<Panel_Map>()) return;
         if (!InterfaceManager.IsPanelLoaded<Panel_Map>()) return;
+        var pm = GameManager.GetPlayerManagerComponent();
+        if (pm == null) return;
+        if (InterfaceManager.IsPanelEnabled<Panel_IceFishing>()) return;
         var s = ModMain.Settings;
         if (!s.QoL_AutoSurveyUnlock && !CharcoalItem.HasSurveyVisibility(0f)) return;
 
-        _timer += Time.deltaTime;
+        _timer += UnityEngine.Time.deltaTime * 15f;
         if (_timer >= s.QoL_AutoSurveyDelay)
         {
-            float range = s.QoL_AutoSurveyRange * 150f;
-            InterfaceManager.GetPanel<Panel_Map>().DoNearbyDetailsCheck(range, true, false, GameManager.GetPlayerTransform().position, true);
+            UnityEngine.Transform playerT = GameManager.GetPlayerTransform();
+            if (playerT == null) return;
+            float range = s.QoL_AutoSurveyRange * 20f;
+            var panel = InterfaceManager.GetPanel<Panel_Map>();
+            if (panel == null) return;
+            panel.DoNearbyDetailsCheck(range, true, false, playerT.position, true);
             _timer = 0f;
         }
     }
@@ -48,12 +58,14 @@ internal static class Patch_Sprains_Update
         if (!CheatState.World_Sprainkle) return;
         try
         {
+            var s = ModMain.Settings;
+            int slope = (int)s.World_SprainkleSlopeMin;
+            if (__instance.m_MinSlopeDegreesForSprain == slope) return;
             if (GameManager.m_IsPaused || GameManager.s_IsGameplaySuspended) return;
             var pm = GameManager.GetPlayerManagerComponent();
             if (pm == null || pm.m_God) return;
 
-            var s = ModMain.Settings;
-            __instance.m_MinSlopeDegreesForSprain = (int)s.World_SprainkleSlopeMin;
+            __instance.m_MinSlopeDegreesForSprain = slope;
             __instance.m_MinSecondsForSlopeRisk = s.World_SprainkleMinSecondsRisk;
             __instance.m_BaseChanceWhenMovingOnSlope = s.World_SprainkleBaseChanceMoving;
             __instance.m_ChanceIncreaseEncumbered = s.World_SprainkleEncumberChance;
@@ -449,19 +461,46 @@ internal static class Patch_NoSaveOnSprain_Wrist
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CraftAnywhere: Panel_Crafting.ItemPassesFilter postfix — 覆写蓝图制作位置
+// CraftAnywhere: Panel_Crafting.ItemPassesFilter Prefix/Postfix — 覆写蓝图制作位置
 // ═══════════════════════════════════════════════════════════════
 internal static class Patch_CraftAnywhere
 {
-    internal static void Postfix(BlueprintData bpi)
+    // v4.0r3: 旧 Postfix `__result = true` 一刀切让左侧分类按钮失效 ——
+    //   vanilla ItemPassesFilter 同时做"位置检查"和"分类筛选",强制 true 把分类也覆盖了。
+    //   改成 CraftAnywhereRedux 原版思路:Prefix 临时把 m_RequiredCraftingLocation 设为 0(AnyWhere),
+    //   vanilla 内部位置检查通过 + 分类筛选独立工作;Postfix 还原原值,不污染存档。
+    //   用反射拿 FieldInfo 避免依赖 CraftingLocation enum 的具体 namespace。
+
+    private static System.Reflection.FieldInfo _locField;
+    private static bool _resolved;
+
+    [System.ThreadStatic] private static object _saved;
+    [System.ThreadStatic] private static bool _hasSaved;
+
+    internal static void Prefix(BlueprintData bpi)
     {
+        _hasSaved = false;
         if (!CheatState.Craft_Anywhere || bpi == null) return;
+        if (!_resolved)
+        {
+            _resolved = true;
+            _locField = HarmonyLib.AccessTools.Field(typeof(BlueprintData), "m_RequiredCraftingLocation");
+        }
+        if (_locField == null) return;
         try
         {
-            int loc = ModMain.Settings.Craft_DefaultLocation;
-            bpi.m_RequiredCraftingLocation = (CraftingLocation)loc;
+            _saved = _locField.GetValue(bpi);
+            _hasSaved = true;
+            _locField.SetValue(bpi, System.Enum.ToObject(_locField.FieldType, 0));
         }
-        catch { }
+        catch { _hasSaved = false; }
+    }
+
+    internal static void Postfix(BlueprintData bpi)
+    {
+        if (!_hasSaved || bpi == null || _locField == null) return;
+        try { _locField.SetValue(bpi, _saved); } catch { }
+        _hasSaved = false;
     }
 }
 
@@ -623,7 +662,7 @@ internal static class WakeUpCallHelper
 
     public static void OnUpdateTick()
     {
-        if (!CheatState.QoL_WakeUpCall) return;
+        if (!CheatState.QoL_WakeUpCall && !CheatState.QoL_AuroraSense) return;
         try
         {
             var rest = GameManager.GetRestComponent();
@@ -649,7 +688,7 @@ internal static class Patch_WakeUpCall_EndSleeping_Safety
 {
     internal static void Postfix()
     {
-        if (!CheatState.QoL_WakeUpCall) return;
+        if (!CheatState.QoL_WakeUpCall && !CheatState.QoL_AuroraSense) return;
         try { WakeUpCallHelper.PostWakeUp(); } catch { }
     }
 }
@@ -696,7 +735,7 @@ internal static class BuryCorpsesState
         Interrupted = false;
         InProgress = true;
         InterfaceManager.GetPanel<Panel_GenericProgressBar>().Launch(
-            "Bury a friend", SecondsToInteract, (float)HoursToBury * 60f, 0f, true, (OnExitDelegate)null);
+            I18n.T("埋葬遗体", "Bury a friend"), SecondsToInteract, (float)HoursToBury * 60f, 0f, true, (OnExitDelegate)null);
         while (InProgress)
         {
             yield return new WaitForEndOfFrame();
@@ -747,7 +786,7 @@ internal static class Patch_BuryCorpses_HoverText
             {
                 var hud = InterfaceManager.GetPanel<Panel_HUD>();
                 hud.m_EquipItemPopup.enabled = true;
-                hud.m_EquipItemPopup.ShowGenericPopupWithDefaultActions("Search", "Bury");
+                hud.m_EquipItemPopup.ShowGenericPopupWithDefaultActions(I18n.T("搜索", "Search"), I18n.T("埋葬", "Bury"));
             }
         }
         catch { }
@@ -1078,7 +1117,7 @@ internal static class Patch_SleepAnywhere_SleepInterruption
                 _lastInterruptTime = time;
                 _lastWasCondition = true;
                 if (SleepAnywhereState.HudMessage)
-                    HUDMessage.AddMessage("You are about to fade into the long dark. Seek shelter and warmth!", 5f, false, false);
+                    HUDMessage.AddMessage(I18n.T("你即将坠入漫漫长夜。快寻找庇护和温暖！", "You are about to fade into the long dark. Seek shelter and warmth!"), 5f, false, false);
                 CameraFade.FadeIn(0.5f, 0f, (Il2CppSystem.Action)null);
             }
             else

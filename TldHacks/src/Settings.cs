@@ -150,8 +150,8 @@ internal class TldHacksSettings : JsonModSettings
     [Name("No Aim Stamina(瞄准不耗体力)")]
     public bool NoAimStamina = false;
 
-    [Name("Super Accuracy(已由魔法子弹替代,保留兼容)")]
-    [Description("已弃用 —— 请使用 ESP 区的「魔法子弹」。保留此开关是为了旧 JSON 兼容:开启时等效于 稳定瞄准+无后坐力。")]
+    [Name("Super Accuracy(已弃用,保留兼容)")]
+    [Description("已弃用。保留此开关是为了旧 JSON 兼容:开启时等效于 稳定瞄准+无后坐力。")]
     public bool SuperAccuracy = false;
 
 
@@ -180,8 +180,11 @@ internal class TldHacksSettings : JsonModSettings
 
     // ——— CT 复刻 v2.7.45+ ———
     [Section("CT 复刻 / 参照 Cheat Engine 表")]
-    [Name("秒烤肉(CookingPot 瞬完成)")]
+    [Name("秒烤肉(CookingPot 瞬完成,自带防烤焦)")]
     public bool QuickCook = false;
+
+    [Name("防烤焦(只锁 Ready,不秒熟)")]
+    public bool NoBurn = false;
 
     [Name("秒搜索(容器/尸体搜刮 NOP TimedHold)")]
     public bool QuickSearch = false;
@@ -218,6 +221,11 @@ internal class TldHacksSettings : JsonModSettings
 
     [Name("篝火永不熄灭")]
     public bool FireNeverDie = false;
+
+    [Name("篝火燃烧上限(小时)")]
+    [Description("原版上限12小时,提高后可无限加燃料")]
+    [Slider(12f, 9999f, 100)]
+    public float FireMaxBurnHours = 12f;
 
     [Name("无冻伤风险")]
     [Description("完全阻止冻伤伤害(CT: DealFrostbiteDamageToLocation=0)")]
@@ -301,29 +309,10 @@ internal class TldHacksSettings : JsonModSettings
     [Description("按 W 触发 ItemPicker 自动拾取时,忽略本会话内玩家 drop 的 GearItem,避免刚丢就又捡回来")]
     public bool BlockAutoPickupOwnDrops = false;
 
-    [Section("ESP & AutoAim / 透视自瞄")]
-    [Name("ESP 透视")]
-    public bool ESP = false;
-    [Name("自动瞄准 (按住右键激活)")]
-    public bool AutoAim = false;
-    [Name("魔法子弹 (开枪自动命中目标)")]
-    public bool MagicBullet = false;
-    [Name("自瞄 FOV (搜索角度)")]
-    public float AutoAimFOV = 30f;
-    [Name("自瞄速度")]
-    public float AutoAimSpeed = 15f;
-    [Name("锁定部位 (0=躯干 1=头 2=腿)")]
-    public int AimPart = 0;
+    [Section("Weapon / 武器微调")]
+    [Slider(0f, 1f, 10)]
     [Name("后坐力强度 (0=无 1=原版)")]
     public float RecoilScaleESP = 1f;
-    [Name("射速倍率")]
-    public float FireRateScale = 1f;
-    [Name("换弹速度倍率")]
-    public float ReloadScale = 1f;
-    [Name("透视距离 (米)")]
-    public float ESPRange = 300f;
-    [Name("自瞄开关热键")]
-    public KeyCode AutoAimHotkey = KeyCode.None;
 
     // ——— Integrated: SonicMode (细分速度) ———
     [Section("Movement Detail / 细分速度")]
@@ -701,6 +690,52 @@ internal class TldHacksSettings : JsonModSettings
     [Description("防止鼠标左键误熄油灯")]
     public bool DisableLampLeftClick = true;
 
+    // ——— Integrated: HouseLights (室内灯光开关) ———
+    [Section("House Lights / 室内灯光")]
+    [Name("启用室内灯光")]
+    [Description("非极光时也能通过开关点亮室内灯")]
+    public bool HL_Enabled = true;
+
+    [Name("室外场景启用")]
+    [Description("室外地图也启用灯光(实验性,可能影响性能)")]
+    public bool HL_EnableOutside = false;
+
+    [Name("白光")]
+    [Description("灯光颜色去饱和,呈白色")]
+    public bool HL_WhiteLights = false;
+
+    [Name("禁止闪烁")]
+    [Description("极光灯光不闪烁,保持常亮")]
+    public bool HL_NoFlicker = true;
+
+    [Name("投射阴影")]
+    [Description("灯光投射阴影(可能影响性能)")]
+    public bool HL_CastShadows = false;
+
+    [Name("灯光音效")]
+    [Description("灯开启时发出嗡嗡声")]
+    public bool HL_LightAudio = false;
+
+    [Slider(0f, 3f, 31)]
+    [Name("亮度")]
+    [Description("灯光强度,0=灭 3=最亮")]
+    public float HL_Intensity = 2f;
+
+    [Slider(0f, 5f, 51)]
+    [Name("范围倍率")]
+    [Description("1=默认照射距离, >1 增大范围")]
+    public float HL_RangeMultiplier = 1.4f;
+
+    [Slider(10f, 75f, 65)]
+    [Name("裁剪距离(m)")]
+    [Description("超出此距离的灯光关闭以节省性能")]
+    public float HL_CullDistance = 50f;
+
+    [Slider(1f, 3f, 21)]
+    [Name("交互距离(m)")]
+    [Description("可操作开关的最大距离")]
+    public float HL_InteractDistance = 1f;
+
     // ——— Integrated Batch 2: QoL & Startup ———
     [Section("QoL / 生活品质")]
     [Name("打开日志暂停游戏")]
@@ -850,6 +885,10 @@ internal class TldHacksSettings : JsonModSettings
     public float QoL_AutoSurveyRange = 1f;
     [Name("解除天气限制")]
     public bool QoL_AutoSurveyUnlock = false;
+
+    [Name("保温瓶增强")]
+    [Description("快捷轮盘喝水/背包分类显示/温度指示优化")]
+    public bool QoL_ImprovedFlasks = true;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // v2.8.0  Tab 8: Crafting & Fire (CraftAnywhereRedux + MoreCookingSlots)
@@ -1045,35 +1084,9 @@ internal class TldHacksSettings : JsonModSettings
     public bool UT_TravoisOverrideInteraction = false;
 
     [Section("UT / 手电筒")]
-    [Name("启用扩展功能")]
-    [Description("跨场景保留电量 + 多光源同步")]
-    public bool UT_FlashExtended = false;
-    [Name("远光仅极光下可用")]
-    public bool UT_FlashHighBeamRestrict = false;
-    [Name("极光闪烁")]
-    public bool UT_FlashAuroraFlicker = false;
-    [Name("随机起始电量")]
-    public bool UT_FlashRandomBattery = false;
     [Name("无限电量")]
+    [Description("手电筒永不耗电")]
     public bool UT_FlashInfiniteBattery = false;
-    [Slider(0.1f, 10f, 100)]
-    [Name("普通近光持续时间(h)")]
-    public float UT_FlashLowBeam = 1f;
-    [Slider(0.01f, 1f, 100)]
-    [Name("普通远光持续时间(h)")]
-    public float UT_FlashHighBeam = 0.0833f;
-    [Slider(0.5f, 10f, 100)]
-    [Name("普通充电时间(h)")]
-    public float UT_FlashRecharge = 2f;
-    [Slider(0.1f, 10f, 100)]
-    [Name("矿工近光持续(h)")]
-    public float UT_MinerFlashLowBeam = 1.5f;
-    [Slider(0.01f, 1f, 100)]
-    [Name("矿工远光持续(h)")]
-    public float UT_MinerFlashHighBeam = 0.0833f;
-    [Slider(0.5f, 10f, 100)]
-    [Name("矿工充电时间(h)")]
-    public float UT_MinerFlashRecharge = 1.75f;
 
     [Section("StackManager / 堆叠管理 v1.0.6")]
     [Name("启用堆叠组件添加")]
@@ -1149,8 +1162,70 @@ internal class TldHacksSettings : JsonModSettings
     [Name("搬运猎物尸骸")]
     [Description("可拾取鹿/狼尸体搬运到其他地方(含跨场景)")]
     public bool World_CarcassMoving = false;
+    [Name("搬运所有猎物")]
+    [Description("开启后熊/驼鹿/美洲狮也可搬运")]
+    public bool World_CarcassMovingAll = false;
     [Name("极光点火把")]
     [Description("极光期间可从电源插座/电线点燃火把")]
     public bool World_ElectricTorch = false;
+
+    // ——— TinyTweaks 整合 ———
+    [Section("TinyTweaks / 微调合集")]
+    [Name("体感温度上限(℃)")]
+    [Description("0=不限制")]
+    [Slider(-10, 50)]
+    public int TT_CapFeelsHigh = 0;
+    [Name("体感温度下限(℃)")]
+    [Description("0=不限制")]
+    [Slider(-50, 10)]
+    public int TT_CapFeelsLow = 0;
+    [Name("启用体感温度限制")]
+    public bool TT_CapFeelsEnabled = false;
+
+    [Name("无视坠落即死墙")]
+    public bool TT_FallDeathGoat = false;
+    [Name("坠落伤害/米")]
+    [Description("原版=3")]
+    [Slider(1, 12)]
+    public int TT_FallDamageMult = 6;
+
+    [Name("步枪落地竖立")]
+    public bool TT_DroppedOrientation = true;
+    [Name("FOV滑块扩展(30-150)")]
+    public bool TT_ExtendedFOV = true;
+    [Name("辐射轮暂停")]
+    public bool TT_PauseOnRadial = false;
+
+    [Name("交互加速-通用")]
+    [Description("修理/制作/烹饪/净水/雪屋等")]
+    [Slider(0.2f, 6f, 30)]
+    public float TT_GlobalSpeedMult = 1f;
+    [Name("交互加速-开容器")]
+    [Description("开箱/采植物/进车/开门")]
+    [Slider(0.2f, 6f, 30)]
+    public float TT_InteractionSpeedMult = 1f;
+    [Name("交互加速-进食")]
+    [Slider(0.2f, 6f, 30)]
+    public float TT_EatingSpeedMult = 1f;
+    [Name("交互加速-拆解")]
+    [Slider(0.2f, 6f, 30)]
+    public float TT_BreakdownSpeedMult = 1f;
+    [Name("交互加速-阅读")]
+    [Slider(0.2f, 6f, 30)]
+    public float TT_ReadingSpeedMult = 1f;
+
+    [Name("植物重生(天)")]
+    [Slider(1, 365)]
+    public int TT_PlantRespawnDays = 45;
+    [Name("启用植物重生")]
+    public bool TT_RespawnPlants = false;
+
+    [Name("显示商人信任度")]
+    public bool TT_ShowTraderTrust = false;
+
+    [Name("商人到来天数")]
+    [Description("游戏内经过该天数后商人可用。原版约25-30天，这里可以提前")]
+    [Slider(1f, 40f, 40)]
+    public float TraderArrivalDays = 10f;
 
 }

@@ -1,0 +1,4 @@
+D:\Github\tld--2.55\ModSettings_src\obj\Release\ModSettings.csproj.AssemblyReference.cache
+D:\Github\tld--2.55\ModSettings_src\obj\Release\ModSettings.GeneratedMSBuildEditorConfig.editorconfig
+D:\Github\tld--2.55\ModSettings_src\obj\Release\ModSettings.csproj.CoreCompileInputs.cache
+D:\Github\tld--2.55\ModSettings_src\obj\Release\ModSettings.sourcelink.json

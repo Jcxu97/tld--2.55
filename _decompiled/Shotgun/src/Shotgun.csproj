@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Shotgun</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>11.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <RootNamespace />
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Nullable>annotations</Nullable>
+    <NoWarn>CS0108;CS8632;CS0114;CS0067;CS0162;CS0414;CS0219;CS0649;CS1717;CS8500;CS8632</NoWarn>
+    <DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
+    <Features>strict</Features>
+
+    <TldRoot>D:\Steam\steamapps\common\TheLongDark</TldRoot>
+    <TldMlNet6>$(TldRoot)\MelonLoader\net6</TldMlNet6>
+    <TldInterop>$(TldRoot)\MelonLoader\Il2CppAssemblies</TldInterop>
+    <TldModsDir>$(TldRoot)\Mods</TldModsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Shotgun.Shotgun.modcomponent" />
+    <None Remove="Shotgun.AprilFools.Audio.aprilfools_audio" />
+    <None Remove="Shotgun.AprilFools.Audio.aprilfools_audio.manifest" />
+    <EmbeddedResource Include="Shotgun.Shotgun.modcomponent" LogicalName="Shotgun.Shotgun.modcomponent" />
+    <EmbeddedResource Include="Shotgun.AprilFools.Audio.aprilfools_audio" LogicalName="Shotgun.AprilFools.Audio.aprilfools_audio" />
+    <EmbeddedResource Include="Shotgun.AprilFools.Audio.aprilfools_audio.manifest" LogicalName="Shotgun.AprilFools.Audio.aprilfools_audio.manifest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="MelonLoader"><HintPath>$(TldMlNet6)\MelonLoader.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(TldMlNet6)\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Il2CppInterop.Runtime"><HintPath>$(TldMlNet6)\Il2CppInterop.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Il2CppInterop.Common"><HintPath>$(TldMlNet6)\Il2CppInterop.Common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Il2Cppmscorlib"><HintPath>$(TldInterop)\Il2Cppmscorlib.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Il2CppSystem"><HintPath>$(TldInterop)\Il2CppSystem.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(TldInterop)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(TldInterop)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(TldInterop)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AnimationModule"><HintPath>$(TldInterop)\UnityEngine.AnimationModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(TldInterop)\UnityEngine.AssetBundleModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AudioModule"><HintPath>$(TldInterop)\UnityEngine.AudioModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule"><HintPath>$(TldInterop)\UnityEngine.UnityWebRequestModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule"><HintPath>$(TldInterop)\UnityEngine.UnityWebRequestAudioModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(TldInterop)\UnityEngine.ParticleSystemModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(TldInterop)\UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(TldInterop)\UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(TldInterop)\UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(TldInterop)\UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.Addressables"><HintPath>$(TldInterop)\Unity.Addressables.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Il2CppTLD.Addressables"><HintPath>$(TldInterop)\Il2CppTLD.Addressables.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.ResourceManager"><HintPath>$(TldInterop)\Unity.ResourceManager.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Il2CppAK.Wwise.Unity.API.WwiseTypes"><HintPath>$(TldInterop)\Il2CppAK.Wwise.Unity.API.WwiseTypes.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ModComponent"><HintPath>$(TldModsDir)\ModComponent.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ModSettings"><HintPath>$(TldModsDir)\ModSettings.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AudioManager"><HintPath>$(TldModsDir)\AudioManager.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MehToolBox"><HintPath>$(TldModsDir)\MehToolBox.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="CopyToMods" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(TldModsDir)" SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="==> Deployed $(TargetFileName) to $(TldModsDir)" />
+  </Target>
+</Project>

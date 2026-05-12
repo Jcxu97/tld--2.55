@@ -1,6 +1,299 @@
-# TldHacks v5.5 — 交接文档
+# TldHacks v6.6 — 交接文档
 
-> 2026-05-10 当前活跃版本。v4.0r7 / v4.0r6 / v4.0r5 / v4.0r4 / v4.0r3 / v4.0r2 / v4.0 段保留在下方。
+> 2026-05-12 当前活跃版本。v6.5 / v5.5 / v4.0r7 及更早段保留在下方。
+
+---
+
+## v6.6 改动(2026-05-12)
+
+### 1. 物品生成器全中文化
+
+`ItemDatabaseMod.cs` 补全 63 条英文物品的中文名：FoodTKG 包装类(18)、Retro 全系(30)、Plushie(13)、BF/Cards(2)。
+
+### 2. 性能优化：HarmonyX IL2CPP trampoline 开销缓解
+
+**根因确认**：HarmonyX Issue #63（TLD 社区 STBlade 提交）— IL2CPP 下每个被 Harmony patch 的方法调用开销 5x+，与 patch 内部逻辑无关。52 个常驻 patch 的累积效应导致体感微卡。
+
+**已实施的优化**（减轻但无法根治，根治需要批量迁移剩余 patch 到 DynamicPatch）：
+
+| 改动 | 效果 |
+|------|------|
+| 6 个 Update/渲染路径 patch → DynamicPatch | toggle 关时零 trampoline：vp_FPSPlayer.Update, Panel_HUD.Update, WaterSource.Update, FlashlightItem.Update, DynamicDecalsManager.RenderDynamicDecal, PlayerManager.DoPositionCheck |
+| Breath.PlayBreathEffect → DynamicPatch | 默认开启(visible)时不挂 patch |
+| Stacking.OnLateUpdate 零分配重写 | CountStr 预缓存表消除字符串分配；label.text 无条件写避免读分配；count≤1 跳过 IL2Cpp 访问；降频每 3 帧 |
+| Dedupe.Process Dictionary 复用 | 消除每次 RefreshTable 的 Dictionary 堆分配 |
+| GetPanel\<Panel_PauseMenu\>() null 异常修复 | 每帧静默 NullReferenceException 分配消除 |
+| ShowTraderTrustHelper.DrawGUI GUIStyle 缓存 | OnGUI 每帧 2-4 次的 new GUIStyle 消除 |
+| AutoSurveyHelper 15 帧节流 | 6 次 IL2Cpp bridge 从每帧→每 15 帧 |
+| TickQuickActions 合并双 FindObjectsOfType | 同一函数内两次查询合为一次 |
+
+**未做（根治方案，工作量大）**：把剩余 ~22 个功能性静态 patch（Stacking 7个 + 制作 6个 + 修理 2个 + CameraFade 4个 + PlaceFromInv 3个）批量迁到 DynamicPatch，按 toggle 动态挂载。
+
+### 3. browser-harness new_window()
+
+`helpers.py` 新增 `new_window(url)` 函数 — CDP `Target.createTarget` + `newWindow=True`，在独立窗口打开页面不污染已有标签页。
+
+### 关键文件
+
+- `TldHacks/src/ItemDatabaseMod.cs` — 63 条中文名
+- `TldHacks/src/Stacking.cs` — CountStr + ReapplyStackLabelOnly + 降频
+- `TldHacks/src/DynamicPatch.cs` — 9 个新 Spec
+- `TldHacks/src/IntegratedPatches6.cs` — 6 个 patch 签名改 public
+- `TldHacks/src/IntegratedPatches7.cs` — FlashInfiniteBattery 签名改 public
+- `TldHacks/src/IntegratedPatches5.cs` — DoPositionCheck 签名改 public
+- `TldHacks/src/IntegratedPatches8.cs` — GUIStyle 缓存
+- `TldHacks/src/ModMain.cs` — GetPanel null check + 版本号
+- `TldHacks/src/CheatsPatches.cs` — TickQuickActions 合并
+- `D:\Github\browser-harness\src\browser_harness\helpers.py` — new_window()
+
+---
+
+## 📋 标准发布流程(每次发版必走一遍)
+
+每次改完代码、要给用户更新版本时按下面顺序操作:
+
+### 1. 编译 + 部署到本地 Mods/
+
+```bash
+cd "D:/Github/tld--2.55/TldHacks/src" && dotnet build -c Release
+```
+
+`csproj` 里的 `AfterBuild` 自动复制 `bin/Release/TldHacks.dll` 到 `D:\Steam\steamapps\common\TheLongDark\Mods\TldHacks.dll`。
+
+游戏在跑 → dll 被锁 → MSB3027 报错。**关游戏后再 build**，或手动从 `bin/Release/` 拷贝。
+
+### 2. 更新版本号(若版本变)
+
+| 文件 | 字段 |
+|------|------|
+| `TldHacks.csproj` | `<Version>X.Y.Z</Version>` |
+| `ModMain.cs` | `[assembly: MelonInfo(..., "X.Y.Z", ...)]` + 启动 log `vX.Y loaded` |
+| `Menu.cs` | UI 标题 `TldHacks vX.Y`(中英双语) |
+
+### 3. 更新 disable_integrated_mods.bat(若整合了新 mod)
+
+- 路径: `D:/Github/tld--2.55/TldHacks/disable_integrated_mods.bat`
+- 加一段 `echo` + `call :check "XxxMod.dll"`，注释里写明 TldHacks 哪个版本整合的
+- 同时复制到完整版 zip 里(发包时)
+
+### 4. 更新两个发行包 zip
+
+桌面位置:
+- `C:\Users\82077\Desktop\TLD\TldHacks-vX.Y-完整版_解压到游戏根目录即可！按键在设置-Modseting里改！.zip`
+- `C:\Users\82077\Desktop\TLD\TldHacks-vX.Y-最小安装包_只带修改mod！解压到游戏根目录.zip`
+
+PowerShell 一键更新两个 zip 的 `Mods/TldHacks.dll`(以及其它需要的依赖文件):
+
+```powershell
+$dll = 'D:\Github\tld--2.55\TldHacks\src\bin\Release\TldHacks.dll'
+foreach ($zip in @('完整版.zip路径', '最小版.zip路径')) {
+    $tmp = 'C:\Users\82077\Desktop\TLD\_tmp_repack'
+    if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+    Expand-Archive -Path $zip -DestinationPath $tmp -Force
+    Copy-Item $dll -Destination "$tmp\Mods\TldHacks.dll" -Force
+    # 如果有其它要更新的文件(modcomponent / 配置等)在此处 Copy-Item
+    Compress-Archive -Path "$tmp\*" -DestinationPath $zip -CompressionLevel Optimal -Force
+    Remove-Item $tmp -Recurse -Force
+}
+```
+
+**坑点**:
+- zip 路径里的中文 / 感叹号 / 引号要在 PowerShell 里完整保留,不要被 shell 转义
+- `Compress-Archive` 不加 `-Force` 会因目标存在报错 → 必须加
+- 完整版包含: TldHacks.dll + 所有整合 mod 的依赖(modcomponent / 配置) + 整合包标准 mod 列表
+- 最小版只含: TldHacks.dll + ModSettings/ModData/KeyboardUtilities
+
+### 5. 更新 HANDOFF.md
+
+在文件顶部 vX.Y 段加 1 节描述本次改动,格式参考下面的"vX.Y 改动"节。
+
+### 6. 测试 / 用户验证
+
+如果改了游戏内行为,关游戏后重新进存档实测一遍再发包给用户。
+
+---
+
+## v6.5 改动(2026-05-12)
+
+### 1. ImprovedFlasks v1.2.3 整合(默认启用)
+
+**功能**：保温瓶交互增强 — 快捷轮盘喝水 / 背包按钮文字改"饮用/倒入" / 温度文字显示替代填充条 / 标题栏温度颜色
+
+**文件**：
+- 新建 `IntegratedPatches_ImprovedFlasks.cs` —— 9 个 patch + `FlaskUtils.ConsumeFromFlask` 工具方法
+- `Settings.cs` —— `QoL_ImprovedFlasks = true`(默认开)
+- `Cheats.cs` —— `CheatState.QoL_ImprovedFlasks` + sync
+- `DynamicPatch.cs` —— 8 个 Spec 注册
+- `MenuTweaks.cs` —— Tab2 col3 自动测绘下方加 toggle
+
+**Patch 列表**：
+| Patch | 目标 | 类型 | 作用 |
+|-------|------|------|------|
+| Awake | GearItem.Awake | Postfix | 给 GEAR_InsulatedFlask_A~G 设容量/热损耗(1L→4L 7档) |
+| Buttons | ItemDescriptionPage.UpdateButtons | Postfix | 按钮文字"饮用/倒入" |
+| OnEquip | ItemDescriptionPage.OnEquip | Prefix | 背包点保温瓶直接喝 |
+| Radial | Panel_ActionsRadial.GetDrinkItemsInInventory | Prefix(false)+Postfix | 轮盘加入有液体的保温瓶 |
+| UseItem | Panel_ActionsRadial.UseItem | Prefix+Postfix | 轮盘使用保温瓶喝水 |
+| RadialName | RadialMenuArm.SetRadialInfoGear | Postfix | 轮盘显示瓶内饮品名 |
+| Indicators | ItemDescriptionPage.UpdateInsulatedFlaskIndicators | Postfix | 温度文字替代填充条 |
+| RefreshTables | Panel_InsulatedFlask.RefreshTables | Postfix | 标题栏温度+橙/蓝色 |
+
+**与 FlaskAnyItem 兼容**：两者独立开关，FlaskAnyItem 改装液体限制(NOP native patch)，ImprovedFlasks 改 UI 交互，互不干扰。
+
+### 2. TechBackpack 卡路里补偿
+
+**症状**：开 TechBackpack 后背 70+kg 卡路里消耗几倍暴增（vanilla 内部按实际重量算消耗）。
+
+**修复**：`IntegratedPatches4.cs` `Patch_Carcass_Calorie` Postfix 加 cap 逻辑 —— 当 `CheatState.TechBackpack=true` 时，把 `CalculateModifiedCalorieBurnRate` 的 `__result` 强制 cap 在 200 cal/h，消除超重暴增。
+
+**DynamicPatch gate 改了**：原 gate 只 `World_CarcassMoving`，现在 `World_CarcassMoving || TechBackpack`。
+
+### 3. 一键解锁壮举改进
+
+**症状**：v6.0 用 `SetNormalizedProgress(1.0f)` 不弹 UI 通知，CT 风格不一致。
+
+**修复**：`CheatsExtra.cs` `Feats.UnlockAllFeats()` 三管齐下：
+- 调 `SetNormalizedProgress(1.0f)` 设进度
+- 反射设 `m_Unlocked = true`(布尔型 feat)
+- 反射调 `HandleOnFeatUnlocked()` 触发 UI 弹窗
+
+测试：13 项壮举一键解锁 + UI 弹通知。
+
+### 4. 物品生成器优化
+
+- 保温瓶 A~G 从 `ItemDatabaseMod.cs` 移到 `ItemDatabase.cs`，去掉 "(mod)" 后缀，名字加容量标注（"保温瓶 A (1L)"）
+- `GEAR_RandomCerealBox` 加入 `Menu.cs:1088` 黑名单（生成出来不可用）
+
+### 5. 完整版 zip 补依赖
+
+**v6.0 严重 bug**：完整版 zip 漏打 `AHandyToolbox.modcomponent` → `GearToolbox.dll` 每帧 NRE → vanilla 散落物品 spawn 链全断 → 树枝/羽毛在地图上看不到。
+
+**修复**：完整版 zip 补入 `Mods/AHandyToolbox.modcomponent` (6.8MB)。
+
+### 6. 已知限制
+
+| 问题 | 说明 |
+|------|------|
+| 传送带柴炉碎成 12 石头(极少数用户) | MapClickTP 跨场景时序列化柴炉异常退化为 BreakDown 材料。正常走路过门不受影响。建议用户"放下再传送" |
+| 卡路里与 SpeedTweaks 联动 | WalkSpeed/SprintSpeed >1 时游戏按距离算消耗 → 速度倍率=卡路里倍率。原版 SonicMode 同样行为，非 bug |
+
+### 7. 发行包
+
+| 包 | 改动 |
+|---|---|
+| `TldHacks-v6.5-完整版_解压到游戏根目录即可！...zip` | 含 AHandyToolbox.modcomponent + 全套依赖 mod + 最新 dll |
+| `TldHacks-v6.5-最小安装包_只带修改mod！...zip` | 仅 TldHacks.dll + ModSettings/ModData/KeyboardUtilities |
+
+---
+
+## v6.0 改动(2026-05-12)
+
+### 1. 严重 BUG 修复：树枝/羽毛不 spawn
+
+**症状**：新沙盒地图上一根树枝一根羽毛都没有。卸 TldHacks 后正常。
+
+**根因**：`GearToolbox.dll`（完整版 zip 里附带）依赖 `AHandyToolbox.modcomponent` 文件定义物品 prefab。zip 里漏打了这个文件 → GearToolbox 的 `ToolboxUtils` static constructor NRE → 它的 Harmony Postfix 在 `RadialObjectSpawner::GetNextPrefabToSpawn` 上每次调用都 crash → vanilla 散落物品 spawn 链全断 → 128 个 GEAR_Stick(Clone) 和 128 个 GEAR_Feather(Clone) 创建后立即被销毁。
+
+**修复**：完整版 zip 补入 `Mods/AHandyToolbox.modcomponent`（6.8MB）。
+
+**诊断过程**：加 Diagnostic_Spawn.cs 钩住 GearItem.Awake + Harvestable.Awake + GameManager.Update，场景加载 5 秒后统计 alive/destroyed 实例，配合 StackTrace 捕获定位到 GearToolbox。
+
+### 2. 新功能：一键解锁全部壮举(徽章)
+
+**位置**：主页第三列 `"一键解锁勋章"` 按钮。
+
+**实现**：`CheatsExtra.cs` → `Feats.UnlockAllFeats()`
+- 通过 `FeatsManager.GetFeatFromIndex(i)` 遍历全部 13 个 Feat
+- 对每个调 `SetNormalizedProgress(1.0f)` + 反射设 `m_Unlocked = true`（布尔型 feat）
+- 调 `HandleOnFeatUnlocked()` 触发 UI 弹窗通知
+- 两类 Feat：进度型(FreeRunner/ColdFusion/EfficientMachine/FireMaster/SnowWalker/ExpertTrapper/StraightToHeart/BlizzardWalker/BookSmarts) + 布尔型(NightWalker/MasterHunter/SettledMind/CelestialNavigator)
+
+### 3. 已知限制
+
+| 问题 | 说明 |
+|------|------|
+| 传送带柴炉会碎成 12 石头（极少数用户） | 营地办公室柴炉放背包后用 MapClickTP 跨场景传送 → 反序列化异常 → 退化为 BreakDown 材料。正常走路过门不受影响。建议用户"放下再传送"。仅极少数用户复现，暂不修 |
+| 卡路里消耗与速度倍率挂钩 | SpeedTweaksEnabled + WalkSpeed>1 / SprintSpeed>1 时，游戏按实际距离算卡路里 → 移动加速=消耗加速。这是 TLD 原生机制+原版 SonicMode 同样行为，非 bug |
+
+### 4. 发行包更新
+
+| 包 | 改动 |
+|---|---|
+| 完整版 zip | 补入 `Mods/AHandyToolbox.modcomponent` |
+| 最小版 zip | 无改动（不含 GearToolbox） |
+
+---
+
+## 待解决 — 无后坐力 & 稳定瞄准(2026-05-11)
+
+### 问题 1: 无后坐力开枪后 0.5 秒视角被锁
+
+**现状**: `RecoilWindow = 0.5f` — 开枪后 0.5 秒内 LateUpdate Postfix 强制覆盖 camera rotation,消除后坐力但也锁住鼠标输入(不能立即松右键/转身)。
+
+**已尝试失败的方案**:
+1. 归零 GunItem.m_PitchRecoilMin/Max/Yaw (Prefix+Postfix) — IL2Cpp 下 vanilla 内部仍施加力
+2. 归零 vp_FPSCamera.m_RecoilSpring struct — IL2Cpp struct 赋值不生效
+3. Marshal.WriteInt32 写 weapon/camera Pointer+0x120~0x12C — 偏移不对(CT 的 rdi 是方法中间另一个对象,不是 this)
+4. Patch vp_FPSWeapon.AddForce2 return false — 方法签名不匹配导致 DynamicPatch.Reconcile 全崩
+5. PlayFireAnimation return false — **视角完全不晃** ✓ 但丢失音效和动画 ✗(PlayFireAudio 反射调用无效)
+
+**CT 做法**(桌面 `The Long Dark.CT`):
+- AOB scan PlayFireAnimation 内部,在方法中间某个 `488B??????????` (mov rdi, [obj]) 之后 +27 处 hook
+- 写 `[rdi+0x120..0x12C]=0` (4 个 float) — rdi 此时是 PlayFireAnimation 内部加载的某对象(非 this)
+- 效果:动画/音效正常,但 AddForce2 拿到 0 不施力
+
+**下一步方向**:
+- 确认 CT hook 点 rdi 指向什么对象(dump PlayFireAnimation native code 反汇编找那个 mov rdi 加载了什么)
+- 或者用 MonoMod DetourMethod 实现 mid-function hook(绕过 Harmony Prefix/Postfix 限制)
+- 或者让 PlayFireAnimation 正常跑,找到正确的音效触发方式(可能是 Wwise AkSoundEngine.PostEvent)
+
+### 问题 2: 稳定瞄准(NoAimSway)无效
+
+**现状**: 开 toggle 后瞄准枪视角还是晃。
+
+**已尝试失败的方案**:
+1. 设 `vp_FPSWeapon.m_DisableAimSway = true` (static bool) — IL2Cpp 下 vanilla 不读这些
+2. 每帧设 `gun.m_SwayValue = 0` / `m_SwayValueZeroFatigue = 0` — vanilla 每帧重算覆盖
+3. 归零 `vp_FPSCamera.m_CurrentMaxAmbientSwayAngle/Speed` — 同上
+4. DynamicPatch 注册 `vp_FPSCamera.UpdateAmbientSway` return false — **方法签名不匹配导致 Reconcile 全崩**
+5. `Patch_FPSWeapon_SteadyAim` 记录/恢复 weapon transform — 无效
+
+**用户思路**: TLD 射击技能升级提高稳定性。直接把稳定性 bonus 属性(非技能等级)拉到极致值,让 vanilla 自己计算 sway=0。
+
+**下一步方向**:
+- 找 `Skill_Rifle.GetStabilityBonus()` / `GetBestStabilityBonus()` 返回值,Postfix 覆写为 1.0
+- 或找 vp_FPSCamera.UpdateAmbientSway 的正确签名(Protected Void Single),用 [HarmonyPatch] attribute 而非 DynamicPatch 注册(失败只影响单个 patch 不崩全局)
+- 或者用 native pointer 偏移直接写 camera 的 sway spring(需要确认正确偏移)
+
+---
+
+## 2026-05-10 晚间批次
+
+### 1. HarmonyCache v1.2 — ModComponent 超时修复
+
+**问题**: 没挂 VPN 时进游戏黑屏，原因是 ModComponent 的 `DependencyChecker.ReadGlobalDepEntries()` 用无超时的 `WebClient.DownloadString` 访问 GitHub，国内直连卡死。
+
+**方案**: HarmonyCache Plugin 用 `AppDomain.AssemblyLoad` 事件等 ModComponent.dll 加载后，Harmony patch `ReadGlobalDepEntries` Prefix：Task.Run + Wait(10s) 超时，超时直接跳过。用反射调 Newtonsoft.Json 避免编译依赖。
+
+| 文件 | 改动 |
+|------|------|
+| `HarmonyCache/src/Plugin.cs` | 新增 `OnAssemblyLoad` + `Prefix_ReadGlobalDepEntries`；版本 1.1→1.2 |
+
+已 commit + push (`957f37e`)。
+
+### 2. ESP 透视功能完全删除
+
+**原因**: ESP 透视从未正式发布（v2.7.92 起强制 `ESP=false`），用户确认"根本没有这个功能，直接删"。
+
+**删除内容**:
+- `ESP.cs`: 移除 `DrawAnimals` / `DrawContainers` / `DrawBBox` / `DrawLabel` / `DrawTargetMarker` 方法及 `AnimalColor` / `ContainerColor` / `TargetColor` 常量；OnGUI 移除 `if (CheatStateESP.ESP)` 分支
+- `Settings.cs`: 删 `ESP` 字段 + `ESPRange` 字段；section 标题 "ESP & AutoAim / 透视自瞄" → "AutoAim / 自瞄"
+- `ModMain.cs`: 删 `CheatStateESP.ESP = false` 行 + `CheatStateESP.ESPRange = Settings.ESPRange` 行
+- `Cheats.cs`: 删 `s.ESP = false` 行
+
+**保留**: AiCache / AutoAimSystem / WeaponTuning / MagicBulletSystem / DrawFOVCircle / DrawMagicBulletPreview（自瞄+魔法子弹仍在，但默认 false 且 UI 已删）
+
+编译通过，0 警告 0 错误。
 
 ---
 

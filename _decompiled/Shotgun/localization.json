@@ -1,0 +1,92 @@
+{
+  "GAMEPLAY_Shotgun_Name": {
+    "English": "Shotgun",
+    "Simplified Chinese": "霰弹枪",
+    "Traditional Chinese": "霰彈槍"
+  },
+  "GAMEPLAY_Shotgun_Description": {
+    "English": "It's a DOUBLE barreled shotgun!",
+    "Simplified Chinese": "一把双管霰弹枪！",
+    "Traditional Chinese": "一把雙管霰彈槍！"
+  },
+  "GAMEPLAY_Shotgun_AmmoBoxSlugName": {
+    "English": "Box of Shotgun Slug Rounds",
+    "Simplified Chinese": "独头弹弹药盒",
+    "Traditional Chinese": "獨頭彈彈藥盒"
+  },
+  "GAMEPLAY_Shotgun_AmmoBoxSlugDescription": {
+    "English": "A box of shotgun slug rounds.",
+    "Simplified Chinese": "一盒霰弹枪独头弹。",
+    "Traditional Chinese": "一盒霰彈槍獨頭彈。"
+  },
+  "GAMEPLAY_Shotgun_AmmoUnitSingular": {
+    "English": "Round",
+    "Simplified Chinese": "发",
+    "Traditional Chinese": "發"
+  },
+  "GAMEPLAY_Shotgun_AmmoUnitPlural": {
+    "English": "Rounds",
+    "Simplified Chinese": "发",
+    "Traditional Chinese": "發"
+  },
+  "GAMEPLAY_Shotgun_AmmoSingleSlugName": {
+    "English": "Shotgun Slug Round",
+    "Simplified Chinese": "独头弹",
+    "Traditional Chinese": "獨頭彈"
+  },
+  "GAMEPLAY_Shotgun_AmmoSingleSlugDescription": {
+    "English": "A single shotgun slug round.",
+    "Simplified Chinese": "一发霰弹枪独头弹。",
+    "Traditional Chinese": "一發霰彈槍獨頭彈。"
+  },
+  "GAMEPLAY_Shotgun_AmmoCasingName": {
+    "English": "Shotgun Shell Casing",
+    "Simplified Chinese": "霰弹壳",
+    "Traditional Chinese": "霰彈殼"
+  },
+  "GAMEPLAY_Shotgun_AmmoCasingDescription": {
+    "English": "A single shotgun shell casing. Fill it with something fun and made of lead.",
+    "Simplified Chinese": "一个霰弹壳。可以装填铅弹重新装填。",
+    "Traditional Chinese": "一個霰彈殼。可以裝填鉛彈重新裝填。"
+  },
+  "GAMEPLAY_Shotgun_AmmoBoxBirdshotName": {
+    "English": "Box of Shotgun Birdshot Rounds",
+    "Simplified Chinese": "鸟弹弹药盒",
+    "Traditional Chinese": "鳥彈彈藥盒"
+  },
+  "GAMEPLAY_Shotgun_AmmoBoxBuckshotName": {
+    "English": "Box of Shotgun Buckshot Rounds",
+    "Simplified Chinese": "鹿弹弹药盒",
+    "Traditional Chinese": "鹿彈彈藥盒"
+  },
+  "GAMEPLAY_Shotgun_AmmoSingleBuckshotName": {
+    "English": "Shotgun Buckshot Round",
+    "Simplified Chinese": "鹿弹",
+    "Traditional Chinese": "鹿彈"
+  },
+  "GAMEPLAY_Shotgun_AmmoSingleBirdshotName": {
+    "English": "Shotgun Birdshot Round",
+    "Simplified Chinese": "鸟弹",
+    "Traditional Chinese": "鳥彈"
+  },
+  "GAMEPLAY_Shotgun_AmmoBoxBirdshotDescription": {
+    "English": "A box of shotgun birdshot rounds.",
+    "Simplified Chinese": "一盒霰弹枪鸟弹。",
+    "Traditional Chinese": "一盒霰彈槍鳥彈。"
+  },
+  "GAMEPLAY_Shotgun_AmmoBoxBuckshotDescription": {
+    "English": "A box of shotgun buckshot rounds.",
+    "Simplified Chinese": "一盒霰弹枪鹿弹。",
+    "Traditional Chinese": "一盒霰彈槍鹿彈。"
+  },
+  "GAMEPLAY_Shotgun_AmmoSingleBirdshotDescription": {
+    "English": "A single shotgun birdshot round.",
+    "Simplified Chinese": "一发霰弹枪鸟弹。",
+    "Traditional Chinese": "一發霰彈槍鳥彈。"
+  },
+  "GAMEPLAY_Shotgun_AmmoSingleBuckshotDescription": {
+    "English": "A single shotgun buckshot round.",
+    "Simplified Chinese": "一发霰弹枪鹿弹。",
+    "Traditional Chinese": "一發霰彈槍鹿彈。"
+  }
+}

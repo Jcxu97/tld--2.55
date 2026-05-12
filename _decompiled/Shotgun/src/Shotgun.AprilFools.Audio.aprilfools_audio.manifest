@@ -1,0 +1,66 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.0.60f1
+CRC: 26552193
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 694f9aaac05b84528c62627696130a08
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 9a2ca7bdbd1871f7131daf57de908e0c
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 0c4c05c32b37d26a78fd8f4983435c51
+HashAppended: 0
+ClassTypes:
+- Class: 83
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Shotgun/Sounds/different-variations-for-stonks-sound-effect.mp3
+- Assets/Shotgun/Sounds/family-guy-cutaway-music.mp3
+- Assets/Shotgun/Sounds/oh-my-god-shut-up.mp3
+- Assets/Shotgun/Sounds/thanks.wav
+- Assets/Shotgun/Sounds/cringe-sus-anime-girl.mp3
+- Assets/Shotgun/Sounds/dong.mp3
+- Assets/Shotgun/Sounds/Falcon-Punch.mp3
+- Assets/Shotgun/Sounds/family-guy-sesame-street-hbo-cookie-monster-eats-ass_w1uhu19j.mp3
+- Assets/Shotgun/Sounds/minecraft-explosion-meme-sound-effect.mp3
+- Assets/Shotgun/Sounds/mc-hammer-u-cant-touch-this_Jl5Q7Hq.mp3
+- Assets/Shotgun/Sounds/attack-the-d-point-war-thunder.mp3
+- Assets/Shotgun/Sounds/apebble-fart-4-228244.mp3
+- Assets/Shotgun/Sounds/explosion-meme-sound-effect.mp3
+- Assets/Shotgun/Sounds/slap-sound-effect-funny-memes.mp3
+- Assets/Shotgun/Sounds/fail-sound-effect.mp3
+- Assets/Shotgun/Sounds/wow-incredible-meme-with-sound.mp3
+- Assets/Shotgun/Sounds/no-it-cant-be.mp3
+- Assets/Shotgun/Sounds/plants-vs.mp3
+- Assets/Shotgun/Sounds/tmpvo6unuu1.mp3
+- Assets/Shotgun/Sounds/taunt.wav
+- Assets/Shotgun/Sounds/ea-sports-meme-eeee_xHt17Ki.mp3
+- Assets/Shotgun/Sounds/spongebob-bubble-transition.mp3
+- Assets/Shotgun/Sounds/a-a-and-you-fail.mp3
+- Assets/Shotgun/Sounds/mlg-airhorn_e7Z1Lfs.mp3
+- Assets/Shotgun/Sounds/its-pikachu_ecUb5Pn.mp3
+- Assets/Shotgun/Sounds/old-car-horn-meme_FhUCWH4.mp3
+- Assets/Shotgun/Sounds/galinha-gritando-no-telhado.mp3
+- Assets/Shotgun/Sounds/noob_NLwTWAV.mp3
+- Assets/Shotgun/Sounds/oh-no-meme-2020_hX2n56J.mp3
+- Assets/Shotgun/Sounds/snoop-dogg_Xm0SJsU.mp3
+- Assets/Shotgun/Sounds/e_meme.mp3
+- Assets/Shotgun/Sounds/run-vine-sound-effect_1_HY2VesV.mp3
+- Assets/Shotgun/Sounds/doom-music.mp3
+- Assets/Shotgun/Sounds/quack-meme.mp3
+- Assets/Shotgun/Sounds/what_JOcN7Y8.mp3
+- Assets/Shotgun/Sounds/banana_D4qerZj.mp3
+- Assets/Shotgun/Sounds/punch-gaming-sound-effect-hd_RzlG1GE.mp3
+- Assets/Shotgun/Sounds/law-and-order_BJVT1IH.mp3
+- Assets/Shotgun/Sounds/law-order-theme.mp3
+- Assets/Shotgun/Sounds/ha-got-eeem_pm9zdbd.mp3
+- Assets/Shotgun/Sounds/minecraft-cave-sound-5.mp3
+- Assets/Shotgun/Sounds/what-are-you-doing-in-my-swamp-.mp3
+- Assets/Shotgun/Sounds/steve-old-hurt-sound_XKZxUk4.mp3
+- Assets/Shotgun/Sounds/we-do-a-little-trolling_80cJgd9.mp3
+- Assets/Shotgun/Sounds/youve-been-trolled.mp3
+- Assets/Shotgun/Sounds/bruh-sound-effect_WstdzdM.mp3
+Dependencies: []

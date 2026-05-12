@@ -15,16 +15,14 @@ namespace TldHacks;
 //   跳过 chunk 3b 的: 手电筒(12 patches) / 容器容量(40+ 项)
 // ═══════════════════════════════════════════════════════════════════
 
-// ─── 哈气可见性 ───
-[HarmonyPatch(typeof(Breath), "PlayBreathEffect")]
+// ─── 哈气可见性 (DynamicPatch — 默认开启时不需要 patch) ───
 internal static class Patch_UT_BreathVisibility
 {
-    static void Postfix(Breath __instance)
+    public static void Postfix(Breath __instance)
     {
         try
         {
-            if (ModMain.Settings == null) return;
-            __instance.m_SuppressEffects = !ModMain.Settings.UT_BreathVisibility;
+            __instance.m_SuppressEffects = true;
         }
         catch { }
     }
@@ -40,15 +38,13 @@ internal static class Patch_UT_FeatCustom
     }
 }
 
-// ─── 左轮改良: 瞄准时可走 ───
-[HarmonyPatch(typeof(vp_FPSPlayer), "Update")]
+// ─── 左轮改良: 瞄准时可走 (DynamicPatch 注册,不常驻) ───
 internal static class Patch_UT_RevolverWalk
 {
-    static void Postfix(vp_FPSPlayer __instance)
+    public static void Postfix(vp_FPSPlayer __instance)
     {
         try
         {
-            if (ModMain.Settings == null || !ModMain.Settings.UT_RevolverImprovements) return;
             var pm = GameManager.GetPlayerManagerComponent();
             if (pm == null) return;
             if ((int)pm.GetControlMode() != 18) return;
@@ -59,15 +55,13 @@ internal static class Patch_UT_RevolverWalk
     }
 }
 
-// ─── 左轮改良: 隐藏限制 UI ───
-[HarmonyPatch(typeof(Panel_HUD), "Update")]
+// ─── 左轮改良: 隐藏限制 UI (DynamicPatch 注册,不常驻) ───
 internal static class Patch_UT_RevolverUI
 {
-    static void Postfix(Panel_HUD __instance)
+    public static void Postfix(Panel_HUD __instance)
     {
         try
         {
-            if (ModMain.Settings == null || !ModMain.Settings.UT_RevolverImprovements) return;
             var pm = GameManager.GetPlayerManagerComponent();
             if (pm == null) return;
             if ((int)pm.GetControlMode() != 18) return;
@@ -238,18 +232,23 @@ internal static class Patch_UT_TravoisParams
     }
 }
 
-// ─── 喷漆: 高亮 ───
-[HarmonyPatch(typeof(DynamicDecalsManager), "RenderDynamicDecal")]
+// ─── 喷漆: 高亮 (DynamicPatch 注册,不常驻 — 渲染路径,每帧每喷漆标记触发一次) ───
 internal static class Patch_UT_GlowingDecals
 {
-    static void Prefix(DynamicDecalsManager __instance)
+    private static float _lastMult;
+    private static bool _applied;
+
+    public static void Prefix(DynamicDecalsManager __instance)
     {
         try
         {
-            if (ModMain.Settings == null || !ModMain.Settings.UT_GlowingDecals) return;
             if (__instance == null || __instance.m_GlowMaterial == null) return;
+            float mult = ModMain.Settings.UT_GlowingDecalMult;
+            if (_applied && mult == _lastMult) return;
+            _lastMult = mult;
+            _applied = true;
             __instance.m_GlowMaterial.SetColor("_GlowColor", new Color(1f, 0.45f, 0f, 0f));
-            __instance.m_GlowMaterial.SetFloat("_GlowMult", ModMain.Settings.UT_GlowingDecalMult);
+            __instance.m_GlowMaterial.SetFloat("_GlowMult", mult);
             __instance.m_AnimatedRevealMaterial = __instance.m_GlowMaterial;
         }
         catch { }
@@ -272,17 +271,16 @@ internal static class Patch_UT_DecalOverlap
     }
 }
 
-// ─── 马桶水可饮用 ───
-[HarmonyPatch(typeof(WaterSource), "Update")]
+// ─── 马桶水可饮用 (DynamicPatch 注册,不常驻) ───
 internal static class Patch_UT_ToiletWater
 {
-    static void Postfix(WaterSource __instance)
+    public static void Postfix(WaterSource __instance)
     {
         try
         {
-            if (ModMain.Settings == null || !ModMain.Settings.UT_ToiletWaterPotable) return;
             if (__instance == null) return;
-            __instance.m_CurrentLiquidQuality = (LiquidQuality)1;
+            if ((int)__instance.m_CurrentLiquidQuality == 0) return;
+            __instance.m_CurrentLiquidQuality = (LiquidQuality)0;
         }
         catch { }
     }

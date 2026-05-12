@@ -1,0 +1,11 @@
+D:\Github\tld--2.55\FPSBooster\src\bin\Release\FPSBooster.deps.json
+D:\Github\tld--2.55\FPSBooster\src\bin\Release\FPSBooster.dll
+D:\Github\tld--2.55\FPSBooster\src\bin\Release\FPSBooster.pdb
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\FPSBooster.csproj.AssemblyReference.cache
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\FPSBooster.GeneratedMSBuildEditorConfig.editorconfig
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\FPSBooster.csproj.CoreCompileInputs.cache
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\FPSBooster.sourcelink.json
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\FPSBooster.dll
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\refint\FPSBooster.dll
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\FPSBooster.pdb
+D:\Github\tld--2.55\FPSBooster\src\obj\Release\ref\FPSBooster.dll

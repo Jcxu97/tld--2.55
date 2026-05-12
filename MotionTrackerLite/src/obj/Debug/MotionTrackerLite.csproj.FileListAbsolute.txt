@@ -1,0 +1,11 @@
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\MotionTrackerLite.csproj.AssemblyReference.cache
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\MotionTrackerLite.GeneratedMSBuildEditorConfig.editorconfig
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\MotionTrackerLite.csproj.CoreCompileInputs.cache
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\MotionTrackerLite.sourcelink.json
+D:\Github\tld--2.55\MotionTrackerLite\src\bin\Debug\MotionTrackerLite.deps.json
+D:\Github\tld--2.55\MotionTrackerLite\src\bin\Debug\MotionTrackerLite.dll
+D:\Github\tld--2.55\MotionTrackerLite\src\bin\Debug\MotionTrackerLite.pdb
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\MotionTrackerLite.dll
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\refint\MotionTrackerLite.dll
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\MotionTrackerLite.pdb
+D:\Github\tld--2.55\MotionTrackerLite\src\obj\Debug\ref\MotionTrackerLite.dll

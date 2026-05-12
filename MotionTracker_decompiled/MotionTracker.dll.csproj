@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>MotionTracker</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <TargetFramework>netcoreapp6.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>11.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="MotionTracker.Resources.motiontracker" />
+    <None Remove="MotionTracker.Resources.motiontrackerassetbundleprefab" />
+    <EmbeddedResource Include="MotionTracker.Resources.motiontracker" LogicalName="MotionTracker.Resources.motiontracker" />
+    <EmbeddedResource Include="MotionTracker.Resources.motiontrackerassetbundleprefab" LogicalName="MotionTracker.Resources.motiontrackerassetbundleprefab" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="UnityEngine.CoreModule" />
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="Assembly-CSharp-firstpass" />
+    <Reference Include="MelonLoader" />
+    <Reference Include="UnityEngine.AssetBundleModule" />
+    <Reference Include="ModSettings">
+      <HintPath>..\..\..\Steam\steamapps\common\TheLongDark\Mods\ModSettings.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule" />
+    <Reference Include="UnityEngine.UI" />
+    <Reference Include="0Harmony" />
+    <Reference Include="Il2CppInterop.Runtime" />
+    <Reference Include="Il2Cppmscorlib" />
+    <Reference Include="Il2CppSystem" />
+  </ItemGroup>
+</Project>

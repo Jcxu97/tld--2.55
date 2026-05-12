@@ -1,0 +1,14 @@
+using HarmonyLib;
+using Il2CppTLD.Gameplay;
+using UnityEngine;
+
+namespace MotionTracker;
+
+[HarmonyPatch(typeof(BeachcombingSpawner), "ExpireBigItems")]
+public class BeachcombingSpawnerExpireBigItemsPatch
+{
+	public static void Prefix(ref BeachcombingSpawner __instance)
+	{
+		MyLogger.LogMessage("!!BeachcombingSpawner ExpireBigItems event: (" + ((Object)__instance).name + ":" + ((Object)__instance).GetInstanceID() + ") with GameObject.activeSelf=" + ((Component)__instance).gameObject.activeSelf + ".", 367, "Prefix", "D:\\Users\\okclm\\Documents\\My Coding\\The Long Dark\\Mods\\MotionTracker-1.2.0\\Harmony.cs");
+	}
+}

@@ -1,0 +1,586 @@
+Catalog: 848 prefabs
+DB     : 474 prefabs
+
+=== 466 prefabs in CATALOG missing from DB ===
+Categorized counts: {'?': 154, '工具': 83, '食物': 57, '装饰': 48, '饮料': 41, '武器': 35, '材料': 20, '医疗': 14, '衣物': 11, '狩猎': 3}
+
+--- ? (154) ---
+  GEAR_AcornGrounds_A                                 zh=                          en=
+  GEAR_AcornGrounds_B                                 zh=                          en=
+  GEAR_BIKey1                                         zh=留言钥匙                      en=Memento Key
+  GEAR_BIKey2                                         zh=留言钥匙                      en=Memento Key
+  GEAR_BRKey1                                         zh=留言钥匙                      en=Memento Key
+  GEAR_BRKey2                                         zh=留言钥匙                      en=Memento Key
+  GEAR_BankManagerHouseKey_MAT                        zh=                          en=
+  GEAR_BankManagerHouseKey_dif                        zh=                          en=
+  GEAR_BearSpearBrokenStory                           zh=                          en=
+  GEAR_BearSpearStory                                 zh=                          en=
+  GEAR_BearSpear_A                                    zh=                          en=
+  GEAR_Bear_Spear_complete                            zh=                          en=
+  GEAR_Bear_spear_MAT                                 zh=                          en=
+  GEAR_BoltCutters_Dif                                zh=                          en=
+  GEAR_BoltCutters_Mat                                zh=                          en=
+  GEAR_BunkerClue1a                                   zh=                          en=
+  GEAR_BunkerClue1b                                   zh=                          en=
+  GEAR_BunkerClue1c                                   zh=                          en=
+  GEAR_BunkerClue1d                                   zh=                          en=
+  GEAR_BurdockPrepared_A                              zh=                          en=
+  GEAR_CanDogFood_Mat                                 zh=                          en=
+  GEAR_CanLid_Dif                                     zh=                          en=
+  GEAR_CanLid_Mat                                     zh=                          en=
+  GEAR_CanOpener_Dif                                  zh=                          en=
+  GEAR_CanOpener_Mat                                  zh=                          en=
+  GEAR_CannedSardines_Dif                             zh=                          en=
+  GEAR_CannedSardines_Mat                             zh=                          en=
+  GEAR_CannedSardines_Mat_Old                         zh=                          en=
+  GEAR_CashBundle                                     zh=                          en=
+  GEAR_Cattail_Dif                                    zh=                          en=
+  GEAR_Cattail_ForAnim                                zh=                          en=
+  GEAR_Cereal_A                                       zh=                          en=
+  GEAR_Cereal_B                                       zh=                          en=
+  GEAR_ChallengeDeadManWalking                        zh=亡者沉眠                      en=As the Dead Sleep
+  GEAR_ChallengeHunted                                zh=猎物，第一部分                   en=The Hunted, Part One
+  GEAR_ChallengeHuntedPart2                           zh=猎物，第二部分                   en=The Hunted, Part Two
+  GEAR_ChallengeWhiteout                              zh=白雪茫茫                      en=Whiteout
+  GEAR_DarkwalkerID                                   zh=                          en=ID: Naomi Moore
+  GEAR_DogFood_Dif                                    zh=                          en=
+  GEAR_DogFood_Mat                                    zh=                          en=
+  GEAR_DogFood_Mat_Old                                zh=                          en=
+  GEAR_DriedApples_Transparent                        zh=                          en=
+  GEAR_DriedMangos_Transparent                        zh=                          en=
+  GEAR_Emerg_Stim_MAT                                 zh=                          en=
+  GEAR_EmergencyStim_Dif                              zh=                          en=
+  GEAR_FoodCan_Generic_Dif                            zh=                          en=
+  GEAR_FoodCan_Generic_Mat                            zh=                          en=
+  GEAR_FoodCandyBars_Dif                              zh=                          en=
+  GEAR_FoodCandyBars_Mat                              zh=                          en=
+  GEAR_FoodCannedPeaches_Dif                          zh=                          en=
+  GEAR_FoodCannedPeaches_Mat                          zh=                          en=
+  GEAR_FoodCannedPeaches_Mat_Old                      zh=                          en=
+  GEAR_FoodCannedPeasAndCarrots_Dif                   zh=                          en=
+  GEAR_FoodCannedPineapple_Dif                        zh=                          en=
+  GEAR_FoodEnergyBar_Dif                              zh=                          en=
+  GEAR_FoodEnergyBar_Mat                              zh=                          en=
+  GEAR_FoodEnergyBar_Mat_Old                          zh=                          en=
+  GEAR_FoodMRE_Dif                                    zh=                          en=
+  GEAR_FoodMRE_Mat                                    zh=                          en=
+  GEAR_FoodMRE_Mat_Old                                zh=                          en=
+  GEAR_FoodPorkAndBeans_Dif                           zh=                          en=
+  GEAR_FoodPorkAndBeans_Mat                           zh=                          en=
+  GEAR_FoodPorkAndBeans_Mat_Old                       zh=                          en=
+  GEAR_GoldNugget                                     zh=                          en=
+  GEAR_GoldNugget_Dif                                 zh=                          en=
+  GEAR_GoldNugget_Mat                                 zh=                          en=
+  GEAR_GranolaBar_Dif                                 zh=                          en=
+  GEAR_GranolaBar_Mat                                 zh=                          en=
+  GEAR_GranolaBar_Mat_Old                             zh=                          en=
+  GEAR_HookAndLine_B                                  zh=                          en=
+  GEAR_Hook_A                                         zh=                          en=
+  GEAR_HydrogenPeroxide_Dif                           zh=                          en=
+  GEAR_HydrogenPeroxide_Mat                           zh=                          en=
+  GEAR_InsulatedFlask_A                               zh=                          en=
+  GEAR_InsulatedFlask_B                               zh=                          en=
+  GEAR_InsulatedFlask_C                               zh=                          en=
+  GEAR_InsulatedFlask_D                               zh=                          en=
+  GEAR_InsulatedFlask_E                               zh=                          en=
+  GEAR_InsulatedFlask_F                               zh=                          en=
+  GEAR_InsulatedFlask_G                               zh=                          en=
+  GEAR_Interloper                                     zh=入侵者                       en=Interloper
+  GEAR_Jerrycan_A                                     zh=                          en=
+  GEAR_Jerrycan_A01                                   zh=                          en=
+  GEAR_KetchupChips_Dif                               zh=                          en=
+  GEAR_KetchupChips_Mat                               zh=                          en=
+  GEAR_LakeCabinKey_2                                 zh=                          en=
+  GEAR_LakeCabinKey_2_MAT                             zh=                          en=
+  GEAR_LakeCabinKey_7                                 zh=                          en=
+  GEAR_LakeCabinKey_7_MAT                             zh=                          en=
+  GEAR_LakeCabinKey_8                                 zh=                          en=
+  GEAR_LakeCabinKey_8_MAT                             zh=                          en=
+  GEAR_Line_A                                         zh=                          en=
+  GEAR_MagnifyingFrame_Mat                            zh=                          en=
+  GEAR_MagnifyingGlass_Dif                            zh=                          en=
+  GEAR_MagnifyingGlass_Mat                            zh=                          en=
+  GEAR_MountainTownFarmKey_MAT                        zh=                          en=
+  GEAR_MountainTownFarmKey_dif                        zh=                          en=
+  GEAR_NULL                                           zh=                          en=
+  GEAR_NewsprintA_01                                  zh=                          en=
+  GEAR_Newsprint_Dif                                  zh=                          en=
+  GEAR_NoiseMaker_A                                   zh=                          en=
+  GEAR_NoiseMaker_B                                   zh=                          en=
+  GEAR_NoiseMaker_Body_mat                            zh=                          en=
+  GEAR_NoiseMaker_Fuse_mat                            zh=                          en=
+  GEAR_OldMansBeardDressing_B                         zh=                          en=
+  GEAR_OldMansBeard_Dif                               zh=                          en=
+  GEAR_OldMansBeard_ForAnim                           zh=                          en=
+  GEAR_OldMansBeard_Mat                               zh=                          en=
+  GEAR_PeanutButter_Dif                               zh=                          en=
+  GEAR_PeanutButter_Mat                               zh=                          en=
+  GEAR_PeanutButter_Mat_Old                           zh=                          en=
+  GEAR_Pickled_Eggs_Glass                             zh=                          en=
+  GEAR_Pickled_Onions_Glass                           zh=                          en=
+  GEAR_Pickles_Glass                                  zh=                          en=
+  GEAR_Pilgrim                                        zh=朝圣者                       en=Pilgrim
+  GEAR_PostCard_AC_CentralSpire                       zh=                          en=
+  GEAR_PostCard_AC_TopShelf                           zh=                          en=
+  GEAR_PostCard_BI_EchoOne                            zh=                          en=
+  GEAR_PostCard_BR_Canyon                             zh=                          en=
+  GEAR_PostCard_BR_Prison                             zh=                          en=
+  GEAR_PostCard_CR_AbandonedLookout                   zh=                          en=
+  GEAR_PostCard_FM_MuskegOverlook                     zh=                          en=
+  GEAR_PostCard_FM_ShortwaveTower                     zh=                          en=
+  GEAR_PostCard_ML_ForestryLookout                    zh=                          en=
+  GEAR_PostCard_ML_LakeOverlook                       zh=                          en=
+  GEAR_PostCard_MP1_ForwardCamp                       zh=                          en=
+  GEAR_PostCard_MP2_Basement                          zh=                          en=
+  GEAR_PostCard_MP3_HighPeak                          zh=                          en=
+  GEAR_PostCard_MP4_Bunker                            zh=                          en=
+  GEAR_PostCard_MR_Settlement                         zh=                          en=
+  GEAR_PostCard_MR_Window                             zh=                          en=
+  GEAR_PostCard_MT_RadioTower                         zh=                          en=
+  GEAR_PostCard_PV_SignalHill                         zh=                          en=
+  GEAR_PostCard_RV_Pensive                            zh=                          en=
+  GEAR_PostCard_TM_AndresPeak                         zh=                          en=
+  GEAR_PostCard_TM_TailSection                        zh=                          en=
+  GEAR_Rock                                           zh=                          en=
+  GEAR_RockCacheA_Col                                 zh=                          en=
+  GEAR_RockCache_A                                    zh=                          en=
+  GEAR_RockCache_Prefab                               zh=                          en=
+  GEAR_Rock_A1                                        zh=                          en=
+  GEAR_Rock_Dif                                       zh=                          en=
+  GEAR_Rudiger_Watch_Glass_Mat                        zh=                          en=
+  GEAR_Rudiger_Watch_MAT                              zh=                          en=
+  GEAR_SaltDeposit_MAT                                zh=                          en=
+  GEAR_Snare_A                                        zh=                          en=
+  GEAR_Snare_Dif                                      zh=                          en=
+  GEAR_Snare_Mat                                      zh=                          en=
+  GEAR_SpearHead_A                                    zh=                          en=
+  GEAR_Stalker                                        zh=潜行者                       en=Stalker
+  GEAR_SupplyCache_Dif                                zh=                          en=
+  GEAR_SupplyCache_MAT                                zh=                          en=
+  GEAR_TipUp_A                                        zh=                          en=
+  GEAR_Voyageur                                       zh=航行者                       en=Voyageur
+
+--- 医疗 (14) ---
+  GEAR_AntibioticPillBottle_Dif                       zh=                          en=
+  GEAR_FirstAidBandagesBloody_Dif                     zh=                          en=
+  GEAR_FirstAidBandages_Dif                           zh=                          en=
+  GEAR_FirstAidBandages_Mat                           zh=                          en=
+  GEAR_HeavyBandage_B                                 zh=                          en=
+  GEAR_Painkillers_Dif                                zh=                          en=
+  GEAR_Painkillers_Mat                                zh=                          en=
+  GEAR_ReishiPrepared_A                               zh=                          en=
+  GEAR_RoseHipBush_ForAnim                            zh=                          en=
+  GEAR_RoseHipClimbBush_ForAnim                       zh=                          en=
+  GEAR_RoseHipClimb_Dif                               zh=                          en=
+  GEAR_RoseHip_A                                      zh=                          en=
+  GEAR_RoseHip_A01                                    zh=                          en=
+  GEAR_RosehipsPrepared_A                             zh=                          en=
+
+--- 工具 (83) ---
+  GEAR_AccelerantLighterFuel_Dif                      zh=                          en=
+  GEAR_AccelerantLighterFuel_Mat                      zh=                          en=
+  GEAR_AccelerantLighterFuel_Mat_Old                  zh=                          en=
+  GEAR_BackPackForestTalker_A                         zh=                          en=
+  GEAR_BackPackForestTalker_A01                       zh=                          en=
+  GEAR_BackPack_A                                     zh=                          en=
+  GEAR_BearSkinBedRoll_A                              zh=                          en=
+  GEAR_BearSkinBedRoll_Dif                            zh=                          en=
+  GEAR_BearSkinBedRoll_Mat                            zh=                          en=
+  GEAR_BedRoll_A01                                    zh=                          en=
+  GEAR_BedRoll_Dif                                    zh=                          en=
+  GEAR_BedRoll_Dmg_Dif                                zh=                          en=
+  GEAR_BoxedCrackers_Dif                              zh=                          en=
+  GEAR_BoxedCrackers_Mat                              zh=                          en=
+  GEAR_BoxedCrackers_Mat_Old                          zh=                          en=
+  GEAR_CarBattery_Dif                                 zh=                          en=
+  GEAR_CarBattery_Mat                                 zh=                          en=
+  GEAR_CardboardMatches_Dif                           zh=                          en=
+  GEAR_CardboardMatches_Mat                           zh=                          en=
+  GEAR_DecoContainer_A                                zh=                          en=
+  GEAR_DecoContainer_MAT                              zh=                          en=
+  GEAR_DepositBoxKey_Farmer_MAT                       zh=                          en=
+  GEAR_DepositBoxKey_Farmer_dif                       zh=                          en=
+  GEAR_DepositBoxKey_MAT                              zh=                          en=
+  GEAR_DepositBoxKey_dif                              zh=                          en=
+  GEAR_DepositBoxRing_15_Farmer                       zh=                          en=
+  GEAR_DepositBoxRing_15_Farmer_MAT                   zh=                          en=
+  GEAR_DepositBoxRing_7_DK1                           zh=                          en=
+  GEAR_DepositBoxRing_7_DK1_MAT                       zh=                          en=
+  GEAR_FireStriker_Dif                                zh=                          en=
+  GEAR_FireStriker_Mat                                zh=                          en=
+  GEAR_Firelog_Dif                                    zh=                          en=
+  GEAR_Firelog_Mat                                    zh=                          en=
+  GEAR_FlareCase_Dif                                  zh=                          en=
+  GEAR_Flare_Blue_Dif                                 zh=                          en=
+  GEAR_Flare_Blue_Mat                                 zh=                          en=
+  GEAR_Flare_Dif                                      zh=                          en=
+  GEAR_Flare_Mat                                      zh=                          en=
+  GEAR_Hacksaw_Dif                                    zh=                          en=
+  GEAR_HankLockBoxKey_dif                             zh=                          en=
+  GEAR_HankLockBoxKey_mat                             zh=                          en=
+  GEAR_HatchetImprovised_A                            zh=                          en=
+  GEAR_HatchetImprovised_Dif                          zh=                          en=
+  GEAR_Hatchet_Dif                                    zh=                          en=
+  GEAR_Hatchet_Mat                                    zh=                          en=
+  GEAR_KeroseneLampBGlass_01                          zh=                          en=
+  GEAR_KeroseneLampBGlass_Dif                         zh=                          en=
+  GEAR_KeroseneLampB_01                               zh=                          en=
+  GEAR_KeroseneLampB_Dif                              zh=                          en=
+  GEAR_KnifeImprovised_A                              zh=                          en=
+  GEAR_KnifeImprovised_Dif                            zh=                          en=
+  GEAR_KnifeScrapMetal_MAT                            zh=                          en=
+  GEAR_KnifeScrapMetal_Stab_Dif                       zh=                          en=
+  GEAR_Knife_Dif                                      zh=                          en=
+  GEAR_Knife_Mat                                      zh=                          en=
+  GEAR_LampFuel_Dif                                   zh=                          en=
+  GEAR_LampFuel_Mat                                   zh=                          en=
+  GEAR_MatchesCardboard_Dif                           zh=                          en=
+  GEAR_MatchesCardboard_Mat                           zh=                          en=
+  GEAR_Matches_Dif                                    zh=                          en=
+  GEAR_Matches_Mat                                    zh=                          en=
+  GEAR_Matches_Mat_Old                                zh=                          en=
+  GEAR_Medkit_Dif                                     zh=                          en=
+  GEAR_Medkit_Mat                                     zh=                          en=
+  GEAR_MountainTownLockBoxKey_MAT                     zh=                          en=
+  GEAR_MountainTownLockBoxKey_dif                     zh=                          en=
+  GEAR_PryBar_Dif                                     zh=                          en=
+  GEAR_PryBar_Mat                                     zh=                          en=
+  GEAR_SewingKit_Dif                                  zh=                          en=
+  GEAR_SewingKit_Mat                                  zh=                          en=
+  GEAR_SurvivalKnife_Mat                              zh=                          en=
+  GEAR_ToolboxRed_Dif                                 zh=                          en=
+  GEAR_ToolboxRed_Mat                                 zh=                          en=
+  GEAR_Toolbox_Dif                                    zh=                          en=
+  GEAR_Toolbox_Mat                                    zh=                          en=
+  GEAR_Toolbox_Pro_Dif                                zh=                          en=
+  GEAR_Toolbox_Simple_Dif                             zh=                          en=
+  GEAR_Toolbox_Wood_Dif                               zh=                          en=
+  GEAR_TorchBurnt_Dif                                 zh=                          en=
+  GEAR_TorchBurnt_Mat                                 zh=                          en=
+  GEAR_Torch_B                                        zh=                          en=
+  GEAR_Torch_Dif                                      zh=                          en=
+  GEAR_Torch_Mat                                      zh=                          en=
+
+--- 材料 (20) ---
+  GEAR_BirchbarkPrepared_A                            zh=                          en=
+  GEAR_ClimbersJournalPage_Dif                        zh=                          en=
+  GEAR_Cloth_Mat                                      zh=                          en=
+  GEAR_Coal_Dif                                       zh=                          en=
+  GEAR_Gut_Dried_Mat                                  zh=                          en=
+  GEAR_HardSoftWood_Mat                               zh=                          en=
+  GEAR_Leather_Dried_Dif                              zh=                          en=
+  GEAR_Leather_Dried_Mat                              zh=                          en=
+  GEAR_MetalContainer_A01                             zh=                          en=
+  GEAR_MetalContainer_Red_A01                         zh=                          en=
+  GEAR_MooseHideBag_A                                 zh=                          en=
+  GEAR_MooseHideBag_MAT                               zh=                          en=
+  GEAR_MooseHideCloak_A                               zh=                          en=
+  GEAR_ScrapMetal_Dif                                 zh=                          en=
+  GEAR_ScrapMetal_Mat                                 zh=                          en=
+  GEAR_SoftHardWood_Dif                               zh=                          en=
+  GEAR_Tinder_A                                       zh=                          en=
+  GEAR_Tinder_C                                       zh=                          en=
+  GEAR_Tinder_D                                       zh=                          en=
+  GEAR_Tinder_E                                       zh=                          en=
+
+--- 武器 (35) ---
+  GEAR_ArrowHardened_A                                zh=                          en=
+  GEAR_ArrowHardened_mat                              zh=                          en=
+  GEAR_ArrowHead_A                                    zh=                          en=
+  GEAR_ArrowShaft_A                                   zh=                          en=
+  GEAR_Arrow_A                                        zh=                          en=
+  GEAR_Arrow_Dif                                      zh=                          en=
+  GEAR_Arrow_mat                                      zh=                          en=
+  GEAR_Bow_A                                          zh=                          en=
+  GEAR_Bow_Dif                                        zh=                          en=
+  GEAR_CKN_RawRainbowTrout_Dif                        zh=                          en=
+  GEAR_CKN_RawRainbowTrout_Spoiled_Dif                zh=                          en=
+  GEAR_CookedRainbowTroutFish_Dif                     zh=                          en=
+  GEAR_CookedRainbowTrout_Dif                         zh=                          en=
+  GEAR_FlareGun_Dif                                   zh=                          en=
+  GEAR_GunpowderCan_A                                 zh=                          en=
+  GEAR_GunpowderCan_Dif                               zh=                          en=
+  GEAR_HuntingRifle_Dif                               zh=                          en=
+  GEAR_HuntingRifle_custom_noise                      zh=                          en=
+  GEAR_RawRainbowTroutFish_Dif                        zh=                          en=
+  GEAR_RawRainbowTrout_A01                            zh=                          en=
+  GEAR_RawRainbowTrout_Dif                            zh=                          en=
+  GEAR_RawRainbowTrout_Spoiled_Dif                    zh=                          en=
+  GEAR_RevolverAmmoBox_Dif                            zh=                          en=
+  GEAR_RevolverAmmoSingle_A                           zh=                          en=
+  GEAR_RevolverAmmo_Mat                               zh=                          en=
+  GEAR_RevolverSingleBullet_Dif                       zh=                          en=
+  GEAR_RifleAmmoBox_Dif                               zh=                          en=
+  GEAR_RifleAmmoSingleCasing_Dif                      zh=                          en=
+  GEAR_RifleAmmoSingle_A                              zh=                          en=
+  GEAR_RifleAmmoSingle_Dif                            zh=                          en=
+  GEAR_RifleAmmoSingle_Mat                            zh=                          en=
+  GEAR_RifleAmmo_Mat                                  zh=                          en=
+  GEAR_RifleCleaningKit_Dif                           zh=                          en=
+  GEAR_SharpeningStone_A01                            zh=                          en=
+  GEAR_SharpeningStone_Dif                            zh=                          en=
+
+--- 狩猎 (3) ---
+  GEAR_AcornShelled_A                                 zh=                          en=
+  GEAR_Bullet_A                                       zh=                          en=
+  GEAR_FlareShell_Dif                                 zh=                          en=
+
+--- 衣物 (11) ---
+  GEAR_BearSkinCoat_A                                 zh=                          en=
+  GEAR_DeerSkinBoots_A                                zh=                          en=
+  GEAR_DeerSkinPants_A                                zh=                          en=
+  GEAR_DeerSkinPants_mat                              zh=                          en=
+  GEAR_ImprovisedHat_A                                zh=                          en=
+  GEAR_ImprovisedMittens_A                            zh=                          en=
+  GEAR_Leather_Dried_Shoes_Mat                        zh=                          en=
+  GEAR_Leather_Shoes_Mat                              zh=                          en=
+  GEAR_RabbitSkinMittens_A                            zh=                          en=
+  GEAR_RabbitskinHat_A                                zh=                          en=
+  GEAR_WolfSkinCape_A                                 zh=                          en=
+
+--- 装饰 (48) ---
+  GEAR_BackerNote1A                                   zh=                          en=
+  GEAR_BackerNote1B                                   zh=                          en=
+  GEAR_BackerNote1C                                   zh=                          en=
+  GEAR_BackerNote2A                                   zh=                          en=
+  GEAR_BackerNote2B                                   zh=                          en=
+  GEAR_BackerNote2C                                   zh=                          en=
+  GEAR_BackerNote3A                                   zh=                          en=
+  GEAR_BackerNote3B                                   zh=                          en=
+  GEAR_BackerNote3C                                   zh=                          en=
+  GEAR_BackerNote4A                                   zh=                          en=
+  GEAR_BackerNote4B                                   zh=                          en=
+  GEAR_BackerNote4C                                   zh=                          en=
+  GEAR_DarkwalkerDiary11                              zh=论 Darkwalker 的天性          en=On the Nature of Darkwalkers
+  GEAR_MapleSyrup_Dif                                 zh=                          en=
+  GEAR_MapleSyrup_Mat                                 zh=                          en=
+  GEAR_TalesTestNote1                                 zh=                          en=
+  GEAR_VisorNoteBI1                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBI2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBI3                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBR1                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBR2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBR3                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBlackrock1                            zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBlackrock3                            zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteBlackrockKey3                         zh=留言钥匙                      en=Memento Key
+  GEAR_VisorNoteDP1                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteDP2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteDP3                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteDPKey1                                zh=留言钥匙                      en=Memento Key
+  GEAR_VisorNoteFM3                                   zh=潦草的信息                     en=Scrawled message
+  GEAR_VisorNoteHRV1                                  zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteHRV3                                  zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteHRVKey1                               zh=留言钥匙                      en=Memento Key
+  GEAR_VisorNoteML1                                   zh=潦草的信息                     en=Scrawled message
+  GEAR_VisorNoteML2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteML3                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteMLKey2                                zh=留言钥匙                      en=Memento Key
+  GEAR_VisorNoteMLKey3                                zh=留言钥匙                      en=Memento Key
+  GEAR_VisorNoteMT1                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteMT2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteMTKey1                                zh=留言钥匙                      en=Memento Key
+  GEAR_VisorNotePV2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteTWM1                                  zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteTWM2                                  zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNote_A                                    zh=                          en=
+  GEAR_VisorNote_A01                                  zh=                          en=
+  GEAR_VisorNote_A_Wide                               zh=                          en=
+  GEAR_VisorNote_A_Wide_01                            zh=                          en=
+
+--- 食物 (57) ---
+  GEAR_CKN_RawCohoSalmon_Dif                          zh=                          en=
+  GEAR_CKN_RawCohoSalmon_Spoiled_Dif                  zh=                          en=
+  GEAR_CKN_RawLakeWhiteFish_Dif                       zh=                          en=
+  GEAR_CKN_RawSmallMouthBass_Dif                      zh=                          en=
+  GEAR_CanyonFishingHutJournal                        zh=                          en=
+  GEAR_CookedCohoSalmon_Dif                           zh=                          en=
+  GEAR_CookedLakeWhiteFish_Dif                        zh=                          en=
+  GEAR_CookedSmallMouthBass_Dif                       zh=                          en=
+  GEAR_CookedSmallmouthBass_MAT                       zh=                          en=
+  GEAR_CuredFishA_Dif                                 zh=                          en=
+  GEAR_CuredFish_SpoiledA_Dif                         zh=                          en=
+  GEAR_CuredMeatA_Dif                                 zh=                          en=
+  GEAR_CuredMeatA_Spoiled_Dif                         zh=                          en=
+  GEAR_FishingLineHook_Dif                            zh=                          en=
+  GEAR_FishingLineHook_Mat                            zh=                          en=
+  GEAR_FishingLureA_A                                 zh=                          en=
+  GEAR_FishingLureB_A                                 zh=                          en=
+  GEAR_FishingLureC_A                                 zh=                          en=
+  GEAR_FoodBeefJerky_Dif                              zh=                          en=
+  GEAR_FoodBeefJerky_Mat                              zh=                          en=
+  GEAR_FoodBeefJerky_Mat_Old                          zh=                          en=
+  GEAR_FoodCannedBeansBrothers_Dif                    zh=                          en=
+  GEAR_Gut_Cured_Dif                                  zh=                          en=
+  GEAR_MeatBag_Mat                                    zh=                          en=
+  GEAR_MeatBear_Dif                                   zh=                          en=
+  GEAR_MeatBear_Mat                                   zh=                          en=
+  GEAR_MeatBear_Spoiled_Dif                           zh=                          en=
+  GEAR_MeatFat_Mat                                    zh=                          en=
+  GEAR_MeatRabbit_Dif                                 zh=                          en=
+  GEAR_MeatRabbit_Mat                                 zh=                          en=
+  GEAR_MeatRabbit_Spoiled_Dif                         zh=                          en=
+  GEAR_MeatVenison_Dif                                zh=                          en=
+  GEAR_MeatVenison_Mat                                zh=                          en=
+  GEAR_MeatWolf_Dif                                   zh=                          en=
+  GEAR_MeatWolf_Mat                                   zh=                          en=
+  GEAR_MeatWolf_Spoiled_Dif                           zh=                          en=
+  GEAR_Meatbag_Dif                                    zh=                          en=
+  GEAR_RawCohoSalmon_A01                              zh=                          en=
+  GEAR_RawCohoSalmon_Dif                              zh=                          en=
+  GEAR_RawCohoSalmon_Spoiled_Dif                      zh=                          en=
+  GEAR_RawCopperFish_A01                              zh=                          en=
+  GEAR_RawCopperFish_Dif                              zh=                          en=
+  GEAR_RawCopperFish_Spoiled_Dif                      zh=                          en=
+  GEAR_RawLakeBurbot_Dif                              zh=                          en=
+  GEAR_RawLakeBurbot_Spoiled_Dif                      zh=                          en=
+  GEAR_RawLakeGoldeye_A01                             zh=                          en=
+  GEAR_RawLakeGoldeye_Dif                             zh=                          en=
+  GEAR_RawLakeGoldeye_Spoiled_Dif                     zh=                          en=
+  GEAR_RawLakeWhiteFish_A01                           zh=                          en=
+  GEAR_RawLakeWhiteFish_Dif                           zh=                          en=
+  GEAR_RawRedIrishLord_A01                            zh=                          en=
+  GEAR_RawSmallMouthBass_A01                          zh=                          en=
+  GEAR_RawSmallMouthBass_Dif                          zh=                          en=
+  GEAR_RawSmallmouthBass_MAT                          zh=                          en=
+  GEAR_TomatoSoupCan_Dif                              zh=                          en=
+  GEAR_TomatoSoupCan_Mat                              zh=                          en=
+  GEAR_TomatoSoupCan_Mat_Old                          zh=                          en=
+
+--- 饮料 (41) ---
+  GEAR_AcornCoffeeCup_Mat                             zh=                          en=
+  GEAR_BirchBarkTeaCup_Dif                            zh=                          en=
+  GEAR_BirchBarkTeaCup_Mat                            zh=                          en=
+  GEAR_CanCondensedMilk_Mat                           zh=                          en=
+  GEAR_CoffeeCup_Dif                                  zh=                          en=
+  GEAR_CoffeeCup_Mat                                  zh=                          en=
+  GEAR_CoffeeLid_Mat                                  zh=                          en=
+  GEAR_CoffeeTinLid_Dif                               zh=                          en=
+  GEAR_CoffeeTin_Dif                                  zh=                          en=
+  GEAR_CoffeeTin_Mat                                  zh=                          en=
+  GEAR_CoffeeTin_Mat_Old                              zh=                          en=
+  GEAR_CondensedMilk_Dif                              zh=                          en=
+  GEAR_CondensedMilk_Dif_Open                         zh=                          en=
+  GEAR_CondensedMilk_Mat                              zh=                          en=
+  GEAR_CondensedMilk_Mat_Old                          zh=                          en=
+  GEAR_CondensedMilk_Open_Mat                         zh=                          en=
+  GEAR_FoodSodaGrape_Dif                              zh=                          en=
+  GEAR_FoodSodaGrape_Mat                              zh=                          en=
+  GEAR_FoodSodaGrape_Mat_Old                          zh=                          en=
+  GEAR_FoodSodaMountain_Mat                           zh=                          en=
+  GEAR_FoodSodaMountain_Mat_Old                       zh=                          en=
+  GEAR_FoodSodaOrange_Dif                             zh=                          en=
+  GEAR_FoodSodaOrange_Mat                             zh=                          en=
+  GEAR_FoodSodaOrange_Mat_Old                         zh=                          en=
+  GEAR_FoodSodaSummit_Dif                             zh=                          en=
+  GEAR_GreenTeaCup_Dif                                zh=                          en=
+  GEAR_GreenTeaCup_Mat                                zh=                          en=
+  GEAR_GreenTeaPackage_Dif                            zh=                          en=
+  GEAR_GreenTeaPackage_Mat                            zh=                          en=
+  GEAR_GreenTeaPackage_Mat_Old                        zh=                          en=
+  GEAR_JerrycanWater_A01                              zh=                          en=
+  GEAR_VisorNoteAC1                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteAC2                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteAC3                                   zh=潦草的信息                     en=Scrawled Message
+  GEAR_VisorNoteACKey1                                zh=留言钥匙                      en=Memento Key
+  GEAR_WaterBottleLabel_Mat                           zh=                          en=
+  GEAR_WaterBottle_Mat                                zh=                          en=
+  GEAR_WaterBottle_Mat_Old                            zh=                          en=
+  GEAR_WaterBottle_Old                                zh=                          en=
+  GEAR_WaterPurificationTablets_Dif                   zh=                          en=
+  GEAR_WaterPurificationTablets_Mat                   zh=                          en=
+
+
+=== 92 DB entries NOT in catalog (mod-only / typo / removed) ===
+  GEAR_AcornCoffeeTin
+  GEAR_AntiInfectionWipes
+  GEAR_ArmWrap
+  GEAR_Bandage
+  GEAR_BirchbarkTeaDried
+  GEAR_BoneB
+  GEAR_BoneBearB
+  GEAR_BoneDeerB
+  GEAR_BoneMooseB
+  GEAR_BoneWolfB
+  GEAR_BottleOfWater
+  GEAR_BowB
+  GEAR_BowC
+  GEAR_Bow_Bushcraft
+  GEAR_Bow_Sports
+  GEAR_Bow_Woodwrights
+  GEAR_CaribouHide
+  GEAR_CaribouHideDried
+  GEAR_Carrot
+  GEAR_CatTailStalk
+  GEAR_ColdFusionSuit
+  GEAR_Compass
+  GEAR_CookedBurdock
+  GEAR_CookedCatTailStalk
+  GEAR_CookedMeatCaribou
+  GEAR_CookedMeatCougar
+  GEAR_CookedMeatPtarmigan
+  GEAR_CookedPtarmiganWhole
+  GEAR_CougarClaw
+  GEAR_CougarClawKnife
+  GEAR_CougarHide
+  GEAR_CougarHideDried
+  GEAR_CuredLeather
+  GEAR_CuredMeatPtarmigan
+  GEAR_ExpeditionCoat
+  GEAR_ExpeditionParka
+  GEAR_FishingTackleBox
+  GEAR_Flashlight_LongLasting
+  GEAR_ForgedHatchetHead
+  GEAR_ForgedKnifeBladeA
+  GEAR_ForgedKnifeBladeB
+  GEAR_Hatchet_Crafted
+  GEAR_JeremiahKnife
+  GEAR_KeroseneLamp_Spelunkers
+  GEAR_Knife_Hunter
+  GEAR_LeatherBindings
+  GEAR_MilkPowder
+  GEAR_MilletFlour
+  GEAR_OatmealPacket
+  GEAR_OldWoolScarf
+  GEAR_Placeholder
+  GEAR_Potato
+  GEAR_PrisonerVest
+  GEAR_PtarmiganCarcass
+  GEAR_PtarmiganFeathers
+  GEAR_PtarmiganPelt
+  GEAR_RawMeatCaribou
+  GEAR_RawMeatCougar
+  GEAR_RawMeatPtarmigan
+  GEAR_RawPtarmiganWhole
+  GEAR_RevolverB
+  GEAR_RevolverCleaningKit
+  GEAR_RevolverFancy
+  GEAR_RevolverGreen
+  GEAR_RevolverStubNosed
+  GEAR_RifleB
+  GEAR_RifleBroken
+  GEAR_RifleC
+  GEAR_Rifle_Trader
+  GEAR_Rifle_Vaughns
+  GEAR_Rifle_barbs
+  GEAR_Rifle_curators
+  GEAR_SafeCrackingStethoscope
+  GEAR_SaltedMeatPtarmigan
+  GEAR_Shotgun
+  GEAR_ShotgunAmmoBoxBirdshot
+  GEAR_ShotgunAmmoBoxBuckshot
+  GEAR_ShotgunAmmoBoxSlug
+  GEAR_ShotgunAmmoCasing
+  GEAR_ShotgunAmmoSingleBirdshot
+  GEAR_ShotgunAmmoSingleBuckshot
+  GEAR_ShotgunAmmoSingleSlug
+  GEAR_SpearFishing
+  GEAR_SpearFishingHead
+  GEAR_StitchingKit
+  GEAR_SurvivalBow
+  GEAR_SurvivorParka
+  GEAR_TacticalGloves
+  GEAR_TacticalJacket
+  GEAR_WheatFlour
+  GEAR_WolfCarcassMoose
+  GEAR_WolfskinParka

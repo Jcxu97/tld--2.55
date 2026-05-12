@@ -1,0 +1,11 @@
+D:\Github\tld--2.55\HarmonyCache\src\bin\Release\HarmonyCache.deps.json
+D:\Github\tld--2.55\HarmonyCache\src\bin\Release\HarmonyCache.dll
+D:\Github\tld--2.55\HarmonyCache\src\bin\Release\HarmonyCache.pdb
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\HarmonyCache.csproj.AssemblyReference.cache
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\HarmonyCache.GeneratedMSBuildEditorConfig.editorconfig
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\HarmonyCache.csproj.CoreCompileInputs.cache
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\HarmonyCache.sourcelink.json
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\HarmonyCache.dll
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\refint\HarmonyCache.dll
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\HarmonyCache.pdb
+D:\Github\tld--2.55\HarmonyCache\src\obj\Release\ref\HarmonyCache.dll
